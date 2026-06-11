@@ -1,0 +1,19 @@
+{
+  "id": "research-nih",
+  "tracker": "research-funding",
+  "method": "api",
+  "url": "https://api.reporter.nih.gov/v2/projects/search",
+  "enabled": true,
+  "cadence_hours": 168,
+  "rate_limit_ms": 1000,
+  "http_method": "POST",
+  "body": "{\"criteria\":{\"text_search\":\"artificial intelligence\"},\"limit\":50,\"offset\":0,\"sort_field\":\"project_start_date\",\"sort_order\":\"desc\"}",
+  "array_path": "results",
+  "key_field": "appl_id",
+  "field_map": { "title": "project_title", "awardee": "organization.org_name", "amount": "award_amount", "date": "project_start_date" },
+  "include": ["artificial intelligence", "machine learning", "deep learning", "neural network"],
+  "date_field": "date",
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "NIH RePORTER projects matching AI, filtered to genuine AI work. Keyless POST (results[]); recipient is nested organization.org_name."
+}

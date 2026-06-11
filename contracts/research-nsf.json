@@ -1,0 +1,18 @@
+{
+  "id": "research-nsf",
+  "tracker": "research-funding",
+  "method": "api",
+  "url": "https://api.nsf.gov/services/v1/awards.json",
+  "enabled": true,
+  "cadence_hours": 168,
+  "rate_limit_ms": 1000,
+  "query": { "keyword": "\"artificial intelligence\"", "printFields": "id,title,awardeeName,estimatedTotalAmt,startDate,fundProgramName,agency,program,abstractText", "rpp": "50" },
+  "array_path": "response.award",
+  "key_field": "id",
+  "field_map": { "title": "title", "awardee": "awardeeName", "amount": "estimatedTotalAmt", "date": "startDate", "program": "fundProgramName", "agency": "agency" },
+  "include": ["artificial intelligence", "machine learning"],
+  "date_field": "date",
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "NSF awards matching 'artificial intelligence', filtered to AI/ML over the award JSON (program + abstract). Keyless GET (response.award[])."
+}

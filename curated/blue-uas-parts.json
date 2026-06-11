@@ -1,7 +1,18 @@
 [
   { "component": "CubePilot Cube Orange+", "category": "Flight controller", "manufacturer": "CubePilot", "country": "AUS / US", "framework_status": "verify" },
+  { "component": "Auterion Skynode", "category": "Autopilot + compute", "manufacturer": "Auterion", "country": "US / CH", "framework_status": "verify" },
   { "component": "ARK GPS", "category": "GNSS module", "manufacturer": "ARK Electronics", "country": "US", "framework_status": "verify" },
-  { "component": "Doodle Labs Helix", "category": "Data link", "manufacturer": "Doodle Labs", "country": "US / SG", "framework_status": "verify" },
+  { "component": "Septentrio / u-blox GNSS", "category": "GNSS module", "manufacturer": "Septentrio / u-blox", "country": "BE / CH", "framework_status": "verify" },
+  { "component": "Doodle Labs Helix / Smart Radio", "category": "Data link", "manufacturer": "Doodle Labs", "country": "US / SG", "framework_status": "verify" },
+  { "component": "Silvus StreamCaster", "category": "Data link (MANET)", "manufacturer": "Silvus Technologies", "country": "US", "framework_status": "verify" },
+  { "component": "Persistent Systems MPU5", "category": "Data link (MANET)", "manufacturer": "Persistent Systems", "country": "US", "framework_status": "verify" },
+  { "component": "Mobilicom MCU / SkyHopper", "category": "Data link + cyber", "manufacturer": "Mobilicom", "country": "IL / US / AUS", "framework_status": "verify" },
   { "component": "ModalAI VOXL 2", "category": "Autonomy compute", "manufacturer": "ModalAI", "country": "US", "framework_status": "verify" },
-  { "component": "Holybro / Matek flight controllers", "category": "Flight controller", "manufacturer": "Holybro / Matek", "country": "CN", "framework_status": "country-of-origin concern — verify" }
+  { "component": "NVIDIA Jetson Orin (carrier)", "category": "Autonomy compute", "manufacturer": "NVIDIA (US carriers)", "country": "US", "framework_status": "verify" },
+  { "component": "NextVision Dragoneye / Raptor", "category": "EO/IR gimbal camera", "manufacturer": "NextVision", "country": "IL", "framework_status": "verify" },
+  { "component": "Sierra-Olympia / Teledyne FLIR", "category": "Thermal camera", "manufacturer": "Sierra-Olympia / Teledyne FLIR", "country": "US", "framework_status": "verify" },
+  { "component": "Hood Tech Alticam", "category": "Gimbal / imaging", "manufacturer": "Hood Tech Vision", "country": "US", "framework_status": "verify" },
+  { "component": "uAvionix ping ADS-B", "category": "Detect-and-avoid / ADS-B", "manufacturer": "uAvionix", "country": "US", "framework_status": "verify" },
+  { "component": "Holybro / Matek flight controllers", "category": "Flight controller", "manufacturer": "Holybro / Matek", "country": "CN", "framework_status": "country-of-origin concern — verify" },
+  { "component": "T-Motor / Hobbywing ESCs & motors", "category": "Propulsion (ESC/motor)", "manufacturer": "T-Motor / Hobbywing", "country": "CN", "framework_status": "country-of-origin concern — verify" }
 ]

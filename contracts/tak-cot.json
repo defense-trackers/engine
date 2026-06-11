@@ -1,0 +1,20 @@
+{
+  "id": "tak-cot",
+  "tracker": "tak",
+  "method": "api",
+  "url": "https://api.github.com/search/repositories",
+  "enabled": true,
+  "cadence_hours": 24,
+  "rate_limit_ms": 2000,
+  "query": { "q": "team awareness kit", "sort": "updated", "order": "desc" },
+  "auth_env": "GITHUB_TOKEN",
+  "auth_mode": "header",
+  "array_path": "items",
+  "key_field": "full_name",
+  "field_map": { "title": "full_name", "url": "html_url", "description": "description", "date": "pushed_at", "stars": "stargazers_count" },
+  "exclude": ["\"archived\":true"],
+  "limit_records": 40,
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "GitHub repos matching 'team awareness kit' (broader TAK ecosystem beyond the atak-plugin query). Archived excluded."
+}
