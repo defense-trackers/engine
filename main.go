@@ -83,6 +83,13 @@ func cmdFetch(args []string) int {
 		bad++
 		fmt.Printf("  %-10s %-22s %v\n", r.State, r.Source, r.Err)
 	}
+	// Site-wide artifacts: discovery + a single firehose feed.
+	if err := core.WriteSitemap(*out); err != nil {
+		fmt.Fprintln(os.Stderr, "sitemap:", err)
+	}
+	if err := core.WriteFirehose(*out); err != nil {
+		fmt.Fprintln(os.Stderr, "firehose:", err)
+	}
 	if bad > 0 {
 		fmt.Printf("\n%d/%d source(s) degraded or quarantined — last-good data left live.\n", bad, len(results))
 		return 2 // workflow opens an incident; data still published for healthy sources
