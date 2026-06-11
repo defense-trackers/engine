@@ -46,7 +46,9 @@ type Contract struct {
 	Paginate   string            `json:"paginate,omitempty"`    // "page" | "link" | "" (single)
 	PerPage    int               `json:"per_page,omitempty"`    // page size for paginate=page
 	MaxPages   int               `json:"max_pages,omitempty"`   // hard cap on pages fetched
-	Exclude    []string          `json:"exclude,omitempty"`     // drop records whose any field contains one of these (case-insensitive)
+	Exclude     []string `json:"exclude,omitempty"`      // drop items whose JSON contains any of these (case-insensitive)
+	Include     []string `json:"include,omitempty"`      // keep ONLY items whose JSON contains at least one of these
+	LimitRecords int     `json:"limit_records,omitempty"` // cap to the first N records after mapping (0 = no cap)
 
 	// --- curate method (maintained JSON file) ---
 	CuratedFile string `json:"curated_file,omitempty"` // path under curated/ (defaults to <id>.json)
@@ -94,6 +96,7 @@ type SourceStatus struct {
 	LastAttempt  string `json:"last_attempt"`
 	LastSuccess  string `json:"last_success,omitempty"`
 	CadenceHours int    `json:"cadence_hours"`
+	Count        int    `json:"count,omitempty"` // records currently published by this source
 	Message      string `json:"message,omitempty"`
 }
 

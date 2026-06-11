@@ -3,7 +3,7 @@
   "tracker": "oss-index",
   "method": "api",
   "url": "https://repo1.dso.mil/api/v4/projects",
-  "enabled": true,
+  "enabled": false,
   "cadence_hours": 24,
   "rate_limit_ms": 1000,
   "query": { "order_by": "last_activity_at", "visibility": "public" },
@@ -15,5 +15,5 @@
   "field_map": { "title": "name_with_namespace", "url": "web_url", "description": "description", "date": "last_activity_at", "stars": "star_count" },
   "min_records": 1,
   "max_delta_pct": 100,
-  "notes": "Platform One repo1 public projects — the non-GitHub half of DoD OSS. Confirmed reachable."
+  "notes": "DISABLED: returns Iron Bank container infra (overlaps authorizations) rather than discrete OSS projects. Re-enable with a tighter project filter if desired."
 }

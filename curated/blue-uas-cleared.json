@@ -1,0 +1,12 @@
+[
+  { "platform": "Skydio X10D", "manufacturer": "Skydio", "type": "sUAS quadcopter", "country": "US", "status": "Cleared", "as_of": "2025" },
+  { "platform": "Anduril Ghost-X", "manufacturer": "Anduril", "type": "sUAS VTOL", "country": "US", "status": "Cleared", "as_of": "2025" },
+  { "platform": "Freefly Astro", "manufacturer": "Freefly Systems", "type": "sUAS quadcopter", "country": "US", "status": "Cleared", "as_of": "2025" },
+  { "platform": "Teal Black Widow", "manufacturer": "Red Cat / Teal", "type": "sUAS quadcopter", "country": "US", "status": "Cleared", "as_of": "2025" },
+  { "platform": "Parrot ANAFI USA", "manufacturer": "Parrot", "type": "sUAS quadcopter", "country": "FR (US-assembled)", "status": "Cleared", "as_of": "2025" },
+  { "platform": "PDW C100", "manufacturer": "Performance Drone Works", "type": "sUAS quadcopter", "country": "US", "status": "Cleared", "as_of": "2025" },
+  { "platform": "Vantage Robotics Vesper", "manufacturer": "Vantage Robotics", "type": "sUAS quadcopter", "country": "US", "status": "Cleared", "as_of": "2025" },
+  { "platform": "Ascent AeroSystems Spirit", "manufacturer": "Ascent AeroSystems", "type": "sUAS coaxial", "country": "US", "status": "Cleared", "as_of": "2025" },
+  { "platform": "Inspired Flight IF1200", "manufacturer": "Inspired Flight", "type": "sUAS hexacopter", "country": "US", "status": "Cleared", "as_of": "2025" },
+  { "platform": "Wingtra WingtraOne", "manufacturer": "Wingtra", "type": "fixed-wing VTOL", "country": "CH", "status": "Cleared", "as_of": "2025" }
+]

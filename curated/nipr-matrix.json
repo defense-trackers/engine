@@ -1,7 +1,15 @@
 [
-  { "tool": "GenAI.mil", "service": "DoD enterprise", "network": "NIPR", "data_ceiling": "CUI", "status": "live", "as_of": "2026-06", "url": "https://genai.mil" },
-  { "tool": "CamoGPT", "service": "Army", "network": "NIPR / SIPR", "data_ceiling": "CUI", "status": "live (R&D platform)", "as_of": "2026-06" },
-  { "tool": "Army Enterprise LLM Workspace (Ask Sage)", "service": "Army", "network": "NIPR", "data_ceiling": "CUI", "status": "live (FedRAMP High)", "as_of": "2026-06" },
-  { "tool": "NIPRGPT", "service": "Air Force", "network": "NIPR", "data_ceiling": "PUBLIC", "status": "sunset 2025-12-31 -> GenAI.mil", "as_of": "2026-06" },
-  { "tool": "Ask Hamilton", "service": "USCG", "network": "NIPR", "data_ceiling": "CUI", "status": "live", "as_of": "2026-06" }
+  { "tool": "GenAI.mil", "vendor": "DoD CDAO (Gemini, xAI, OpenAI, Anthropic)", "service": "DoD enterprise", "network": "NIPR", "data_ceiling": "up to IL5", "access": "CAC / account", "status": "live (launched Dec 2025; 1.1M users by Feb 2026)", "as_of": "2026-06", "url": "https://genai.mil" },
+  { "tool": "Google Gemini for Government", "vendor": "Google Public Sector", "service": "DoD / federal", "network": "GenAI.mil (NIPR)", "data_ceiling": "up to IL5", "access": "account", "status": "live (first model on GenAI.mil)", "as_of": "2026-06" },
+  { "tool": "xAI for Government", "vendor": "xAI", "service": "DoD", "network": "GenAI.mil (NIPR)", "data_ceiling": "PUBLIC / CUI", "access": "account", "status": "live", "as_of": "2026-06" },
+  { "tool": "Army Enterprise LLM Workspace", "vendor": "Ask Sage", "service": "Army (+ Joint Staff, OSD, CCMDs)", "network": "NIPR", "data_ceiling": "CUI / IL4", "access": "account", "status": "live ($49M IDIQ)", "as_of": "2026-06" },
+  { "tool": "CamoGPT", "vendor": "Army AI Integration Center (in-house)", "service": "Army", "network": "NIPR", "data_ceiling": "CUI / IL4", "access": "account", "status": "live (now R&D; secondary to Ask Sage workspace)", "as_of": "2026-06" },
+  { "tool": "NIPRGPT", "vendor": "AFRL (in-house)", "service": "Air Force", "network": "NIPR", "data_ceiling": "PUBLIC / CUI", "access": "account", "status": "sunset 2025-12-31 -> GenAI.mil", "as_of": "2026-06" },
+  { "tool": "ChatDIA", "vendor": "DIA (in-house)", "service": "Defense Intelligence Agency", "network": "JWICS (classified)", "data_ceiling": "TS/SCI", "access": "CAC + clearance", "status": "live (full deployment Dec 2025)", "as_of": "2026-06" },
+  { "tool": "Microsoft 365 Copilot", "vendor": "Microsoft", "service": "Federal / DoD", "network": "GCC-High / IL5", "data_ceiling": "CUI / IL5", "access": "account", "status": "live (web grounding off by default for CUI)", "as_of": "2026-06" },
+  { "tool": "ChatGPT Gov", "vendor": "OpenAI (Azure IL5)", "service": "DoD / CDAO", "network": "Azure GCC-High / IL5", "data_ceiling": "CUI / IL5", "access": "account", "status": "live ($200M CDAO award)", "as_of": "2026-06" },
+  { "tool": "Claude Gov", "vendor": "Anthropic (AWS)", "service": "National security / all branches", "network": "FedRAMP High / AWS Secret", "data_ceiling": "up to IL6", "access": "GSA schedule (Carahsoft)", "status": "live (first frontier model approved for classified)", "as_of": "2026-06" },
+  { "tool": "Scale Donovan", "vendor": "Scale AI", "service": "DoD / CDAO", "network": "NIPR / SIPR", "data_ceiling": "CUI / classified", "access": "account", "status": "live ($500M ceiling OTA)", "as_of": "2026-06" },
+  { "tool": "Defense Llama", "vendor": "Scale AI / Meta", "service": "DoD", "network": "NIPR / SIPR", "data_ceiling": "CUI / classified", "access": "account (via Scale)", "status": "live (beta)", "as_of": "2026-06" },
+  { "tool": "Palantir AIP", "vendor": "Palantir", "service": "DoD (contract-dependent)", "network": "government", "data_ceiling": "CUI / classified (IL4+)", "access": "contract", "status": "live (multiple DoD deployments)", "as_of": "2026-06" }
 ]

@@ -1,8 +1,8 @@
 {
-  "id": "oss-nsacyber",
-  "tracker": "oss-index",
+  "id": "tak-freetak",
+  "tracker": "tak",
   "method": "api",
-  "url": "https://api.github.com/orgs/nsacyber/repos",
+  "url": "https://api.github.com/orgs/FreeTAKTeam/repos",
   "enabled": true,
   "cadence_hours": 24,
   "rate_limit_ms": 2000,
@@ -10,12 +10,12 @@
   "auth_mode": "header",
   "paginate": "page",
   "per_page": 100,
-  "max_pages": 2,
+  "max_pages": 1,
   "array_path": "",
   "key_field": "full_name",
   "field_map": { "title": "full_name", "url": "html_url", "description": "description", "date": "pushed_at", "stars": "stargazers_count" },
   "exclude": ["\"archived\":true"],
   "min_records": 1,
   "max_delta_pct": 100,
-  "notes": "NSA Cybersecurity Directorate GitHub org repos."
+  "notes": "FreeTAKTeam org repos (~38). Archived excluded."
 }

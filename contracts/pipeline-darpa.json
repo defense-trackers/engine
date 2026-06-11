@@ -3,12 +3,12 @@
   "tracker": "pipeline",
   "method": "pagediff",
   "url": "https://www.darpa.mil/work-with-us/opportunities",
-  "enabled": true,
+  "enabled": false,
   "cadence_hours": 24,
   "rate_limit_ms": 1000,
   "slice_start": "<main role=\"main\">",
   "slice_end": "</main>",
   "min_records": 1,
   "max_delta_pct": 100,
-  "notes": "DARPA opportunities listing. Server-rendered Drupal (200); sliced to <main> to drop global nav/footer. The pipeline tracker's enabled source until DIU/SBIR/SAM are wired."
+  "notes": "DISABLED: even sliced to <main>, the page yields nav/section labels (Breadcrumb, Work With Us...) not structured opportunities. Replaced by pipeline-grants (grants.gov API)."
 }

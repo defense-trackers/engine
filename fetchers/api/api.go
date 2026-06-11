@@ -10,10 +10,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 
 	"engine/internal/core"
 )
@@ -30,7 +33,7 @@ func (a *API) Fetch(c core.Contract, cacheDir string) ([]core.Record, error) {
 	}
 	var body []byte
 	if c.Body != "" {
-		body = []byte(c.Body)
+		body = []byte(expandDates(c.Body))
 	}
 	maxPages := c.MaxPages
 	if maxPages < 1 {
@@ -64,7 +67,11 @@ func (a *API) Fetch(c core.Contract, cacheDir string) ([]core.Record, error) {
 			page = maxPages
 		}
 	}
-	return mapItems(items, c), nil
+	recs := mapItems(items, c)
+	if c.LimitRecords > 0 && len(recs) > c.LimitRecords {
+		recs = recs[:c.LimitRecords]
+	}
+	return recs, nil
 }
 
 // Parse maps a single JSON response to records — the pure, testable path.
@@ -92,6 +99,9 @@ func mapItems(items []interface{}, c core.Contract) []core.Record {
 			continue
 		}
 		if excluded(m, c.Exclude) {
+			continue
+		}
+		if len(c.Include) > 0 && !includes(m, c.Include) {
 			continue
 		}
 		seen[key] = true
@@ -201,7 +211,7 @@ func stringify(v interface{}) string {
 	case nil:
 		return ""
 	case string:
-		return t
+		return html.UnescapeString(t)
 	case bool:
 		return fmt.Sprint(t)
 	case float64:
@@ -261,4 +271,34 @@ func excluded(m map[string]interface{}, terms []string) bool {
 		}
 	}
 	return false
+}
+
+// includes keeps an item only if any term appears in it (case-insensitive
+// over the item's JSON, so it matches title, abstract, description, etc.).
+func includes(m map[string]interface{}, terms []string) bool {
+	b, _ := json.Marshal(m)
+	low := strings.ToLower(string(b))
+	for _, t := range terms {
+		if t != "" && strings.Contains(low, strings.ToLower(t)) {
+			return true
+		}
+	}
+	return false
+}
+
+var dateTok = regexp.MustCompile(`\{\{today(?:-(\d+)d)?\}\}`)
+
+// expandDates replaces {{today}} and {{today-Nd}} with YYYY-MM-DD so rolling
+// query windows (e.g. USAspending) stay current with no manual edits.
+func expandDates(s string) string {
+	return dateTok.ReplaceAllStringFunc(s, func(tok string) string {
+		sub := dateTok.FindStringSubmatch(tok)
+		d := time.Now().UTC()
+		if sub[1] != "" {
+			if n, err := strconv.Atoi(sub[1]); err == nil {
+				d = d.AddDate(0, 0, -n)
+			}
+		}
+		return d.Format("2006-01-02")
+	})
 }

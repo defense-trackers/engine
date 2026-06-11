@@ -11,6 +11,7 @@
   "array_path": "",
   "key_field": "tag_name",
   "field_map": { "title": "name", "url": "html_url", "date": "published_at" },
+  "limit_records": 8,
   "min_records": 1,
   "max_delta_pct": 100,
   "notes": "vLLM releases = day-0 model support signal."

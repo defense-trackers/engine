@@ -1,8 +1,8 @@
 {
-  "id": "oss-nsacyber",
+  "id": "oss-ngageoint",
   "tracker": "oss-index",
   "method": "api",
-  "url": "https://api.github.com/orgs/nsacyber/repos",
+  "url": "https://api.github.com/orgs/ngageoint/repos",
   "enabled": true,
   "cadence_hours": 24,
   "rate_limit_ms": 2000,
@@ -17,5 +17,5 @@
   "exclude": ["\"archived\":true"],
   "min_records": 1,
   "max_delta_pct": 100,
-  "notes": "NSA Cybersecurity Directorate GitHub org repos."
+  "notes": "NGA (National Geospatial-Intelligence Agency) GitHub org repos, non-archived."
 }

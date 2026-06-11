@@ -6,7 +6,8 @@
   "enabled": true,
   "cadence_hours": 24,
   "rate_limit_ms": 2000,
-  "query": { "q": "topic:atak-plugin", "sort": "updated", "order": "desc" },
+  "query": { "q": "atak plugin", "sort": "updated", "order": "desc" },
+  "exclude": ["\"archived\":true"],
   "auth_env": "GITHUB_TOKEN",
   "auth_mode": "header",
   "array_path": "items",
@@ -14,5 +15,5 @@
   "field_map": { "title": "full_name", "url": "html_url", "description": "description", "date": "pushed_at", "stars": "stargazers_count" },
   "min_records": 1,
   "max_delta_pct": 100,
-  "notes": "GitHub repos tagged atak-plugin. Uses GITHUB_TOKEN when present (30/min) and works unauthenticated at low rate (10/min)."
+  "notes": "GitHub repos matching 'atak plugin' (~116 vs 1 for topic:atak-plugin). Archived excluded. Uses GITHUB_TOKEN when present."
 }

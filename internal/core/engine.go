@@ -121,8 +121,8 @@ func runOne(c Contract, outDir, cacheDir, quarantineDir string) RunResult {
 	res.State = "ok"
 	setStatus(outDir, c.ID, SourceStatus{
 		Tracker: c.Tracker, State: "ok", LastAttempt: now, LastSuccess: now,
-		CadenceHours: c.CadenceHours,
-		Message:      fmt.Sprintf("+%d -%d ~%d", res.Added, res.Removed, res.Changed),
+		CadenceHours: c.CadenceHours, Count: len(recs),
+		Message: fmt.Sprintf("+%d -%d ~%d", res.Added, res.Removed, res.Changed),
 	})
 	return res
 }

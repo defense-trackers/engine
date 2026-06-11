@@ -3,7 +3,7 @@
   "tracker": "oss-index",
   "method": "api",
   "url": "https://api.github.com/orgs/deptofdefense/repos",
-  "enabled": true,
+  "enabled": false,
   "cadence_hours": 24,
   "rate_limit_ms": 2000,
   "auth_env": "GITHUB_TOKEN",
@@ -13,8 +13,9 @@
   "max_pages": 2,
   "array_path": "",
   "key_field": "full_name",
-  "field_map": { "title": "full_name", "url": "html_url", "description": "description", "date": "pushed_at", "stars": "stargazers_count", "archived": "archived" },
+  "field_map": { "title": "full_name", "url": "html_url", "description": "description", "date": "pushed_at", "stars": "stargazers_count" },
+  "exclude": ["\"archived\":true"],
   "min_records": 1,
   "max_delta_pct": 100,
-  "notes": "deptofdefense GitHub org repos. Confirmed fields. Add more orgs (nsacyber, ngageoint, NavalResearchLaboratory, AFRL, cisagov) as sibling contracts."
+  "notes": "DISABLED: every repo in the deptofdefense org is archived (org is effectively dead), so the maintained-only filter leaves nothing. Live gov OSS comes from cisagov / ngageoint / nsacyber."
 }

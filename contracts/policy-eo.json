@@ -1,21 +1,17 @@
 {
-  "id": "policy-fedreg",
+  "id": "policy-eo",
   "tracker": "policy",
   "method": "api",
   "url": "https://www.federalregister.gov/api/v1/documents.json",
   "enabled": true,
   "cadence_hours": 24,
   "rate_limit_ms": 1000,
-  "query": { "conditions[term]": "artificial intelligence", "order": "newest" },
-  "paginate": "page",
-  "per_page": 100,
-  "max_pages": 5,
+  "query": { "conditions[term]": "artificial intelligence", "conditions[type][]": "PRESDOCU", "order": "newest", "per_page": "50" },
   "array_path": "results",
   "key_field": "document_number",
   "field_map": { "title": "title", "type": "type", "date": "publication_date", "url": "html_url" },
-  "include": ["artificial intelligence", "machine learning", "autonomous", "autonomy", "algorithmic"],
   "date_field": "date",
   "min_records": 1,
   "max_delta_pct": 100,
-  "notes": "Federal Register documents matching 'artificial intelligence', newest first. Confirmed shape 2026-06 (results[])."
+  "notes": "Presidential documents (executive orders, memoranda, proclamations) mentioning AI — the highest-signal policy layer."
 }

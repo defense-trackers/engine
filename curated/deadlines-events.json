@@ -1,6 +1,10 @@
 [
-  { "id": "ausa-annual-2026", "title": "AUSA Annual Meeting & Exposition 2026", "date": "2026-10-12", "type": "event", "url": "https://meetings.ausa.org/annual/", "note": "verify dates" },
-  { "id": "reagan-ndf-2026", "title": "Reagan National Defense Forum 2026", "date": "2026-12-05", "type": "event", "url": "https://www.reaganfoundation.org/", "note": "verify dates" },
-  { "id": "sof-week-2027", "title": "SOF Week 2027", "date": "2027-05-10", "type": "event", "url": "https://sofweek.org/", "note": "verify dates" },
-  { "id": "modern-day-marine-2027", "title": "Modern Day Marine 2027", "date": "2027-04-27", "type": "event", "url": "https://marinemilitaryexpos.com/", "note": "verify dates" }
+  { "id": "afcea-west-2027", "title": "AFCEA WEST 2027", "date": "2027-01-26", "type": "conference", "url": "https://www.westconference.org/", "note": "verify dates" },
+  { "id": "ausa-global-2026", "title": "AUSA Global Force Symposium 2026", "date": "2026-03-31", "type": "conference", "url": "https://meetings.ausa.org/global/", "note": "verify dates" },
+  { "id": "sea-air-space-2026", "title": "Sea-Air-Space 2026", "date": "2026-04-06", "type": "conference", "url": "https://seaairspace.org/", "note": "verify dates" },
+  { "id": "xtechsearch-2026", "title": "Army xTechSearch (rolling competition window)", "date": "2026-07-01", "type": "competition", "url": "https://www.xtech.army.mil/", "note": "verify dates" },
+  { "id": "ausa-annual-2026", "title": "AUSA Annual Meeting & Exposition 2026", "date": "2026-10-12", "type": "conference", "url": "https://meetings.ausa.org/annual/", "note": "verify dates" },
+  { "id": "reagan-ndf-2026", "title": "Reagan National Defense Forum 2026", "date": "2026-12-05", "type": "conference", "url": "https://www.reaganfoundation.org/", "note": "verify dates" },
+  { "id": "sof-week-2027", "title": "SOF Week 2027", "date": "2027-05-10", "type": "conference", "url": "https://sofweek.org/", "note": "verify dates" },
+  { "id": "modern-day-marine-2027", "title": "Modern Day Marine 2027", "date": "2027-04-27", "type": "exposition", "url": "https://marinemilitaryexpos.com/", "note": "verify dates" }
 ]

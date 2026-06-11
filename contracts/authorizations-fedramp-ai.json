@@ -1,0 +1,17 @@
+{
+  "id": "authorizations-fedramp-ai",
+  "tracker": "authorizations",
+  "method": "api",
+  "url": "https://raw.githubusercontent.com/FedRAMP/marketplace-fedramp-gov-data/main/data.json",
+  "enabled": true,
+  "cadence_hours": 24,
+  "rate_limit_ms": 1000,
+  "array_path": "data.Products",
+  "key_field": "id",
+  "field_map": { "title": "cso", "status": "status", "impact": "impact_level", "model": "service_model", "assessor": "independent_assessor", "date": "auth_date", "url": "website" },
+  "include": ["artificial intelligence", "machine learning", "ai/ml", "genai", "generative ai", "llm"],
+  "date_field": "date",
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "FedRAMP authorized products (659) filtered to AI/ML platforms via include over the product JSON (matches service descriptions). Confirmed shape (data.Products[])."
+}

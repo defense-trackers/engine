@@ -3,10 +3,10 @@
   "tracker": "blue-uas",
   "method": "pagediff",
   "url": "https://www.diu.mil/blue-uas-cleared-list",
-  "enabled": true,
+  "enabled": false,
   "cadence_hours": 24,
   "rate_limit_ms": 1000,
   "min_records": 5,
   "max_delta_pct": 60,
-  "notes": "DIU Blue UAS Cleared List (static HTML, 200). Governance moved to DCMA bluelist.dcma.mil mid-2025 but the DIU list page remains reliable. Set slice markers after first live run; retune thresholds to the real baseline."
+  "notes": "DISABLED: the DIU page yields nav chrome (Who We Are, Our Team...) not the platform list. Replaced by curated blue-uas-cleared (the DCMA portal is JS-gated)."
 }
