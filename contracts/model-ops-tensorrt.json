@@ -1,0 +1,18 @@
+{
+  "id": "model-ops-tensorrt",
+  "tracker": "model-ops",
+  "method": "api",
+  "url": "https://api.github.com/repos/NVIDIA/TensorRT-LLM/releases",
+  "enabled": true,
+  "cadence_hours": 24,
+  "rate_limit_ms": 2000,
+  "auth_env": "GITHUB_TOKEN",
+  "auth_mode": "header",
+  "array_path": "",
+  "key_field": "tag_name",
+  "field_map": { "title": "name", "url": "html_url", "date": "published_at" },
+  "limit_records": 8,
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "NVIDIA TensorRT-LLM releases — GPU inference optimization signal."
+}

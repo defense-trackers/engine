@@ -82,6 +82,10 @@ func cmdFetch(args []string) int {
 		bad++
 		fmt.Printf("  %-10s %-22s %v\n", r.State, r.Source, r.Err)
 	}
+	// Aggregate solicitation close-dates across trackers into the deadlines calendar.
+	if dr := core.PublishDeadlinesFromCloses(*out, *quarantine); dr.Source != "" {
+		fmt.Printf("  aggregate  deadlines              +%d -%d ~%d\n", dr.Added, dr.Removed, dr.Changed)
+	}
 	// Site-wide artifacts: discovery + a single firehose feed.
 	if err := core.WriteSitemap(*out); err != nil {
 		fmt.Fprintln(os.Stderr, "sitemap:", err)

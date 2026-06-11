@@ -29,6 +29,73 @@ func ListTrackers(outDir string) []string {
 	return out
 }
 
+func parseAnyDate(s string) time.Time {
+	s = strings.TrimSpace(s)
+	for _, l := range []string{"2006-01-02", time.RFC3339, "01/02/2006", "Jan 2, 2006", "January 2, 2006"} {
+		if t, err := time.Parse(l, s); err == nil {
+			return t
+		}
+	}
+	if len(s) >= 10 {
+		if t, err := time.Parse("2006-01-02", s[:10]); err == nil {
+			return t
+		}
+	}
+	return time.Time{}
+}
+
+// PublishDeadlinesFromCloses scans every tracker for records with a future
+// "closes" date and publishes them as a synthetic "deadlines-solicitations"
+// source — turning solicitation deadlines across the suite into one live
+// calendar (and feeding the deadlines .ics). Runs after the normal fetch.
+func PublishDeadlinesFromCloses(outDir, quarantineDir string) RunResult {
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	var recs []Record
+	for _, t := range ListTrackers(outDir) {
+		if t == "deadlines" {
+			continue
+		}
+		st, err := loadCurrent(outDir, t)
+		if err != nil || st == nil {
+			continue
+		}
+		for _, r := range st.Records {
+			cl := r.Fields["closes"]
+			if cl == "" {
+				continue
+			}
+			d := parseAnyDate(cl)
+			if d.IsZero() || d.Before(today) {
+				continue
+			}
+			title := r.Fields["title"]
+			if title == "" {
+				title = r.Fields["text"]
+			}
+			f := map[string]string{
+				"text":   title,
+				"title":  title,
+				"date":   d.Format("2006-01-02"),
+				"closes": d.Format("2006-01-02"),
+				"from":   t,
+			}
+			if a := r.Fields["agency"]; a != "" {
+				f["agency"] = a
+			}
+			if u := r.Fields["url"]; u != "" {
+				f["url"] = u
+			}
+			recs = append(recs, Record{Key: "close-" + r.Key, Fields: f})
+		}
+	}
+	if len(recs) == 0 {
+		return RunResult{Source: "deadlines-solicitations", State: "ok"}
+	}
+	c := Contract{ID: "deadlines-solicitations", Tracker: "deadlines",
+		EmitICal: true, DateField: "date", MinRecords: 1, MaxDeltaPct: 100, CadenceHours: 24}
+	return CommitRecords(c, recs, outDir, "", quarantineDir)
+}
+
 // WriteSitemap emits sitemap.xml covering the home page, methodology, and each
 // tracker page — so the canonical source is discoverable.
 func WriteSitemap(outDir string) error {

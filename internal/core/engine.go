@@ -49,6 +49,30 @@ func RunAll(contracts []Contract, outDir, cacheDir, quarantineDir, only string) 
 }
 
 func runOne(c Contract, outDir, cacheDir, quarantineDir string) RunResult {
+	f, ok := registry[c.Method]
+	if !ok {
+		err := fmt.Errorf("no fetcher registered for method %q", c.Method)
+		now := time.Now().UTC().Format(time.RFC3339)
+		setStatus(outDir, c.ID, SourceStatus{Tracker: c.Tracker, State: "degraded",
+			LastAttempt: now, CadenceHours: c.CadenceHours, Message: err.Error()})
+		return RunResult{Source: c.ID, State: "degraded", Err: err}
+	}
+	recs, err := f.Fetch(c, cacheDir)
+	if err != nil {
+		now := time.Now().UTC().Format(time.RFC3339)
+		setStatus(outDir, c.ID, SourceStatus{Tracker: c.Tracker, State: "degraded",
+			LastAttempt: now, CadenceHours: c.CadenceHours, Message: err.Error()})
+		return RunResult{Source: c.ID, State: "degraded", Err: err}
+	}
+	return CommitRecords(c, recs, outDir, cacheDir, quarantineDir)
+}
+
+// CommitRecords runs the publish pipeline for already-obtained records:
+// per-source diff against prior state, the validation gate, merge into the
+// tracker snapshot, append events, RSS, optional iCal, and status. Shared by
+// runOne (fetched records) and synthetic publishers like the deadlines
+// aggregator.
+func CommitRecords(c Contract, recs []Record, outDir, cacheDir, quarantineDir string) RunResult {
 	now := time.Now().UTC().Format(time.RFC3339)
 	res := RunResult{Source: c.ID}
 
@@ -61,14 +85,6 @@ func runOne(c Contract, outDir, cacheDir, quarantineDir string) RunResult {
 		return res
 	}
 
-	f, ok := registry[c.Method]
-	if !ok {
-		return fail("degraded", fmt.Errorf("no fetcher registered for method %q", c.Method))
-	}
-	recs, err := f.Fetch(c, cacheDir)
-	if err != nil {
-		return fail("degraded", err)
-	}
 	for i := range recs {
 		recs[i].Source = c.ID
 	}
