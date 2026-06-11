@@ -1,102 +1,86 @@
 # engine — Defense Trackers
 
 The collection engine for [defense-trackers](https://github.com/defense-trackers).
-Stdlib-only Go. It fetches public sources on a declared cadence, validates and
-diffs them, and publishes append-only, hash-chained JSON to the public site repo.
+Stdlib-only Go (no third-party deps). It fetches public sources on a declared
+cadence, validates and diffs them, and writes append-only, hash-chained JSON
+that the public site renders.
 
-**This repo is private.** It holds the fetchers, secrets, and the self-hosted
-runner. The public site repo (`defense-trackers.github.io`) only ever renders
-the JSON this engine pushes to it. That split is the security model: fork PRs
-can never run code on the runner because the public repo runs nothing but Pages.
+This repo is **public** and contains no secrets — just code, source contracts,
+and curated data files. The site updates itself by running this engine in CI
+(see below), so there is nothing to operate.
+
+## How the autonomy works
+
+The site repo (`defense-trackers.github.io`) owns a scheduled workflow
+(`.github/workflows/update.yml`) that:
+
+1. checks out itself and this engine (both public),
+2. builds the engine and runs `engine fetch --out .`,
+3. runs `engine sentinel` (flip stale) and `engine verify` (check the chain),
+4. commits the changed data and pushes — using the built-in `GITHUB_TOKEN`, so
+   no deploy key or PAT is required.
+
+GitHub-API sources authenticate with that same built-in token. The only source
+that needs a human-provided secret is SAM.gov (`SAM_API_KEY`); it stays disabled
+until that secret is set, and everything else runs without it.
 
 ## Layout
 
 ```
 engine/
   main.go                     CLI: fetch | sentinel | verify (registers fetchers)
-  internal/core/              the engine — stdlib only, the part that must not rot
+  internal/core/              the engine — stdlib only
     contract.go               Contract/Record/State/Event/SourceStatus + loader
-    http.go                   conditional GET with etag cache + retries/backoff
-    engine.go                 RunAll, Validate (the gate), Diff, storage, chain, status, RSS
-    engine_test.go            diff + invariant unit tests
+    http.go                   conditional GET (etag cache) + FetchRaw (api)
+    engine.go                 RunAll, Validate (gate), Diff, storage, chain, status, RSS
+    ical.go                   feeds/<tracker>.ics emitter
+    site.go                   sitemap.xml + all-changes firehose
   fetchers/
-    pagediff/                 generic page-text diff fetcher (the shipped method)
-      pagediff.go
-      pagediff_test.go        golden test (deterministic parser)
-      testdata/               synthetic fixture + generated golden
-  contracts/                  one JSON per source (data, not code)
-    blue-uas.json             T6 — live (pagediff)
-    sbir-pipeline.json        T1 — stubbed until an `api` fetcher exists
-  scripts/repair.sh           RigRun self-repair bundle (STUB — wire to your endpoint)
-  .github/workflows/          fetch · sentinel · repair · secrets-canary · renewals
-  SOURCES.md                  the ten-tracker data-source inventory (build reference)
-  RENEWALS.md                 the dated human floor (key rotations, etc.)
+    pagediff/                 page-text diff (HTML lists)
+    api/                      generic JSON over HTTP (GitHub, HF, FedRAMP, Fed Register, USAspending, GitLab…)
+    rss/                      RSS / Atom feeds (Google News [PR], agency feeds)
+    curate/                   maintained JSON files (the "moat columns")
+  contracts/                  one JSON per source (~22 across 10 trackers)
+  curated/                    hand-maintained data for the curate method
+  .github/workflows/          secrets-canary · renewals · repair (dormant)
+  SOURCES.md                  the ten-tracker data-source inventory
+  RENEWALS.md                 dated human-floor reminders (e.g. SAM key rotation)
 ```
-
-## Bring-up (one-time)
-
-1. **Create the two repos in the org:**
-   - `defense-trackers/defense-trackers.github.io` (public) — push the `site/` tree.
-   - `defense-trackers/engine` (private) — push this tree.
-2. **Public repo → Settings → Pages:** deploy from `main` / root. URL becomes
-   `https://defense-trackers.github.io/`.
-3. **Deploy key:** generate an SSH keypair. Add the **public** key to the public
-   repo as a deploy key *with write access*. Add the **private** key to the engine
-   repo as the `SITE_DEPLOY_KEY` secret. (This is how CI pushes data without a PAT.)
-4. **Self-hosted runner (the RigRun box):** engine repo → Settings → Actions →
-   Runners → add, with labels `self-hosted` and `rigrun`. Set the `RIGRUN_URL`
-   secret. Only the `repair` workflow targets it.
-5. **Other secrets (as you enable sources):** `SAM_API_KEY` (entity-tier, see
-   SOURCES.md), `HEARTBEAT_URL` (a healthchecks.io check — the external dead-man
-   switch).
-6. **Labels:** create `incident`, `stale`, `secrets`, `renewal`, `repair` so the
-   workflows' `gh issue create` calls land cleanly.
-7. **Push.** The `fetch` workflow runs on its cron (and `workflow_dispatch`),
-   builds, fetches into a checkout of the public repo, and pushes the data.
 
 ## Local development
 
 ```sh
-go build -o bin/engine .                                   # compile
-go test ./...                                              # unit + golden
-go test ./fetchers/pagediff -run Golden -update            # regenerate golden after an intended parser/fixture change
+go build -o bin/engine .
+go test ./...
+go test ./fetchers/<name> -run Golden -update   # regenerate a golden after an intended change
 
-# run against a local checkout of the public site repo (sibling dir):
-./bin/engine fetch    --out ../site
+# run against a local checkout of the site repo (sibling dir):
+GITHUB_TOKEN=$(gh auth token) ./bin/engine fetch --out ../site --contracts contracts --curated curated
 ./bin/engine sentinel --out ../site
 ./bin/engine verify   --out ../site
 ```
 
-(The `Makefile` wraps these. On Windows without `make`, run the `go` commands directly.)
-
 ## Adding a tracker
 
-- **Same method as an existing source:** drop a new JSON in `contracts/`. Done.
-- **New method** (api, rss, gitlab, ical — see SOURCES.md): add a package under
-  `fetchers/` implementing `core.Fetcher`, register it in `main.go`, then add the
-  contract. It inherits caching, the validation gate, diff, chain, status, and RSS
-  for free. Ship a golden test for any parser with non-trivial logic.
+- **Existing method:** drop a JSON in `contracts/` (and, for `curate`, a file in
+  `curated/`). That's it — caching, the validation gate, diff, hash chain,
+  status, RSS, and the firehose all come for free.
+- **New method:** add a package under `fetchers/` implementing `core.Fetcher`,
+  register it in `main.go`, then add the contract. Ship a golden test.
 
-## Operational model
+## Trust & integrity
 
-| Workflow | Trigger | Does |
-|---|---|---|
-| `fetch` | cron + dispatch | fetch all enabled sources → push data → open `incident` if any degraded |
-| `sentinel` | daily | flip sources stale past 1.5× cadence → ping `HEARTBEAT_URL` → open `stale` issue |
-| `repair` | issue labeled `incident` | (self-hosted) RigRun regenerates the parser → `go test` gate → open PR (human merges) |
-| `secrets-canary` | weekly | exercise `SAM_API_KEY` → open `secrets` issue on 401/403 |
-| `renewals` | daily | open an issue 14 days before each dated line in `RENEWALS.md` |
+Each tracker's changelog is append-only and hash-chained (`events/*.jsonl` with
+`prev = sha256(previous line)`, head in `CHAIN`). Anyone can re-derive it with
+`engine verify` — no keys needed. `appendEvents` also exposes a `SIGNET_CMD`
+hook for optional countersigning if you later add a signing key.
 
-**Exit codes:** `fetch` returns 2 if any source degraded/quarantined (data for
-healthy sources still publishes); `sentinel` returns 3 if anything went stale;
-`verify` returns 4 on a broken chain. Workflows key off these.
+## What's intentionally dormant
 
-## What's stubbed
-
-`scripts/repair.sh` assembles the quarantine bundle and the signaling, but the
-actual RigRun call is marked `WIRE ME`. Until it's wired, an `incident` produces
-a no-op repair run; the incident issue still tells you what to fix by hand. Code
-never self-merges regardless — every repair is gated by `go test` and a human PR.
+`scripts/repair.sh` + `.github/workflows/repair.yml` sketch an LLM-assisted
+self-repair loop (regenerate a broken parser → `go test` gate → open a PR) that
+runs on a self-hosted runner. It only triggers on an `incident`-labeled issue
+and is inert until someone wires the `RIGRUN_URL` call and registers a runner.
 
 ## License
 
