@@ -13,6 +13,7 @@
   "field_map": { "title": "title", "agency": "agency", "posted": "openDate", "closes": "closeDate", "number": "number" },
   "include": ["Defense", "Navy", "Army", "Air Force", "DARPA", "Energy", "Homeland", "Intelligence", "Standards and Technology"],
   "include_fields": ["agency"],
+  "exclude": ["Cancer", "Sclerosis", "Prostate", "Alzheimer", "Psychological Health", "Clinical Trial", "Regenerative Medicine", "Reconstructive", "Lupus", "Tuberculosis", "Amyotrophic"],
   "url_template": "https://www.grants.gov/search-results-detail/{id}",
   "date_field": "closes",
   "min_records": 1,

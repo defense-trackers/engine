@@ -3,7 +3,7 @@
   "tracker": "policy",
   "method": "api",
   "url": "https://api.govinfo.gov/search",
-  "enabled": true,
+  "enabled": false,
   "cadence_hours": 48,
   "rate_limit_ms": 1500,
   "http_method": "POST",
@@ -16,5 +16,5 @@
   "date_field": "date",
   "min_records": 1,
   "max_delta_pct": 100,
-  "notes": "Congressional bills mentioning artificial intelligence, via GovInfo search (BILLS collection). Uses api.data.gov DEMO_KEY (low rate limit; 1 call/run is fine). Swap in a real key for higher volume."
+  "notes": "DISABLED: GovInfo full-text search returns bills that merely mention AI once (appropriations, veterans acts) with no relevance ranking — too noisy. Re-enable with a congress.gov subject/policy-area filter for clean AI legislation."
 }

@@ -3,7 +3,7 @@
   "tracker": "research-funding",
   "method": "api",
   "url": "https://api.reporter.nih.gov/v2/projects/search",
-  "enabled": true,
+  "enabled": false,
   "cadence_hours": 168,
   "rate_limit_ms": 1000,
   "http_method": "POST",
@@ -16,5 +16,5 @@
   "date_field": "date",
   "min_records": 1,
   "max_delta_pct": 100,
-  "notes": "NIH RePORTER projects matching AI, filtered to genuine AI work. Keyless POST (results[]); recipient is nested organization.org_name."
+  "notes": "DISABLED: NIH text-search returns biomedical research that only loosely mentions AI (antifungals, depression studies) — off-domain for a defense-innovation tracker and noisy. NSF carries research-funding."
 }
