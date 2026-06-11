@@ -1,0 +1,6 @@
+[
+  { "model": "Llama 4 (Scout / Maverick)", "license": "Llama 4 Community License", "air_gap": "yes", "provenance": "Meta", "note": "review military-use AUP carve-out before fielding" },
+  { "model": "Gemma (open weights)", "license": "Gemma Terms of Use", "air_gap": "yes", "provenance": "Google" },
+  { "model": "Mistral (open-weight releases)", "license": "Apache-2.0 (varies by model)", "air_gap": "yes", "provenance": "Mistral AI" },
+  { "model": "Nomic Embed", "license": "Apache-2.0", "air_gap": "yes", "provenance": "Nomic AI", "note": "US-origin embedding model" }
+]

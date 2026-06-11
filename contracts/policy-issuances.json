@@ -1,0 +1,12 @@
+{
+  "id": "policy-issuances",
+  "tracker": "policy",
+  "method": "pagediff",
+  "url": "https://www.esd.whs.mil/DD/DoD-Issuances/dodi/",
+  "enabled": false,
+  "cadence_hours": 24,
+  "rate_limit_ms": 1500,
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "DISABLED: esd.whs.mil returns 403 to bots. Revisit with browser-like headers; this is the canonical DoDI/DoDD/DTM table."
+}

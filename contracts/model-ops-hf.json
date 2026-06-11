@@ -1,0 +1,17 @@
+{
+  "id": "model-ops-hf",
+  "tracker": "model-ops",
+  "method": "api",
+  "url": "https://huggingface.co/api/models",
+  "enabled": true,
+  "cadence_hours": 24,
+  "rate_limit_ms": 1000,
+  "query": { "sort": "downloads", "direction": "-1", "limit": "100", "filter": "text-generation" },
+  "array_path": "",
+  "key_field": "id",
+  "field_map": { "title": "id", "downloads": "downloads", "likes": "likes", "tags": "tags", "date": "createdAt" },
+  "exclude": ["qwen", "deepseek", "internlm", "chatglm", "baichuan", "glm-4", "yi-1.5", "yi-34"],
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "Top text-generation models on HF by downloads, with non-US-origin model families excluded per the US-origin-only standard. Tune the exclude/allowlist as needed."
+}

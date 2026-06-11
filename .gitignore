@@ -1,0 +1,7 @@
+# Build output and runtime state — never committed to the engine repo.
+/bin/
+/cache/
+/quarantine/
+
+# The public site repo is checked out here by CI; never commit it into engine.
+/site/

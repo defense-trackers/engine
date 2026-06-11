@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Example DoD releases</title>
+    <link>https://example.gov/news</link>
+    <item>
+      <title>Vendor achieves DoD Impact Level 5 authorization</title>
+      <link>https://example.gov/news/il5</link>
+      <guid>https://example.gov/news/il5</guid>
+      <pubDate>Mon, 09 Jun 2026 12:00:00 +0000</pubDate>
+    </item>
+    <item>
+      <title>New AI strategy memo released</title>
+      <link>https://example.gov/news/ai-memo</link>
+      <guid>tag:example.gov,2026:ai-memo</guid>
+      <pubDate>Tue, 10 Jun 2026 09:30:00 +0000</pubDate>
+    </item>
+  </channel>
+</rss>

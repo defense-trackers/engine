@@ -1,0 +1,12 @@
+{
+  "id": "model-ops-gov",
+  "tracker": "model-ops",
+  "method": "curate",
+  "url": "curated/model-ops-gov.json",
+  "enabled": true,
+  "cadence_hours": 168,
+  "key_field": "model",
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "Curated gov-deployability column: license, air-gap fit, provenance for notable open-weight models. The moat column."
+}

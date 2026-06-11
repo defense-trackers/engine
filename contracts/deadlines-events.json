@@ -1,0 +1,14 @@
+{
+  "id": "deadlines-events",
+  "tracker": "deadlines",
+  "method": "curate",
+  "url": "curated/deadlines-events.json",
+  "enabled": true,
+  "cadence_hours": 168,
+  "key_field": "id",
+  "emit_ical": true,
+  "date_field": "date",
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "Curated defense-innovation deadlines + events; emits feeds/deadlines.ics. Seeded from event listings (SOF Week, Modern Day Marine, NDIA, AFCEA) plus solicitation close dates."
+}

@@ -1,0 +1,7 @@
+[
+  { "tool": "GenAI.mil", "service": "DoD enterprise", "network": "NIPR", "data_ceiling": "CUI", "status": "live", "as_of": "2026-06", "url": "https://genai.mil" },
+  { "tool": "CamoGPT", "service": "Army", "network": "NIPR / SIPR", "data_ceiling": "CUI", "status": "live (R&D platform)", "as_of": "2026-06" },
+  { "tool": "Army Enterprise LLM Workspace (Ask Sage)", "service": "Army", "network": "NIPR", "data_ceiling": "CUI", "status": "live (FedRAMP High)", "as_of": "2026-06" },
+  { "tool": "NIPRGPT", "service": "Air Force", "network": "NIPR", "data_ceiling": "PUBLIC", "status": "sunset 2025-12-31 -> GenAI.mil", "as_of": "2026-06" },
+  { "tool": "Ask Hamilton", "service": "USCG", "network": "NIPR", "data_ceiling": "CUI", "status": "live", "as_of": "2026-06" }
+]

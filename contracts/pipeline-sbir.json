@@ -1,0 +1,15 @@
+{
+  "id": "pipeline-sbir",
+  "tracker": "pipeline",
+  "method": "api",
+  "url": "https://api.www.sbir.gov/public/api/solicitations",
+  "enabled": false,
+  "cadence_hours": 24,
+  "query": { "rows": "100", "open": "1" },
+  "array_path": "",
+  "key_field": "solicitation_id",
+  "field_map": { "title": "solicitation_title", "agency": "agency", "closes": "close_date", "url": "solicitation_agency_url" },
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "DISABLED: api.www.sbir.gov returns 403 to cloud/datacenter IPs. Revisit via the SBIR.gov bulk data download, or run this source from a residential/runner IP. Field map is best-effort — verify on enable."
+}

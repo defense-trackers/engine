@@ -1,0 +1,12 @@
+{
+  "id": "tak-sdk-compat",
+  "tracker": "tak",
+  "method": "curate",
+  "url": "curated/tak-sdk-compat.json",
+  "enabled": true,
+  "cadence_hours": 168,
+  "key_field": "plugin",
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "Curated SDK-version compatibility + liveness for notable TAK plugins — the column the working group actually asks for."
+}

@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "full_name": "deptofdefense/code-gov",
+    "html_url": "https://github.com/deptofdefense/code-gov",
+    "description": "An open data discovery service",
+    "pushed_at": "2026-06-01T00:00:00Z",
+    "stargazers_count": 42,
+    "topics": ["gov", "oss"]
+  },
+  {
+    "id": 2,
+    "full_name": "deptofdefense/dds-mvp",
+    "html_url": "https://github.com/deptofdefense/dds-mvp",
+    "description": null,
+    "pushed_at": "2026-05-01T00:00:00Z",
+    "stargazers_count": 7,
+    "topics": []
+  }
+]

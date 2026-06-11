@@ -1,0 +1,12 @@
+{
+  "id": "policy-defensegov",
+  "tracker": "policy",
+  "method": "rss",
+  "url": "https://www.defense.gov/DesktopModules/ArticleCS/RSS.ashx?ContentType=9&Site=945&max=50",
+  "enabled": false,
+  "cadence_hours": 12,
+  "rate_limit_ms": 1000,
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "DISABLED: defense.gov / war.gov return 403 to non-browser agents (domain migrating to war.gov). Revisit with browser-like headers or an alternate official feed."
+}

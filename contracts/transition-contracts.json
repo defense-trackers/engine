@@ -1,0 +1,12 @@
+{
+  "id": "transition-contracts",
+  "tracker": "transition",
+  "method": "pagediff",
+  "url": "https://www.defense.gov/News/Contracts/",
+  "enabled": false,
+  "cadence_hours": 24,
+  "rate_limit_ms": 1500,
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "DISABLED: defense.gov / war.gov return 403 to bots. The daily >=$7.5M contracts page is the human-readable award feed; revisit with browser-like headers."
+}

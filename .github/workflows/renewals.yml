@@ -1,0 +1,32 @@
+name: renewals
+on:
+  schedule:
+    - cron: "5 8 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  issues: write
+
+jobs:
+  renewals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Open issues for renewals due within 14 days
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          today=$(date -u +%s)
+          # RENEWALS.md dated lines: "YYYY-MM-DD | description"
+          grep -E '^[0-9]{4}-[0-9]{2}-[0-9]{2} *\|' RENEWALS.md | while IFS='|' read -r d item; do
+            d=$(echo "$d" | xargs)
+            item=$(echo "$item" | xargs)
+            due=$(date -u -d "$d" +%s 2>/dev/null) || continue
+            days=$(( (due - today) / 86400 ))
+            if [ "$days" -ge 0 ] && [ "$days" -le 14 ]; then
+              gh issue create --repo "${{ github.repository }}" --label renewal \
+                --title "Renewal in ${days}d: $item" \
+                --body "Due $d (in $days days). $item" || true
+            fi
+          done

@@ -1,0 +1,17 @@
+{
+  "id": "pipeline-sam",
+  "tracker": "pipeline",
+  "method": "api",
+  "url": "https://api.sam.gov/prod/opportunities/v2/search",
+  "enabled": false,
+  "cadence_hours": 24,
+  "query": { "limit": "100", "ptype": "o" },
+  "auth_env": "SAM_API_KEY",
+  "auth_mode": "query:api_key",
+  "array_path": "opportunitiesData",
+  "key_field": "noticeId",
+  "field_map": { "title": "title", "agency": "fullParentPathName", "posted": "postedDate", "closes": "responseDeadLine", "url": "uiLink" },
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "DISABLED until SAM_API_KEY (entity-tier, 1000/day) is set. Also requires postedFrom/postedTo (MM/DD/YYYY) query params — add at enable time. Confirmed response shape uses opportunitiesData[]."
+}

@@ -1,0 +1,17 @@
+{
+  "id": "transition-usaspending",
+  "tracker": "transition",
+  "method": "api",
+  "url": "https://api.usaspending.gov/api/v2/search/spending_by_award/",
+  "enabled": true,
+  "cadence_hours": 168,
+  "rate_limit_ms": 1000,
+  "http_method": "POST",
+  "body": "{\"filters\":{\"award_type_codes\":[\"A\",\"B\",\"C\",\"D\"],\"agencies\":[{\"type\":\"awarding\",\"tier\":\"toptier\",\"name\":\"Department of Defense\"}],\"time_period\":[{\"start_date\":\"2026-01-01\",\"end_date\":\"2026-06-01\"}]},\"fields\":[\"Award ID\",\"Recipient Name\",\"Award Amount\",\"Awarding Agency\"],\"limit\":50,\"page\":1,\"sort\":\"Award Amount\",\"order\":\"desc\"}",
+  "array_path": "results",
+  "key_field": "generated_internal_id",
+  "field_map": { "title": "Recipient Name", "award_id": "Award ID", "amount": "Award Amount", "agency": "Awarding Agency" },
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "Top DoD awards via USAspending (POST). Confirmed shape (results[]). Time window is static in the body — periodically advance the dates or templatize. This is the production-award signal; pair with prototype OTs for the transition story."
+}

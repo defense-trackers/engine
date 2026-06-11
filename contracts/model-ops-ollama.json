@@ -1,0 +1,17 @@
+{
+  "id": "model-ops-ollama",
+  "tracker": "model-ops",
+  "method": "api",
+  "url": "https://api.github.com/repos/ollama/ollama/releases",
+  "enabled": true,
+  "cadence_hours": 24,
+  "rate_limit_ms": 2000,
+  "auth_env": "GITHUB_TOKEN",
+  "auth_mode": "header",
+  "array_path": "",
+  "key_field": "tag_name",
+  "field_map": { "title": "name", "url": "html_url", "date": "published_at" },
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "Ollama releases = local-deploy ecosystem signal."
+}

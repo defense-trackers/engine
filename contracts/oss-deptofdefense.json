@@ -1,0 +1,20 @@
+{
+  "id": "oss-deptofdefense",
+  "tracker": "oss-index",
+  "method": "api",
+  "url": "https://api.github.com/orgs/deptofdefense/repos",
+  "enabled": true,
+  "cadence_hours": 24,
+  "rate_limit_ms": 2000,
+  "auth_env": "GITHUB_TOKEN",
+  "auth_mode": "header",
+  "paginate": "page",
+  "per_page": 100,
+  "max_pages": 2,
+  "array_path": "",
+  "key_field": "full_name",
+  "field_map": { "title": "full_name", "url": "html_url", "description": "description", "date": "pushed_at", "stars": "stargazers_count", "archived": "archived" },
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "deptofdefense GitHub org repos. Confirmed fields. Add more orgs (nsacyber, ngageoint, NavalResearchLaboratory, AFRL, cisagov) as sibling contracts."
+}

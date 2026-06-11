@@ -1,0 +1,12 @@
+{
+  "id": "pipeline-diu",
+  "tracker": "pipeline",
+  "method": "pagediff",
+  "url": "https://www.diu.mil/work-with-us/open-solicitations",
+  "enabled": false,
+  "cadence_hours": 24,
+  "rate_limit_ms": 1000,
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "DISABLED: the page is a Vue SPA (data-v markers) — static HTML yields only chrome, not the solicitation list. Needs XHR-replay handling like DSIP, or an api source once the underlying JSON endpoint is captured."
+}

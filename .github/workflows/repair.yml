@@ -1,0 +1,51 @@
+name: repair
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  repair:
+    # Only fires on the 'incident' label, and only on the self-hosted runner
+    # (the RigRun box). This repo is private and never accepts fork PRs, so the
+    # runner has no untrusted-code exposure — that is the whole reason the
+    # engine repo is private and separate from the public site repo.
+    if: github.event.label.name == 'incident'
+    runs-on: [self-hosted, rigrun]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Attempt self-repair via RigRun
+        id: repair
+        env:
+          RIGRUN_URL: ${{ secrets.RIGRUN_URL }}
+        run: bash scripts/repair.sh "${{ github.event.issue.number }}"
+
+      - name: Golden + unit gate
+        run: go test ./...
+
+      - name: Open PR if a fix was produced
+        if: success() && steps.repair.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="repair/issue-${{ github.event.issue.number }}"
+          git config user.name  "tracker-bot"
+          git config user.email "tracker-bot@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add -A
+          git commit -m "repair: regenerate parser for #${{ github.event.issue.number }}"
+          git push -u origin "$branch"
+          gh pr create --label repair --fill \
+            --title "Self-repair: #${{ github.event.issue.number }}" \
+            --body "RigRun-regenerated parser. Golden + unit tests pass in CI. **Human merge required** — review the parser diff and the regenerated golden fixture before merging. Code never self-merges; only invariant-gated data does."

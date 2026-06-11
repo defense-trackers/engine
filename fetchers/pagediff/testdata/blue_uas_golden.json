@@ -1,0 +1,128 @@
+[
+ {
+  "key": "52774431a7aba596",
+  "fields": {
+   "text": "Blue UAS"
+  }
+ },
+ {
+  "key": "a8af47846c9ba184",
+  "fields": {
+   "text": "Lists of DoD-cleared platforms and NDAA-compliant components. Updated on a rolling basis."
+  }
+ },
+ {
+  "key": "db9e72b3a74c943d",
+  "fields": {
+   "text": "Blue UAS Cleared List"
+  }
+ },
+ {
+  "key": "89fec118b8ccc626",
+  "fields": {
+   "text": "Skydio X10D"
+  }
+ },
+ {
+  "key": "c80f793789acf28a",
+  "fields": {
+   "text": "Anduril Ghost-X"
+  }
+ },
+ {
+  "key": "3546bfdcc6addb72",
+  "fields": {
+   "text": "Freefly Systems Astro"
+  }
+ },
+ {
+  "key": "0778ad7463c58630",
+  "fields": {
+   "text": "Teal Black Widow"
+  }
+ },
+ {
+  "key": "2f223640580caa0c",
+  "fields": {
+   "text": "PDW C100"
+  }
+ },
+ {
+  "key": "aa80bc38b1fc215c",
+  "fields": {
+   "text": "Vantage Robotics Trace"
+  }
+ },
+ {
+  "key": "42e8549db1356779",
+  "fields": {
+   "text": "Parrot ANAFI UKR"
+  }
+ },
+ {
+  "key": "9ab98b73a9e3d43e",
+  "fields": {
+   "text": "Blue UAS Framework"
+  }
+ },
+ {
+  "key": "ce54f0e22dbb39de",
+  "fields": {
+   "text": "Component"
+  }
+ },
+ {
+  "key": "292c06f0045a45d0",
+  "fields": {
+   "text": "Category"
+  }
+ },
+ {
+  "key": "7d5c208eaf01173e",
+  "fields": {
+   "text": "CubePilot Cube Orange+"
+  }
+ },
+ {
+  "key": "12874855684838ab",
+  "fields": {
+   "text": "Flight controller"
+  }
+ },
+ {
+  "key": "de347c3ec650a395",
+  "fields": {
+   "text": "ARK Electronics GPS"
+  }
+ },
+ {
+  "key": "60e91c7011fcddd8",
+  "fields": {
+   "text": "GNSS module"
+  }
+ },
+ {
+  "key": "ad2bc89d6e029eca",
+  "fields": {
+   "text": "Doodle Labs Helix"
+  }
+ },
+ {
+  "key": "2909ab988e724761",
+  "fields": {
+   "text": "Data link"
+  }
+ },
+ {
+  "key": "7ad9fd42570f3c04",
+  "fields": {
+   "text": "ModalAI VOXL 2"
+  }
+ },
+ {
+  "key": "f5589e6d8d1e5462",
+  "fields": {
+   "text": "Autonomy compute"
+  }
+ }
+]

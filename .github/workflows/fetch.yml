@@ -1,0 +1,72 @@
+name: fetch
+on:
+  schedule:
+    # Redundant lines on purpose: Actions cron is best-effort and drops runs.
+    # The sentinel measures *real* freshness; these just create opportunities.
+    - cron: "17 6 * * *"
+    - cron: "47 18 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: fetch
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout engine
+        uses: actions/checkout@v4
+
+      - name: Checkout public site repo
+        uses: actions/checkout@v4
+        with:
+          repository: defense-trackers/defense-trackers.github.io
+          path: site
+          ssh-key: ${{ secrets.SITE_DEPLOY_KEY }}
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Build
+        run: go build -o bin/engine .
+
+      - name: Fetch
+        id: fetch
+        env:
+          SAM_API_KEY: ${{ secrets.SAM_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          ./bin/engine fetch --out site --cache cache --quarantine quarantine
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Commit & push data
+        working-directory: site
+        run: |
+          git config user.name  "tracker-bot"
+          git config user.email "tracker-bot@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "no data changes this run"
+          else
+            git commit -m "data: $(date -u +%FT%TZ)"
+            git push
+          fi
+
+      - name: Open incident if degraded/quarantined
+        if: steps.fetch.outputs.code == '2'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --label incident \
+            --title "fetch degraded $(date -u +%F)" \
+            --body "One or more sources degraded or quarantined in run ${{ github.run_id }}. Inspect the quarantine/ output and site/data/status.json. The 'incident' label triggers the repair workflow on the self-hosted runner." \
+            || true

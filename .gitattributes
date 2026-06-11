@@ -1,0 +1,9 @@
+# Keep LF everywhere. Golden fixtures and the hash-chained data are compared
+# byte-for-byte; CRLF conversion on a Windows checkout would break golden tests
+# and `engine verify`. Pin LF so behavior is identical on every platform.
+* text=auto eol=lf
+*.go     text eol=lf
+*.json   text eol=lf
+*.jsonl  text eol=lf
+*.html   text eol=lf
+CHAIN    text eol=lf

@@ -1,0 +1,7 @@
+[
+  { "component": "CubePilot Cube Orange+", "category": "Flight controller", "manufacturer": "CubePilot", "country": "AUS / US", "framework_status": "verify" },
+  { "component": "ARK GPS", "category": "GNSS module", "manufacturer": "ARK Electronics", "country": "US", "framework_status": "verify" },
+  { "component": "Doodle Labs Helix", "category": "Data link", "manufacturer": "Doodle Labs", "country": "US / SG", "framework_status": "verify" },
+  { "component": "ModalAI VOXL 2", "category": "Autonomy compute", "manufacturer": "ModalAI", "country": "US", "framework_status": "verify" },
+  { "component": "Holybro / Matek flight controllers", "category": "Flight controller", "manufacturer": "Holybro / Matek", "country": "CN", "framework_status": "country-of-origin concern — verify" }
+]

@@ -1,0 +1,5 @@
+[
+  { "tool": "CamoGPT", "network": "NIPR", "data_ceiling": "CUI", "service": "Army", "status": "live" },
+  { "tool": "GenAI.mil", "network": "NIPR", "data_ceiling": "CUI", "service": "DoD enterprise", "status": "live" },
+  { "tool": "NIPRGPT", "network": "NIPR", "data_ceiling": "PUBLIC", "service": "Air Force", "status": "sunset" }
+]

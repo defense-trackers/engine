@@ -1,0 +1,6 @@
+[
+  { "id": "ausa-annual-2026", "title": "AUSA Annual Meeting & Exposition 2026", "date": "2026-10-12", "type": "event", "url": "https://meetings.ausa.org/annual/", "note": "verify dates" },
+  { "id": "reagan-ndf-2026", "title": "Reagan National Defense Forum 2026", "date": "2026-12-05", "type": "event", "url": "https://www.reaganfoundation.org/", "note": "verify dates" },
+  { "id": "sof-week-2027", "title": "SOF Week 2027", "date": "2027-05-10", "type": "event", "url": "https://sofweek.org/", "note": "verify dates" },
+  { "id": "modern-day-marine-2027", "title": "Modern Day Marine 2027", "date": "2027-04-27", "type": "event", "url": "https://marinemilitaryexpos.com/", "note": "verify dates" }
+]

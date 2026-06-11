@@ -1,0 +1,12 @@
+{
+  "id": "blue-uas-parts",
+  "tracker": "blue-uas",
+  "method": "curate",
+  "url": "curated/blue-uas-parts.json",
+  "enabled": true,
+  "cadence_hours": 168,
+  "key_field": "component",
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "Curated COTS parts matrix: common builder components x Blue UAS Framework status x country-of-origin. The credibility column nobody else writes."
+}

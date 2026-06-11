@@ -1,0 +1,5 @@
+[
+  { "plugin": "ATAK-CIV", "repo": "deptofdefense/AndroidTacticalAssaultKit-CIV", "sdk": "5.x", "status": "active", "url": "https://github.com/deptofdefense/AndroidTacticalAssaultKit-CIV" },
+  { "plugin": "FreeTAKServer", "repo": "FreeTAKTeam/FreeTakServer", "sdk": "server (n/a)", "status": "active", "url": "https://github.com/FreeTAKTeam/FreeTakServer" },
+  { "plugin": "openTAKpickList", "repo": "FreeTAKTeam/openTAKpickList", "sdk": "5.x", "status": "community", "url": "https://github.com/FreeTAKTeam/openTAKpickList" }
+]

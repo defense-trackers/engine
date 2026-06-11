@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Blue UAS — fixture</title>
+  <style>.nav { color: red; } body { margin: 0; }</style>
+  <script>window.analytics = { track: function(){ /* noise the parser must drop */ } };</script>
+</head>
+<body>
+  <nav class="nav">
+    <a href="/">Home</a> <a href="/about">About</a> <a href="/blue-uas">Blue UAS</a>
+  </nav>
+  <!-- This fixture is SYNTHETIC. Run `make refresh-fixture` to replace it with
+       the live page, then regenerate the golden with -update and review. -->
+  <main id="content">
+    <h1>Blue UAS</h1>
+    <p>Lists of DoD-cleared platforms and NDAA-compliant components. Updated on a rolling basis.</p>
+
+    <section>
+      <h2>Blue UAS Cleared List</h2>
+      <ul>
+        <li>Skydio X10D</li>
+        <li>Anduril Ghost-X</li>
+        <li>Freefly Systems Astro</li>
+        <li>Teal Black Widow</li>
+        <li>PDW C100</li>
+        <li>Vantage Robotics Trace</li>
+        <li>Parrot ANAFI <b>UKR</b></li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Blue UAS Framework</h2>
+      <table>
+        <tr><th>Component</th><th>Category</th></tr>
+        <tr><td>CubePilot Cube Orange+</td><td>Flight controller</td></tr>
+        <tr><td>ARK Electronics GPS</td><td>GNSS module</td></tr>
+        <tr><td>Doodle Labs Helix</td><td>Data link</td></tr>
+        <tr><td>ModalAI VOXL 2</td><td>Autonomy compute</td></tr>
+      </table>
+    </section>
+  </main>
+  <footer>
+    <p>Footer boilerplate outside the slice &mdash; must not appear in records.</p>
+  </footer>
+</body>
+</html>

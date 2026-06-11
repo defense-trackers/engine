@@ -1,0 +1,19 @@
+{
+  "id": "authorizations-ironbank",
+  "tracker": "authorizations",
+  "method": "api",
+  "url": "https://repo1.dso.mil/api/v4/projects",
+  "enabled": true,
+  "cadence_hours": 24,
+  "rate_limit_ms": 1000,
+  "query": { "search": "ironbank", "order_by": "last_activity_at" },
+  "paginate": "page",
+  "per_page": 50,
+  "max_pages": 1,
+  "array_path": "",
+  "key_field": "id",
+  "field_map": { "title": "name_with_namespace", "url": "web_url", "date": "last_activity_at", "stars": "star_count" },
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "Platform One repo1 Iron Bank-related projects. Public GitLab API, confirmed reachable (200)."
+}

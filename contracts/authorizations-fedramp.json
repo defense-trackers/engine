@@ -1,0 +1,16 @@
+{
+  "id": "authorizations-fedramp",
+  "tracker": "authorizations",
+  "method": "api",
+  "url": "https://raw.githubusercontent.com/FedRAMP/marketplace-fedramp-gov-data/main/data.json",
+  "enabled": true,
+  "cadence_hours": 24,
+  "rate_limit_ms": 1000,
+  "array_path": "data.Metrics.latest",
+  "key_field": "id",
+  "field_map": { "title": "cso", "status": "status", "date": "date" },
+  "date_field": "date",
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "FedRAMP recent authorization changes (data.Metrics.latest). Confirmed shape 2026-06. For the full product catalog, point a second source at the products array once its path is confirmed."
+}

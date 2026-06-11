@@ -1,0 +1,18 @@
+{
+  "id": "tak-github",
+  "tracker": "tak",
+  "method": "api",
+  "url": "https://api.github.com/search/repositories",
+  "enabled": true,
+  "cadence_hours": 24,
+  "rate_limit_ms": 2000,
+  "query": { "q": "topic:atak-plugin", "sort": "updated", "order": "desc" },
+  "auth_env": "GITHUB_TOKEN",
+  "auth_mode": "header",
+  "array_path": "items",
+  "key_field": "full_name",
+  "field_map": { "title": "full_name", "url": "html_url", "description": "description", "date": "pushed_at", "stars": "stargazers_count" },
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "GitHub repos tagged atak-plugin. Uses GITHUB_TOKEN when present (30/min) and works unauthenticated at low rate (10/min)."
+}
