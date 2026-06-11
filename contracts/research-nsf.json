@@ -10,6 +10,7 @@
   "array_path": "response.award",
   "key_field": "id",
   "field_map": { "title": "title", "awardee": "awardeeName", "amount": "estimatedTotalAmt", "date": "startDate", "program": "fundProgramName", "agency": "agency" },
+  "url_template": "https://www.nsf.gov/awardsearch/showAward?AWD_ID={id}",
   "include": ["artificial intelligence", "machine learning"],
   "date_field": "date",
   "min_records": 1,

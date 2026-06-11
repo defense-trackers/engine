@@ -120,6 +120,9 @@ func mapItems(items []interface{}, c core.Contract) []core.Record {
 				fields["text"] = fields["title"] // nicer changelog summaries
 			}
 		}
+		if fields["url"] == "" && c.URLTemplate != "" {
+			fields["url"] = applyURLTemplate(c.URLTemplate, m)
+		}
 		records = append(records, core.Record{Key: key, Fields: fields})
 	}
 	return records
@@ -296,6 +299,16 @@ func includesScoped(m map[string]interface{}, terms, fields []string) bool {
 		}
 	}
 	return false
+}
+
+var tplTok = regexp.MustCompile(`\{(\w+)\}`)
+
+// applyURLTemplate fills {field} placeholders from the item (e.g. award/{id}).
+func applyURLTemplate(tmpl string, m map[string]interface{}) string {
+	return tplTok.ReplaceAllStringFunc(tmpl, func(tok string) string {
+		field := tplTok.FindStringSubmatch(tok)[1]
+		return stringify(get(m, field))
+	})
 }
 
 var dateTok = regexp.MustCompile(`\{\{today(?:-(\d+)d)?\}\}`)

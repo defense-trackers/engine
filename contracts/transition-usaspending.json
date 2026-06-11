@@ -11,6 +11,7 @@
   "array_path": "results",
   "key_field": "generated_internal_id",
   "field_map": { "title": "Recipient Name", "award_id": "Award ID", "amount": "Award Amount", "agency": "Awarding Agency", "description": "Description" },
+  "url_template": "https://www.usaspending.gov/award/{generated_internal_id}/",
   "min_records": 1,
   "max_delta_pct": 100,
   "notes": "Largest DoD contract awards (rolling 1-year window via {{today-365d}}..{{today}}) from USAspending. Confirmed shape (results[]). The production-dollar signal; pairs with prototype OTs for the full valley-of-death story."

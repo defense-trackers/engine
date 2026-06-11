@@ -6,6 +6,7 @@
   "enabled": true,
   "cadence_hours": 168,
   "key_field": "tool",
+  "default_url": "https://www.ai.mil/",
   "min_records": 1,
   "max_delta_pct": 100,
   "notes": "Curated: which AI tools each service can use on NIPR and at what data ceiling. Edit curated/nipr-matrix.json; changes land in the hash-chained changelog."

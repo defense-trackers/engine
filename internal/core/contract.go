@@ -54,6 +54,10 @@ type Contract struct {
 	// --- curate method (maintained JSON file) ---
 	CuratedFile string `json:"curated_file,omitempty"` // path under curated/ (defaults to <id>.json)
 
+	// --- source linking ---
+	URLTemplate string `json:"url_template,omitempty"` // build a per-record source URL, e.g. "https://x/{id}" ({field} from the item)
+	DefaultURL  string `json:"default_url,omitempty"`  // fallback source URL for records that still have none
+
 	// --- output options ---
 	EmitICal  bool   `json:"emit_ical,omitempty"`  // also emit feeds/<tracker>.ics
 	DateField string `json:"date_field,omitempty"` // record field holding a date (ical + display)

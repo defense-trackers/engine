@@ -6,6 +6,7 @@
   "enabled": true,
   "cadence_hours": 168,
   "key_field": "model",
+  "default_url": "https://huggingface.co/models",
   "min_records": 1,
   "max_delta_pct": 100,
   "notes": "Curated gov-deployability column: license, air-gap fit, provenance for notable open-weight models. The moat column."

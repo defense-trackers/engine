@@ -6,6 +6,7 @@
   "enabled": true,
   "cadence_hours": 168,
   "key_field": "platform",
+  "default_url": "https://www.diu.mil/blue-uas-cleared-list",
   "min_records": 1,
   "max_delta_pct": 100,
   "notes": "Curated DIU Blue UAS Cleared List. The DCMA bluelist portal is JS-gated, so this curated view is the reliable one; verify periodically against bluelist.dcma.mil and diu.mil/blue-uas-cleared-list."

@@ -6,6 +6,7 @@
   "enabled": true,
   "cadence_hours": 168,
   "key_field": "component",
+  "default_url": "https://www.diu.mil/blue-uas/framework",
   "min_records": 1,
   "max_delta_pct": 100,
   "notes": "Curated COTS parts matrix: common builder components x Blue UAS Framework status x country-of-origin. The credibility column nobody else writes."

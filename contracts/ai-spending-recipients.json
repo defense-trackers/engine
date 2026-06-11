@@ -11,6 +11,7 @@
   "array_path": "results",
   "key_field": "code",
   "field_map": { "title": "name", "amount": "amount" },
+  "default_url": "https://www.usaspending.gov/search",
   "min_records": 1,
   "max_delta_pct": 100,
   "notes": "Top recipients of DoD AI contract dollars (3-yr rolling). The 'follow the money' view. Confirmed (ECS Federal, MORSECORP, Two Six Labs, Scale AI, JHU APL)."

@@ -87,6 +87,9 @@ func CommitRecords(c Contract, recs []Record, outDir, cacheDir, quarantineDir st
 
 	for i := range recs {
 		recs[i].Source = c.ID
+		if c.DefaultURL != "" && recs[i].Fields != nil && recs[i].Fields["url"] == "" {
+			recs[i].Fields["url"] = c.DefaultURL
+		}
 	}
 
 	// A tracker's current.json may aggregate several sources. Diff and validate

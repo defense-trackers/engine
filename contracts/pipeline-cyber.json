@@ -11,6 +11,7 @@
   "array_path": "data.oppHits",
   "key_field": "id",
   "field_map": { "title": "title", "agency": "agency", "posted": "openDate", "closes": "closeDate", "number": "number" },
+  "url_template": "https://www.grants.gov/search-results-detail/{id}",
   "date_field": "closes",
   "min_records": 1,
   "max_delta_pct": 100,

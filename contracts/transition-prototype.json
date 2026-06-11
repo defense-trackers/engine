@@ -11,6 +11,7 @@
   "array_path": "results",
   "key_field": "generated_internal_id",
   "field_map": { "title": "Recipient Name", "amount": "Award Amount", "agency": "Awarding Agency", "description": "Description" },
+  "url_template": "https://www.usaspending.gov/award/{generated_internal_id}/",
   "min_records": 1,
   "max_delta_pct": 100,
   "notes": "DoD contract awards with 'prototype' in the description (rolling 1yr) — the prototype side of the valley-of-death picture. Confirmed real results (Rheinmetall, GD, Boeing satcom prototype)."

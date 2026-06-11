@@ -11,6 +11,7 @@
   "array_path": "results",
   "key_field": "generated_internal_id",
   "field_map": { "title": "Recipient Name", "amount": "Award Amount", "agency": "Awarding Agency", "description": "Description" },
+  "url_template": "https://www.usaspending.gov/award/{generated_internal_id}/",
   "min_records": 1,
   "max_delta_pct": 100,
   "notes": "Recent DoD contract awards mentioning artificial intelligence (rolling 1yr, largest first). The individual-award view of AI spending."

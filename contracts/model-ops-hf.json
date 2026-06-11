@@ -10,6 +10,7 @@
   "array_path": "",
   "key_field": "id",
   "field_map": { "title": "id", "downloads": "downloads", "likes": "likes", "tags": "tags", "date": "createdAt" },
+  "url_template": "https://huggingface.co/{id}",
   "exclude": ["qwen", "deepseek", "internlm", "chatglm", "baichuan", "glm-4", "yi-1.5", "yi-34"],
   "min_records": 1,
   "max_delta_pct": 100,

@@ -11,6 +11,7 @@
   "array_path": "results",
   "key_field": "appl_id",
   "field_map": { "title": "project_title", "awardee": "organization.org_name", "amount": "award_amount", "date": "project_start_date" },
+  "url_template": "https://reporter.nih.gov/project-details/{appl_id}",
   "include": ["artificial intelligence", "machine learning", "deep learning", "neural network"],
   "date_field": "date",
   "min_records": 1,

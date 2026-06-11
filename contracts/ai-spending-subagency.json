@@ -11,6 +11,7 @@
   "array_path": "results",
   "key_field": "name",
   "field_map": { "title": "name", "amount": "amount" },
+  "default_url": "https://www.usaspending.gov/search",
   "min_records": 1,
   "max_delta_pct": 100,
   "notes": "DoD AI spending by component (Air Force, Army, DARPA, MDA, DLA...). 3-yr rolling. Shows who inside DoD is buying the most AI."

@@ -12,6 +12,7 @@
   "array_path": "results",
   "key_field": "packageId",
   "field_map": { "title": "title", "type": "collectionCode", "date": "dateIssued" },
+  "url_template": "https://www.govinfo.gov/app/details/{packageId}",
   "date_field": "date",
   "min_records": 1,
   "max_delta_pct": 100,
