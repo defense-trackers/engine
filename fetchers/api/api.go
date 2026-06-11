@@ -101,7 +101,7 @@ func mapItems(items []interface{}, c core.Contract) []core.Record {
 		if excluded(m, c.Exclude) {
 			continue
 		}
-		if len(c.Include) > 0 && !includes(m, c.Include) {
+		if len(c.Include) > 0 && !includesScoped(m, c.Include, c.IncludeFields) {
 			continue
 		}
 		seen[key] = true
@@ -273,11 +273,23 @@ func excluded(m map[string]interface{}, terms []string) bool {
 	return false
 }
 
-// includes keeps an item only if any term appears in it (case-insensitive
-// over the item's JSON, so it matches title, abstract, description, etc.).
-func includes(m map[string]interface{}, terms []string) bool {
-	b, _ := json.Marshal(m)
-	low := strings.ToLower(string(b))
+// includesScoped keeps an item only if any term appears (case-insensitive). By
+// default it searches the whole item JSON; if fields are given it searches only
+// those field paths — tighter precision (e.g. match AI in the title, not a
+// buried mention in a long description).
+func includesScoped(m map[string]interface{}, terms, fields []string) bool {
+	var hay string
+	if len(fields) == 0 {
+		b, _ := json.Marshal(m)
+		hay = string(b)
+	} else {
+		parts := make([]string, 0, len(fields))
+		for _, f := range fields {
+			parts = append(parts, stringify(get(m, f)))
+		}
+		hay = strings.Join(parts, " ")
+	}
+	low := strings.ToLower(hay)
 	for _, t := range terms {
 		if t != "" && strings.Contains(low, strings.ToLower(t)) {
 			return true

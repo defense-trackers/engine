@@ -47,7 +47,8 @@ type Contract struct {
 	PerPage    int               `json:"per_page,omitempty"`    // page size for paginate=page
 	MaxPages   int               `json:"max_pages,omitempty"`   // hard cap on pages fetched
 	Exclude     []string `json:"exclude,omitempty"`      // drop items whose JSON contains any of these (case-insensitive)
-	Include     []string `json:"include,omitempty"`      // keep ONLY items whose JSON contains at least one of these
+	Include      []string `json:"include,omitempty"`       // keep ONLY items containing at least one of these
+	IncludeFields []string `json:"include_fields,omitempty"` // restrict the include match to these field paths (precision); empty = whole item
 	LimitRecords int     `json:"limit_records,omitempty"` // cap to the first N records after mapping (0 = no cap)
 
 	// --- curate method (maintained JSON file) ---

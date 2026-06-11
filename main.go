@@ -86,6 +86,9 @@ func cmdFetch(args []string) int {
 	if dr := core.PublishDeadlinesFromCloses(*out, *quarantine); dr.Source != "" {
 		fmt.Printf("  aggregate  deadlines              +%d -%d ~%d\n", dr.Added, dr.Removed, dr.Changed)
 	}
+	if err := core.WriteMetrics(*out); err != nil {
+		fmt.Fprintln(os.Stderr, "metrics:", err)
+	}
 	// Site-wide artifacts: discovery + a single firehose feed.
 	if err := core.WriteSitemap(*out); err != nil {
 		fmt.Fprintln(os.Stderr, "sitemap:", err)

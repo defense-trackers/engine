@@ -96,6 +96,31 @@ func PublishDeadlinesFromCloses(outDir, quarantineDir string) RunResult {
 	return CommitRecords(c, recs, outDir, "", quarantineDir)
 }
 
+// WriteMetrics appends one line per run to data/metrics.jsonl — the total
+// data-point count over time, for the homepage sparkline. Append-only, so the
+// trend builds itself from real history.
+func WriteMetrics(outDir string) error {
+	m := readStatus(outDir)
+	total := 0
+	trackers := map[string]bool{}
+	for _, s := range m {
+		total += s.Count
+		if s.Tracker != "" {
+			trackers[s.Tracker] = true
+		}
+	}
+	line := fmt.Sprintf("{\"ts\":%q,\"total\":%d,\"trackers\":%d,\"sources\":%d}\n",
+		time.Now().UTC().Format(time.RFC3339), total, len(trackers), len(m))
+	p := filepath.Join(outDir, "data", "metrics.jsonl")
+	f, err := os.OpenFile(p, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.WriteString(line)
+	return err
+}
+
 // WriteSitemap emits sitemap.xml covering the home page, methodology, and each
 // tracker page — so the canonical source is discoverable.
 func WriteSitemap(outDir string) error {
