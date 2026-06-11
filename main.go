@@ -72,7 +72,6 @@ func cmdFetch(args []string) int {
 	results := core.RunAll(cs, *out, *cache, *quarantine, *only)
 	if len(results) == 0 {
 		fmt.Println("  (no enabled contracts matched)")
-		return 0
 	}
 	bad := 0
 	for _, r := range results {
@@ -89,6 +88,9 @@ func cmdFetch(args []string) int {
 	}
 	if err := core.WriteFirehose(*out); err != nil {
 		fmt.Fprintln(os.Stderr, "firehose:", err)
+	}
+	if err := core.WritePerTrackerPages(*out); err != nil {
+		fmt.Fprintln(os.Stderr, "per-tracker pages:", err)
 	}
 	if bad > 0 {
 		fmt.Printf("\n%d/%d source(s) degraded or quarantined — last-good data left live.\n", bad, len(results))

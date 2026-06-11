@@ -45,6 +45,26 @@ func WriteSitemap(outDir string) error {
 	return os.WriteFile(filepath.Join(outDir, "sitemap.xml"), []byte(b.String()), 0o644)
 }
 
+// WritePerTrackerPages emits /<tracker>/index.html (a byte-copy of tracker.html)
+// so each tracker has a clean canonical URL like /pipeline/. tracker.html
+// derives its slug from the path, so the copy needs no per-tracker edits.
+func WritePerTrackerPages(outDir string) error {
+	tpl, err := os.ReadFile(filepath.Join(outDir, "tracker.html"))
+	if err != nil {
+		return err
+	}
+	for _, t := range ListTrackers(outDir) {
+		dir := filepath.Join(outDir, t)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(dir, "index.html"), tpl, 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // WriteFirehose merges recent change events across every tracker into one RSS
 // feed — subscribe once, see everything that changes anywhere in the suite.
 func WriteFirehose(outDir string) error {
