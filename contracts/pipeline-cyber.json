@@ -1,0 +1,18 @@
+{
+  "id": "pipeline-cyber",
+  "tracker": "pipeline",
+  "method": "api",
+  "url": "https://api.grants.gov/v1/api/search2",
+  "enabled": true,
+  "cadence_hours": 24,
+  "rate_limit_ms": 1000,
+  "http_method": "POST",
+  "body": "{\"rows\":100,\"keyword\":\"cybersecurity\",\"oppStatuses\":\"posted|forecasted\"}",
+  "array_path": "data.oppHits",
+  "key_field": "id",
+  "field_map": { "title": "title", "agency": "agency", "posted": "openDate", "closes": "closeDate", "number": "number" },
+  "date_field": "closes",
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "grants.gov opportunities matching 'cybersecurity' (defense-tech adjacent)."
+}
