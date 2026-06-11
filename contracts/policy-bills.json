@@ -1,0 +1,19 @@
+{
+  "id": "policy-bills",
+  "tracker": "policy",
+  "method": "api",
+  "url": "https://api.govinfo.gov/search",
+  "enabled": true,
+  "cadence_hours": 48,
+  "rate_limit_ms": 1500,
+  "http_method": "POST",
+  "query": { "api_key": "DEMO_KEY" },
+  "body": "{\"query\":\"artificial intelligence collection:BILLS\",\"pageSize\":50,\"offsetMark\":\"*\",\"sorts\":[{\"field\":\"publishdate\",\"sortOrder\":\"DESC\"}]}",
+  "array_path": "results",
+  "key_field": "packageId",
+  "field_map": { "title": "title", "type": "collectionCode", "date": "dateIssued" },
+  "date_field": "date",
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "Congressional bills mentioning artificial intelligence, via GovInfo search (BILLS collection). Uses api.data.gov DEMO_KEY (low rate limit; 1 call/run is fine). Swap in a real key for higher volume."
+}

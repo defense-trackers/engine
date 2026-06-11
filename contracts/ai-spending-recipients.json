@@ -1,0 +1,17 @@
+{
+  "id": "ai-spending-recipients",
+  "tracker": "ai-spending",
+  "method": "api",
+  "url": "https://api.usaspending.gov/api/v2/search/spending_by_category/recipient",
+  "enabled": true,
+  "cadence_hours": 168,
+  "rate_limit_ms": 1000,
+  "http_method": "POST",
+  "body": "{\"filters\":{\"keywords\":[\"artificial intelligence\"],\"award_type_codes\":[\"A\",\"B\",\"C\",\"D\"],\"agencies\":[{\"type\":\"awarding\",\"tier\":\"toptier\",\"name\":\"Department of Defense\"}],\"time_period\":[{\"start_date\":\"{{today-1095d}}\",\"end_date\":\"{{today}}\"}]},\"category\":\"recipient\",\"limit\":50,\"page\":1}",
+  "array_path": "results",
+  "key_field": "code",
+  "field_map": { "title": "name", "amount": "amount" },
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "Top recipients of DoD AI contract dollars (3-yr rolling). The 'follow the money' view. Confirmed (ECS Federal, MORSECORP, Two Six Labs, Scale AI, JHU APL)."
+}

@@ -1,0 +1,17 @@
+{
+  "id": "ai-spending-contracts",
+  "tracker": "ai-spending",
+  "method": "api",
+  "url": "https://api.usaspending.gov/api/v2/search/spending_by_award/",
+  "enabled": true,
+  "cadence_hours": 168,
+  "rate_limit_ms": 1000,
+  "http_method": "POST",
+  "body": "{\"filters\":{\"keywords\":[\"artificial intelligence\"],\"award_type_codes\":[\"A\",\"B\",\"C\",\"D\"],\"agencies\":[{\"type\":\"awarding\",\"tier\":\"toptier\",\"name\":\"Department of Defense\"}],\"time_period\":[{\"start_date\":\"{{today-365d}}\",\"end_date\":\"{{today}}\"}]},\"fields\":[\"Award ID\",\"Recipient Name\",\"Award Amount\",\"Awarding Agency\",\"Description\"],\"limit\":50,\"page\":1,\"sort\":\"Award Amount\",\"order\":\"desc\"}",
+  "array_path": "results",
+  "key_field": "generated_internal_id",
+  "field_map": { "title": "Recipient Name", "amount": "Award Amount", "agency": "Awarding Agency", "description": "Description" },
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "Recent DoD contract awards mentioning artificial intelligence (rolling 1yr, largest first). The individual-award view of AI spending."
+}
