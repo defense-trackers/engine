@@ -137,24 +137,62 @@ func WriteSitemap(outDir string) error {
 	return os.WriteFile(filepath.Join(outDir, "sitemap.xml"), []byte(b.String()), 0o644)
 }
 
-// WritePerTrackerPages emits /<tracker>/index.html (a byte-copy of tracker.html)
-// so each tracker has a clean canonical URL like /pipeline/. tracker.html
-// derives its slug from the path, so the copy needs no per-tracker edits.
+// WritePerTrackerPages emits /<tracker>/index.html from tracker.html with the
+// <head> rewritten per tracker (title, description, canonical, OpenGraph/Twitter)
+// so each tracker has its own clean URL and unfurls distinctly on social/SEO
+// instead of every page sharing one generic card. The body still derives its
+// slug from the path, so only the head metadata is templated.
 func WritePerTrackerPages(outDir string) error {
 	tpl, err := os.ReadFile(filepath.Join(outDir, "tracker.html"))
 	if err != nil {
 		return err
 	}
+	const base = "https://defense-trackers.github.io"
 	for _, t := range ListTrackers(outDir) {
 		dir := filepath.Join(outDir, t)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return err
 		}
-		if err := os.WriteFile(filepath.Join(dir, "index.html"), tpl, 0o644); err != nil {
+		pretty := titleize(t)
+		title := pretty + " — Defense Trackers"
+		desc := "Live, verifiable tracking of " + pretty + " across public defense-innovation sources — append-only, hash-chained, honest about freshness."
+		canon := base + "/" + t + "/"
+		html := string(tpl)
+		html = strings.ReplaceAll(html, "<title>Tracker — Defense Trackers</title>", "<title>"+title+"</title>")
+		html = strings.ReplaceAll(html, `<meta name="description" content="Open, verifiable defense-innovation trackers — append-only, hash-chained, honest about freshness.">`, `<meta name="description" content="`+htmlAttr(desc)+`">`)
+		html = strings.ReplaceAll(html, `<link rel="canonical" href="https://defense-trackers.github.io/">`, `<link rel="canonical" href="`+canon+`">`)
+		html = strings.ReplaceAll(html, `<meta property="og:title" content="Defense Trackers">`, `<meta property="og:title" content="`+htmlAttr(title)+`">`)
+		html = strings.ReplaceAll(html, `<meta property="og:description" content="Open, verifiable defense-ecosystem trackers — append-only, hash-chained, honest freshness.">`, `<meta property="og:description" content="`+htmlAttr(desc)+`">`)
+		html = strings.ReplaceAll(html, `<meta property="og:url" content="https://defense-trackers.github.io/">`, `<meta property="og:url" content="`+canon+`">`)
+		html = strings.ReplaceAll(html, `<meta name="twitter:title" content="Defense Trackers">`, `<meta name="twitter:title" content="`+htmlAttr(title)+`">`)
+		html = strings.ReplaceAll(html, `<meta name="twitter:description" content="Open, verifiable defense-ecosystem trackers — honest about freshness.">`, `<meta name="twitter:description" content="`+htmlAttr(desc)+`">`)
+		if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte(html), 0o644); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// titleize turns a slug like "ai-spending" into "AI Spending" for page titles.
+func titleize(slug string) string {
+	parts := strings.Split(slug, "-")
+	for i, p := range parts {
+		switch strings.ToLower(p) {
+		case "ai", "oss", "tak", "nipr", "uas", "rss":
+			parts[i] = strings.ToUpper(p)
+		default:
+			if p != "" {
+				parts[i] = strings.ToUpper(p[:1]) + p[1:]
+			}
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
+// htmlAttr escapes a string for safe use inside a double-quoted HTML attribute.
+func htmlAttr(s string) string {
+	r := strings.NewReplacer(`&`, "&amp;", `"`, "&quot;", `<`, "&lt;", `>`, "&gt;")
+	return r.Replace(s)
 }
 
 // WriteFirehose merges recent change events across every tracker into one RSS
