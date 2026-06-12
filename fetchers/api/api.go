@@ -145,11 +145,9 @@ func buildURL(c core.Contract, page int) string {
 		}
 		q.Set("per_page", fmt.Sprint(per))
 	}
-	if strings.HasPrefix(c.AuthMode, "query:") {
-		if val := os.Getenv(c.AuthEnv); val != "" {
-			q.Set(strings.TrimPrefix(c.AuthMode, "query:"), val)
-		}
-	}
+	// NOTE: there is deliberately no query-string auth path. Secrets are injected
+	// only as request headers (see authHeaders) so an API key can never land in a
+	// URL — and therefore never in an error message, a log line, or status.json.
 	u.RawQuery = q.Encode()
 	return u.String()
 }

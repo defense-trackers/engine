@@ -9,10 +9,45 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
+
+// sensitiveQueryKeys are query parameters whose values must never appear in an
+// error message, log line, or status.json. The engine injects secrets only as
+// headers (never query strings), so this is belt-and-suspenders against a future
+// contract or upstream redirect that puts a key in a URL.
+var sensitiveQueryKeys = map[string]bool{
+	"api_key": true, "apikey": true, "key": true, "token": true,
+	"access_token": true, "auth": true, "password": true, "secret": true,
+}
+
+// redactURL replaces the values of any sensitive query parameters with "REDACTED"
+// so a URL can be safely embedded in a user-visible error. Falls back to the raw
+// string only if it doesn't parse (and never contains a secret in that case,
+// since we don't build query-auth URLs).
+func redactURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	q := u.Query()
+	changed := false
+	for k := range q {
+		if sensitiveQueryKeys[strings.ToLower(k)] {
+			q.Set(k, "REDACTED")
+			changed = true
+		}
+	}
+	if !changed {
+		return raw
+	}
+	u.RawQuery = q.Encode()
+	return u.String()
+}
 
 // UserAgent identifies the engine to source operators. TODO: point the URL
 // at the public repo once created — operators should be able to find you.
@@ -87,7 +122,7 @@ func FetchURL(url, cacheDir string) ([]byte, error) {
 				// Meta survived but body didn't; clear meta and retry fresh.
 				_ = os.Remove(metaCachePath(cacheDir, url))
 				meta = cacheMeta{}
-				lastErr = fmt.Errorf("304 with empty cache for %s", url)
+				lastErr = fmt.Errorf("304 with empty cache for %s", redactURL(url))
 				continue
 			}
 			return cached, nil
@@ -105,13 +140,13 @@ func FetchURL(url, cacheDir string) ([]byte, error) {
 			_ = os.WriteFile(BodyCachePath(cacheDir, url), body, 0o644)
 			return body, nil
 		case resp.StatusCode >= 500:
-			lastErr = fmt.Errorf("http %d from %s", resp.StatusCode, url)
+			lastErr = fmt.Errorf("http %d from %s", resp.StatusCode, redactURL(url))
 			continue
 		default:
-			return nil, fmt.Errorf("http %d from %s", resp.StatusCode, url)
+			return nil, fmt.Errorf("http %d from %s", resp.StatusCode, redactURL(url))
 		}
 	}
-	return nil, fmt.Errorf("fetch %s: %w", url, lastErr)
+	return nil, fmt.Errorf("fetch %s: %w", redactURL(url), lastErr)
 }
 
 // FetchRaw performs an arbitrary-method request with custom headers and an
@@ -156,13 +191,13 @@ func FetchRaw(method, url string, headers map[string]string, body []byte) ([]byt
 			lastHeader = respHeader // expose Link header to the api fetcher
 			return b, nil
 		case resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests:
-			lastErr = fmt.Errorf("http %d from %s", resp.StatusCode, url)
+			lastErr = fmt.Errorf("http %d from %s", resp.StatusCode, redactURL(url))
 			continue
 		default:
-			return nil, fmt.Errorf("http %d from %s", resp.StatusCode, url)
+			return nil, fmt.Errorf("http %d from %s", resp.StatusCode, redactURL(url))
 		}
 	}
-	return nil, fmt.Errorf("fetch %s: %w", url, lastErr)
+	return nil, fmt.Errorf("fetch %s: %w", redactURL(url), lastErr)
 }
 
 // lastHeader carries the most recent response headers (e.g. Link) to the api
