@@ -1,0 +1,22 @@
+{
+  "id": "pipeline-comms",
+  "tracker": "pipeline",
+  "method": "api",
+  "url": "https://api.grants.gov/v1/api/search2",
+  "enabled": true,
+  "cadence_hours": 24,
+  "rate_limit_ms": 1000,
+  "http_method": "POST",
+  "body": "{\"rows\":100,\"keyword\":\"tactical communications\",\"oppStatuses\":\"posted|forecasted\"}",
+  "array_path": "data.oppHits",
+  "key_field": "id",
+  "field_map": { "title": "title", "agency": "agency", "posted": "openDate", "closes": "closeDate", "number": "number" },
+  "include": ["Defense", "Navy", "Army", "Air Force", "DARPA", "Energy", "Homeland", "Intelligence", "Standards and Technology"],
+  "include_fields": ["agency"],
+  "exclude": ["Cancer", "Sclerosis", "Prostate", "Alzheimer", "Psychological Health", "Clinical Trial", "Regenerative Medicine", "Reconstructive", "Lupus", "Tuberculosis", "Amyotrophic"],
+  "url_template": "https://www.grants.gov/search-results-detail/{id}",
+  "date_field": "closes",
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "grants.gov 'tactical communications' (mesh/comms domain) filtered to defense agencies."
+}

@@ -1,0 +1,13 @@
+{
+  "id": "programs",
+  "tracker": "programs",
+  "method": "curate",
+  "url": "curated/programs.json",
+  "enabled": true,
+  "cadence_hours": 168,
+  "key_field": "name",
+  "default_url": "https://www.diu.mil/work-with-us/open-solicitations",
+  "min_records": 1,
+  "max_delta_pct": 100,
+  "notes": "Curated bid map (from deep research): funding vehicles, program offices, OTAs, and compliance enablers across on-prem AI / mesh assurance / edge autonomy / contested logistics. Hand-maintained — verify deadlines against the linked source."
+}
