@@ -11,17 +11,19 @@ permissions:
 jobs:
   repair:
     # Only fires on the 'incident' label, and only on the self-hosted runner
-    # (the RigRun box). This repo is private and never accepts fork PRs, so the
-    # runner has no untrusted-code exposure — that is the whole reason the
-    # engine repo is private and separate from the public site repo.
+    # (the RigRun box). NOTE: this engine repo is PUBLIC. Untrusted-code exposure
+    # is kept low by (a) never accepting fork-PR workflow runs, (b) requiring the
+    # 'incident' label which only maintainers can apply, and (c) branch protection
+    # on main so the build/run path only executes reviewed code. This workflow is
+    # experimental and dormant until a self-hosted runner + RIGRUN_URL are wired.
     if: github.event.label.name == 'incident'
     runs-on: [self-hosted, rigrun]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.22"
 
