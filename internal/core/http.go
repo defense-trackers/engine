@@ -152,7 +152,10 @@ func FetchURL(url, cacheDir string) ([]byte, error) {
 // FetchRaw performs an arbitrary-method request with custom headers and an
 // optional body, retrying transport errors and 5xx with backoff. No etag
 // cache (POST and most JSON APIs don't honor 304). Used by the api fetcher.
-func FetchRaw(method, url string, headers map[string]string, body []byte) ([]byte, error) {
+// Returns the body and the response Link header (for pagination) — returning it
+// rather than stashing it in a package global keeps the function safe to call
+// concurrently.
+func FetchRaw(method, url string, headers map[string]string, body []byte) ([]byte, string, error) {
 	client := &http.Client{Timeout: 45 * time.Second}
 	var lastErr error
 	for attempt := 0; attempt < 3; attempt++ {
@@ -167,7 +170,7 @@ func FetchRaw(method, url string, headers map[string]string, body []byte) ([]byt
 		}
 		req, err := http.NewRequest(method, url, rdr)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		req.Header.Set("User-Agent", UserAgent)
 		req.Header.Set("Accept", "application/json")
@@ -180,7 +183,7 @@ func FetchRaw(method, url string, headers map[string]string, body []byte) ([]byt
 			continue
 		}
 		b, readErr := io.ReadAll(io.LimitReader(resp.Body, maxBody))
-		respHeader := resp.Header
+		link := resp.Header.Get("Link")
 		resp.Body.Close()
 		switch {
 		case resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated:
@@ -188,21 +191,13 @@ func FetchRaw(method, url string, headers map[string]string, body []byte) ([]byt
 				lastErr = readErr
 				continue
 			}
-			lastHeader = respHeader // expose Link header to the api fetcher
-			return b, nil
+			return b, link, nil
 		case resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests:
 			lastErr = fmt.Errorf("http %d from %s", resp.StatusCode, redactURL(url))
 			continue
 		default:
-			return nil, fmt.Errorf("http %d from %s", resp.StatusCode, redactURL(url))
+			return nil, "", fmt.Errorf("http %d from %s", resp.StatusCode, redactURL(url))
 		}
 	}
-	return nil, fmt.Errorf("fetch %s: %w", redactURL(url), lastErr)
+	return nil, "", fmt.Errorf("fetch %s: %w", redactURL(url), lastErr)
 }
-
-// lastHeader carries the most recent response headers (e.g. Link) to the api
-// fetcher's pagination logic. Single-threaded engine, so this is safe.
-var lastHeader http.Header
-
-// LastLinkHeader returns the Link header from the most recent FetchRaw.
-func LastLinkHeader() string { return lastHeader.Get("Link") }

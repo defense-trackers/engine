@@ -266,6 +266,12 @@ func loadCurrent(outDir, tracker string) (*State, error) {
 	if err := json.Unmarshal(b, &s); err != nil {
 		return nil, err
 	}
+	// Refuse to diff against a state written by a newer schema than this binary
+	// understands — silently mis-reading it would corrupt the changelog. (0 = a
+	// pre-versioning file; treated as compatible.)
+	if s.Schema != 0 && s.Schema > SchemaVersion {
+		return nil, fmt.Errorf("current.json for %s is schema v%d, binary supports v%d — upgrade the engine", tracker, s.Schema, SchemaVersion)
+	}
 	return &s, nil
 }
 

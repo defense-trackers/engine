@@ -43,7 +43,7 @@ func (a *API) Fetch(c core.Contract, cacheDir string) ([]core.Record, error) {
 	var items []interface{}
 	nextURL := buildURL(c, 1)
 	for page := 1; page <= maxPages; page++ {
-		raw, err := core.FetchRaw(method, nextURL, headers, body)
+		raw, link, err := core.FetchRaw(method, nextURL, headers, body)
 		if err != nil {
 			return nil, err
 		}
@@ -59,7 +59,7 @@ func (a *API) Fetch(c core.Contract, cacheDir string) ([]core.Record, error) {
 		case "page":
 			nextURL = buildURL(c, page+1)
 		case "link":
-			nextURL = nextLink(core.LastLinkHeader())
+			nextURL = nextLink(link)
 			if nextURL == "" {
 				page = maxPages // no more pages
 			}
@@ -98,7 +98,7 @@ func mapItems(items []interface{}, c core.Contract) []core.Record {
 		if seen[key] {
 			continue
 		}
-		if excluded(m, c.Exclude) {
+		if excludedScoped(m, c.Exclude, c.ExcludeFields) {
 			continue
 		}
 		if len(c.Include) > 0 && !includesScoped(m, c.Include, c.IncludeFields) {
@@ -269,14 +269,15 @@ func truncate(s string, n int) string {
 	return s
 }
 
-// excluded drops an item if any exclude term appears anywhere in it
-// (case-insensitive over the item's JSON, so it matches id, tags, etc.).
-func excluded(m map[string]interface{}, terms []string) bool {
+// excludedScoped drops an item if any exclude term appears in the search text.
+// By default it searches the whole item JSON; if fields are given it searches
+// only those field paths (precision — e.g. exclude on the type field without
+// risking a false match buried in a description).
+func excludedScoped(m map[string]interface{}, terms, fields []string) bool {
 	if len(terms) == 0 {
 		return false
 	}
-	b, _ := json.Marshal(m)
-	low := strings.ToLower(string(b))
+	low := strings.ToLower(scopedHaystack(m, fields))
 	for _, t := range terms {
 		if t != "" && strings.Contains(low, strings.ToLower(t)) {
 			return true
@@ -285,23 +286,26 @@ func excluded(m map[string]interface{}, terms []string) bool {
 	return false
 }
 
+// scopedHaystack returns the text to match filters against: the whole item JSON
+// when fields is empty, otherwise just the named field paths joined.
+func scopedHaystack(m map[string]interface{}, fields []string) string {
+	if len(fields) == 0 {
+		b, _ := json.Marshal(m)
+		return string(b)
+	}
+	parts := make([]string, 0, len(fields))
+	for _, f := range fields {
+		parts = append(parts, stringify(get(m, f)))
+	}
+	return strings.Join(parts, " ")
+}
+
 // includesScoped keeps an item only if any term appears (case-insensitive). By
 // default it searches the whole item JSON; if fields are given it searches only
 // those field paths — tighter precision (e.g. match AI in the title, not a
 // buried mention in a long description).
 func includesScoped(m map[string]interface{}, terms, fields []string) bool {
-	var hay string
-	if len(fields) == 0 {
-		b, _ := json.Marshal(m)
-		hay = string(b)
-	} else {
-		parts := make([]string, 0, len(fields))
-		for _, f := range fields {
-			parts = append(parts, stringify(get(m, f)))
-		}
-		hay = strings.Join(parts, " ")
-	}
-	low := strings.ToLower(hay)
+	low := strings.ToLower(scopedHaystack(m, fields))
 	for _, t := range terms {
 		if t != "" && strings.Contains(low, strings.ToLower(t)) {
 			return true
