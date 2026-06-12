@@ -278,7 +278,7 @@ func writeCurrent(outDir string, s State) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, "current.json"), append(b, '\n'), 0o644)
+	return writeFileAtomic(filepath.Join(dir, "current.json"), append(b, '\n'), 0o644)
 }
 
 // appendEvents writes events to data/<tracker>/events/<year>.jsonl with each
@@ -315,9 +315,13 @@ func appendEvents(outDir, tracker string, evs []Event) error {
 		h := sha256.Sum256(line)
 		prev = hex.EncodeToString(h[:])
 	}
-	// Hook point: if SIGNET_CMD is set, also countersign the chain head with
-	// signet-sign, e.g. SIGNET_CMD="signet sign --key ..." (non-fatal).
-	return os.WriteFile(chainPath, []byte(prev+"\n"), 0o644)
+	if err := writeFileAtomic(chainPath, []byte(prev+"\n"), 0o644); err != nil {
+		return err
+	}
+	// Anchor the new head: optional signet signature (SIGNET_CMD) + RFC 3161
+	// trusted timestamp (TSA_URL). Both non-fatal; checked by `engine verify`.
+	anchorChainHead(trackerDir(outDir, tracker))
+	return nil
 }
 
 // VerifyChain re-derives the hash chain for one tracker (or all when
@@ -373,6 +377,14 @@ func VerifyChain(outDir, tracker string) ([]string, error) {
 		if err != nil || strings.TrimSpace(string(head)) != running {
 			valid = false
 		}
+		// When a trust anchor is present, the stored RFC 3161 timestamp must
+		// commit to the current head — catches a head rewritten without (or with
+		// a stale) timestamp, which a bare hash chain alone cannot detect.
+		if valid {
+			if reason := verifyTrustAnchors(trackerDir(outDir, t)); reason != "" {
+				valid = false
+			}
+		}
 		if !valid {
 			bad = append(bad, t)
 		}
@@ -400,7 +412,7 @@ func writeStatus(outDir string, m map[string]SourceStatus) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(statusPath(outDir), append(b, '\n'), 0o644)
+	return writeFileAtomic(statusPath(outDir), append(b, '\n'), 0o644)
 }
 
 func setStatus(outDir, source string, s SourceStatus) {

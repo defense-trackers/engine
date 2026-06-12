@@ -71,9 +71,22 @@ GITHUB_TOKEN=$(gh auth token) ./bin/engine fetch --out ../site --contracts contr
 ## Trust & integrity
 
 Each tracker's changelog is append-only and hash-chained (`events/*.jsonl` with
-`prev = sha256(previous line)`, head in `CHAIN`). Anyone can re-derive it with
-`engine verify` — no keys needed. `appendEvents` also exposes a `SIGNET_CMD`
-hook for optional countersigning if you later add a signing key.
+`prev = sha256(previous line)`, head in `CHAIN`). Anyone can re-derive the chain
+with `engine verify` — no keys needed.
+
+A hash chain alone proves internal consistency but not that the head wasn't
+rewritten by whoever controls the repo. Two independent anchors close that gap:
+
+- **RFC 3161 trusted timestamp.** When `TSA_URL` is set (e.g. a public TSA like
+  `https://freetsa.org/tsr`, no account required), each new head is timestamped by
+  a third party and the token stored at `CHAIN.tsr`. `engine verify` confirms the
+  token commits to the current head, so a rewritten head no longer matches its
+  timestamp. Full TSA-signature validation: `openssl ts -verify -data CHAIN -in CHAIN.tsr -CAfile <tsa-ca>`.
+- **Optional signature.** When `SIGNET_CMD` is set (e.g. `signet sign --key …`),
+  the head is countersigned and the detached signature stored at `CHAIN.sig`.
+
+Both are best-effort at fetch time (a missing signer or unreachable TSA never
+blocks publishing) and checked by `engine verify` when present.
 
 ## What's intentionally dormant
 
