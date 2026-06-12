@@ -191,13 +191,16 @@ func dedupByURL(recs []Record) []Record {
 // and keeps last-good live; it never publishes suspect data.
 func Validate(c Contract, old *State, recs []Record) error {
 	min := c.MinRecords
-	if min == 0 {
-		min = 1
+	if min == 0 && !c.AllowEmpty {
+		min = 1 // default floor, unless the contract opts into honest-empty results
 	}
 	if len(recs) < min {
 		return fmt.Errorf("invariant: %d records below minimum %d", len(recs), min)
 	}
-	if old != nil && len(old.Records) > 0 && c.MaxDeltaPct > 0 {
+	// Percentage churn is only meaningful once the prior base is large enough; on a
+	// handful of records a normal +N edit reads as hundreds of percent. The churn
+	// gate guards large sources against a parser/shape break, not small/curated ones.
+	if old != nil && len(old.Records) >= churnMinBase && c.MaxDeltaPct > 0 {
 		added, removed, _ := deltaCounts(old.Records, recs)
 		pct := float64(added+removed) / float64(len(old.Records)) * 100
 		if pct > c.MaxDeltaPct {

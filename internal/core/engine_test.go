@@ -33,19 +33,47 @@ func TestValidateMinRecords(t *testing.T) {
 
 func TestValidateChurnQuarantines(t *testing.T) {
 	c := Contract{MinRecords: 1, MaxDeltaPct: 40}
+	// Base must be >= churnMinBase for the percentage gate to apply.
 	var old []Record
-	for _, k := range []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"} {
-		old = append(old, rec(k, k))
+	for i := 0; i < 30; i++ {
+		old = append(old, rec(string(rune('a'+i)), "v"))
 	}
-	// 8 removed + 1 added on a base of 10 = 90% churn.
-	if err := Validate(c, &State{Records: old},
-		[]Record{rec("a", "a"), rec("b", "b"), rec("z", "z")}); err == nil {
-		t.Fatal("expected churn invariant to fail")
+	// Replace most of the base = high churn → quarantine.
+	var big []Record
+	for i := 0; i < 30; i++ {
+		big = append(big, rec("new"+string(rune('a'+i)), "v"))
 	}
-	// Small drift passes: 1 removed + 1 added = 20%.
-	small := append([]Record{}, old[:9]...)
+	if err := Validate(c, &State{Records: old}, big); err == nil {
+		t.Fatal("expected churn invariant to fail on a large base")
+	}
+	// Small drift on a large base passes: 1 removed + 1 added = ~6%.
+	small := append([]Record{}, old[:29]...)
 	small = append(small, rec("z", "z"))
 	if err := Validate(c, &State{Records: old}, small); err != nil {
 		t.Fatalf("expected small drift to pass, got %v", err)
+	}
+}
+
+func TestValidateSmallBaseSkipsChurn(t *testing.T) {
+	c := Contract{MinRecords: 1, MaxDeltaPct: 40}
+	old := []Record{rec("a", "a"), rec("b", "b")} // tiny base
+	// +11 on a base of 2 would be 550% — but a small base must skip the churn gate.
+	var big []Record
+	for i := 0; i < 13; i++ {
+		big = append(big, rec("k"+string(rune('a'+i)), "v"))
+	}
+	if err := Validate(c, &State{Records: old}, big); err != nil {
+		t.Fatalf("small-base churn should be skipped, got %v", err)
+	}
+}
+
+func TestValidateAllowEmpty(t *testing.T) {
+	// Default: 0 records fails the floor.
+	if err := Validate(Contract{}, nil, nil); err == nil {
+		t.Fatal("expected empty result to fail by default")
+	}
+	// allow_empty: a legitimately-empty filtered result is accepted.
+	if err := Validate(Contract{AllowEmpty: true}, nil, nil); err != nil {
+		t.Fatalf("allow_empty should accept 0 records, got %v", err)
 	}
 }

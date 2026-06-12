@@ -53,5 +53,6 @@
   "min_records": 0,
   "max_delta_pct": 100,
   "notes": "SAM.gov contract opportunities, title 'mesh network', DoD-filtered. Mesh-net assurance domain (low volume, high signal).",
-  "expire_field": "closes"
+  "expire_field": "closes",
+  "allow_empty": true
 }

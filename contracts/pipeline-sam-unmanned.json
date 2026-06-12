@@ -53,5 +53,6 @@
   "min_records": 0,
   "max_delta_pct": 100,
   "notes": "SAM.gov contract opportunities, title 'unmanned', DoD-filtered. UAS/UGV/USV autonomy domain.",
-  "expire_field": "closes"
+  "expire_field": "closes",
+  "allow_empty": true
 }

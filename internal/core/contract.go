@@ -18,6 +18,12 @@ import (
 
 const SchemaVersion = 1
 
+// churnMinBase is the smallest prior record count for which the percentage-churn
+// invariant is applied. Below it, a few added/removed records swamp the ratio
+// (e.g. +11 on a base of 2 = 550%), so the gate would false-quarantine normal
+// edits to small or curated sources.
+const churnMinBase = 25
+
 // Contract is the declarative description of one source. Fetchers are
 // generic; everything source-specific lives here so the repair loop can
 // regenerate behavior by editing data, not code, wherever possible.
@@ -32,7 +38,8 @@ type Contract struct {
 	SliceStart   string  `json:"slice_start,omitempty"` // pagediff: begin after this literal
 	SliceEnd     string  `json:"slice_end,omitempty"`   // pagediff: stop before this literal
 	MinRecords   int     `json:"min_records"`           // invariant: fewer records => quarantine
-	MaxDeltaPct  float64 `json:"max_delta_pct"`         // invariant: churn % above this => quarantine
+	AllowEmpty   bool    `json:"allow_empty,omitempty"` // accept a successful 0-record result (e.g. a filter that legitimately matches nothing) instead of quarantining to stale last-good
+	MaxDeltaPct  float64 `json:"max_delta_pct"`         // invariant: churn % above this => quarantine (only applied once the prior base is large enough to make a % meaningful)
 
 	// --- api method (generic JSON over HTTP) ---
 	HTTPMethod string            `json:"http_method,omitempty"` // GET (default) | POST

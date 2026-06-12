@@ -95,5 +95,6 @@
     "name",
     "description",
     "topics"
-  ]
+  ],
+  "allow_empty": true
 }
