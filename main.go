@@ -18,6 +18,7 @@ import (
 	"engine/fetchers/pagediff"
 	"engine/fetchers/rss"
 	"engine/internal/core"
+	"engine/workspace"
 )
 
 func main() {
@@ -32,10 +33,29 @@ func main() {
 		os.Exit(cmdSentinel(os.Args[2:]))
 	case "verify":
 		os.Exit(cmdVerify(os.Args[2:]))
+	case "workspace":
+		os.Exit(cmdWorkspace(os.Args[2:]))
 	default:
 		usage()
 		os.Exit(64)
 	}
+}
+
+// cmdWorkspace launches Jesse's private, local bid cockpit (not part of the
+// public pipeline). It reads the public trackers' JSON + live DSIP topics, scores
+// them against his capabilities, and serves a localhost dashboard with on-disk
+// pursuit state.
+func cmdWorkspace(args []string) int {
+	fs := flag.NewFlagSet("workspace", flag.ExitOnError)
+	port := fs.Int("port", 8765, "localhost port")
+	dir := fs.String("dir", `C:\trackers\workspace`, "private workspace dir (capabilities/state/cache)")
+	data := fs.String("data", "https://defense-trackers.github.io", "trackers source: live URL or local site dir")
+	_ = fs.Parse(args)
+	if err := workspace.Run(workspace.Options{Port: *port, Dir: *dir, DataBase: *data}); err != nil {
+		fmt.Fprintln(os.Stderr, "workspace:", err)
+		return 1
+	}
+	return 0
 }
 
 func usage() {
@@ -44,6 +64,7 @@ func usage() {
   fetch      run enabled contracts; publish state, events, RSS, status
   sentinel   mark sources stale once they pass 1.5x their cadence
   verify     re-derive the event hash chain and report tampering
+  workspace  private local bid cockpit (DSIP + trackers, fit-scored)
 
 Run "engine <command> -h" for flags.`)
 }

@@ -5,3 +5,11 @@
 
 # The public site repo is checked out here by CI; never commit it into engine.
 /site/
+
+# Private bid workspace — Jesse's capabilities, pursuit state, and DSIP cache are
+# personal/strategic and must NEVER be committed. Only workspace/*.go,
+# workspace/ui/, and workspace/capabilities.example.json ship.
+/workspace/capabilities.json
+/workspace/bidstate.json
+/workspace/dsip.json
+/workspace/cache/

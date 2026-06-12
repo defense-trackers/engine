@@ -1,0 +1,227 @@
+package workspace
+
+import (
+	"embed"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+)
+
+//go:embed ui/*
+var uiFS embed.FS
+
+//go:embed capabilities.example.json
+var exampleCaps []byte
+
+// Options configure a workspace run.
+type Options struct {
+	Port     int
+	Dir      string // workspace dir (capabilities/bidstate/cache live here)
+	DataBase string // live trackers URL or local site dir
+}
+
+// Pursuit is Jesse's private state for one opportunity. Title/Agency/URL let a
+// seeded or manually-added pursuit render even when no live opportunity matches.
+type Pursuit struct {
+	Stage    string `json:"stage"`              // watching|qualifying|drafting|submitted|won|lost|pass
+	Decision string `json:"decision,omitempty"` // bid|no-bid
+	Notes    string `json:"notes,omitempty"`
+	Title    string `json:"title,omitempty"`
+	Agency   string `json:"agency,omitempty"`
+	URL      string `json:"url,omitempty"`
+	Updated  string `json:"updated,omitempty"`
+}
+
+type server struct {
+	opts  Options
+	mu    sync.Mutex
+	opps  []Opportunity
+	caps  *Capabilities
+	state map[string]Pursuit
+}
+
+// Run ingests + scores opportunities and serves the private dashboard locally.
+func Run(o Options) error {
+	if o.Dir == "" {
+		o.Dir = `C:\trackers\workspace`
+	}
+	if o.DataBase == "" {
+		o.DataBase = "https://defense-trackers.github.io"
+	}
+	if o.Port == 0 {
+		o.Port = 8765
+	}
+	if err := os.MkdirAll(o.Dir, 0o755); err != nil {
+		return err
+	}
+	s := &server{opts: o, state: map[string]Pursuit{}}
+	s.caps = s.loadCaps()
+	s.loadState()
+	s.ingest()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/opportunities", s.hOpps)
+	mux.HandleFunc("/api/state", s.hState)
+	mux.HandleFunc("/api/refresh", s.hRefresh)
+	mux.HandleFunc("/", s.hStatic)
+
+	addr := fmt.Sprintf("127.0.0.1:%d", o.Port)
+	fmt.Printf("bid workspace → http://%s   (data: %s, dir: %s)\n", addr, o.DataBase, o.Dir)
+	fmt.Printf("opportunities scored: %d   pursuits: %d\n", len(s.opps), len(s.state))
+	return http.ListenAndServe(addr, mux)
+}
+
+func (s *server) loadCaps() *Capabilities {
+	path := filepath.Join(s.opts.Dir, "capabilities.json")
+	if c, err := LoadCapabilities(path); err == nil {
+		return c
+	}
+	// First run: drop the example in place so Jesse can edit it, and use it now.
+	_ = os.WriteFile(path, exampleCaps, 0o644)
+	var c Capabilities
+	_ = json.Unmarshal(exampleCaps, &c)
+	fmt.Printf("no capabilities.json — wrote a starter to %s (edit it, then refresh)\n", path)
+	return &c
+}
+
+func (s *server) statePath() string { return filepath.Join(s.opts.Dir, "bidstate.json") }
+
+func (s *server) loadState() {
+	b, err := os.ReadFile(s.statePath())
+	if err == nil {
+		_ = json.Unmarshal(b, &s.state)
+		return
+	}
+	s.state = seedPipeline() // first run: open on Jesse's known in-flight volumes
+	s.saveState()
+}
+
+func (s *server) saveState() {
+	b, _ := json.MarshalIndent(s.state, "", " ")
+	_ = os.WriteFile(s.statePath(), b, 0o644)
+}
+
+// ingest loads tracker JSON + DSIP, scores, and caches DSIP for offline reuse.
+func (s *server) ingest() {
+	var all []Opportunity
+	if t, err := LoadTrackerJSON(s.opts.DataBase); err == nil {
+		all = append(all, t...)
+	}
+	if d, err := FetchDSIP(); err == nil && len(d) > 0 {
+		all = append(all, d...)
+		if b, e := json.Marshal(d); e == nil {
+			_ = os.WriteFile(filepath.Join(s.opts.Dir, "dsip.json"), b, 0o644)
+		}
+	} else {
+		// DSIP unreachable (datacenter IP / outage) — fall back to last good cache.
+		if b, e := os.ReadFile(filepath.Join(s.opts.Dir, "dsip.json")); e == nil {
+			var cached []Opportunity
+			if json.Unmarshal(b, &cached) == nil {
+				for i := range cached { // rebuild Text (not persisted)
+					cached[i].Text = cached[i].searchText()
+				}
+				all = append(all, cached...)
+			}
+		}
+		fmt.Println("note: DSIP live fetch unavailable; using cached topics if present")
+	}
+	Score(all, s.caps, time.Now())
+	sort.SliceStable(all, func(i, j int) bool { return all[i].Score > all[j].Score })
+	s.mu.Lock()
+	s.opps = all
+	s.mu.Unlock()
+}
+
+func (o Opportunity) searchText() string {
+	return strings.ToLower(o.Title + " " + o.Agency + " " + o.Type + " " + o.Status + " " + o.Setaside + " " + o.AwardText)
+}
+
+func (s *server) hOpps(w http.ResponseWriter, _ *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	writeJSON(w, s.opps)
+}
+
+func (s *server) hState(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		var in struct {
+			ID string `json:"id"`
+			Pursuit
+		}
+		if json.NewDecoder(r.Body).Decode(&in) != nil || in.ID == "" {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		s.mu.Lock()
+		p := in.Pursuit
+		p.Updated = time.Now().UTC().Format(time.RFC3339)
+		if p.Stage == "" && p.Decision == "" && p.Notes == "" {
+			delete(s.state, in.ID) // clearing a pursuit removes it
+		} else {
+			s.state[in.ID] = p
+		}
+		s.saveState()
+		s.mu.Unlock()
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	writeJSON(w, s.state)
+}
+
+func (s *server) hRefresh(w http.ResponseWriter, _ *http.Request) {
+	s.caps = s.loadCaps()
+	s.ingest()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	writeJSON(w, map[string]int{"opportunities": len(s.opps)})
+}
+
+func (s *server) hStatic(w http.ResponseWriter, r *http.Request) {
+	p := r.URL.Path
+	if p == "/" {
+		p = "/index.html"
+	}
+	b, err := uiFS.ReadFile("ui" + p)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	switch {
+	case strings.HasSuffix(p, ".html"):
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	case strings.HasSuffix(p, ".js"):
+		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	case strings.HasSuffix(p, ".css"):
+		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	}
+	w.Write(b)
+}
+
+func writeJSON(w http.ResponseWriter, v interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+// seedPipeline pre-populates the board with Jesse's known in-flight SBIR volumes
+// so the workspace opens on real work. Stages are best-guess — edit in the UI.
+func seedPipeline() map[string]Pursuit {
+	now := time.Now().UTC().Format(time.RFC3339)
+	mk := func(stage, title, agency, notes string) Pursuit {
+		return Pursuit{Stage: stage, Title: title, Agency: agency, Notes: notes, Updated: now, Decision: "bid"}
+	}
+	return map[string]Pursuit{
+		"seed:NV010": mk("submitted", "DON26BZ01-NV010 ELLMENT (rigrun+signet)", "Navy/NAVAIR", "E-2D on-aircraft traceable LLM. Closed 6/3. Verify status."),
+		"seed:NV013": mk("submitted", "NV013 alchemist→TMPC", "DoW", "Memory-safety / differential-equivalence. Closed 6/3."),
+		"seed:NV023": mk("submitted", "DON26BZ01-NV023 VIGIL (rigrun+signet+thermalhawk)", "Navy/ONR", "Risk-aware regenerative multimodal ISRT. Closed 6/3."),
+		"seed:DV003": mk("drafting", "OSW26BZ02-DV003 rigrun+signet", "OSW (D2P2)", "SCG/PPP/OPSEC + insider-threat. Closes 6/24."),
+		"seed:NV007": mk("drafting", "DLA26BZ02-NV007 STRIKE AI (auspex+signet)", "DLA", "Cover-both governance-framed; demo defensive. Closes 6/24."),
+		"seed:DV010": mk("drafting", "DPA26BZ02-DV010 HAWKSTACK (thermalhawk)", "DARPA", "ThermalHawk into fielded EO/IR processor. WhitePaper+deck. Closes 6/24."),
+		"seed:NV006": mk("drafting", "DLA26BZ02-NV006 ADJUTANT (signet+rigrun)", "DLA", "RMF pre-adjudication, artifact-centric. Closes 6/24."),
+	}
+}

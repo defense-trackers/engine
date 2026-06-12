@@ -1,0 +1,40 @@
+{
+  "_comment": "Copy this to workspace/capabilities.json (gitignored) and tune. Each asset's terms+domains are matched (case-insensitive) against an opportunity's title/agency/notes to score capability fit. Add, remove, or reword freely.",
+  "assets": [
+    {
+      "name": "rigrun",
+      "terms": ["llm", "large language model", "language model", "on-prem", "on prem", "air-gap", "air gap", "il5", "il4", "il-5", "inference", "edge ai", "generative ai", "artificial intelligence", "model serving", "traceable", "explainable", "chat"],
+      "domains": ["on-prem ai"]
+    },
+    {
+      "name": "thermalhawk",
+      "terms": ["thermal", "infrared", "eo/ir", "eo-ir", "electro-optical", "object detection", "detection", "tracking", "targeting", "drone", "uas", "uav", "unmanned", "counter-uas", "c-uas", "perception", "tiny-ml", "tinyml", "edge", "sensor", "isr", "computer vision"],
+      "domains": ["edge autonomy", "autonomy"]
+    },
+    {
+      "name": "auspex",
+      "terms": ["offensive cyber", "red team", "red-team", "penetration", "pentest", "vulnerability", "exploit", "autonomous cyber", "ctf", "adversary emulation", "attack", "cyber operations", "threat emulation"],
+      "domains": ["cyber"]
+    },
+    {
+      "name": "signet",
+      "terms": ["audit", "governance", "human-in-the-loop", "hitl", "compliance", "rmf", "ato", "assurance", "accreditation", "explainab", "traceab", "provenance", "tamper", "policy enforcement", "insider threat"],
+      "domains": ["assurance", "governance"]
+    },
+    {
+      "name": "alchemist",
+      "terms": ["memory safety", "memory-safe", "rust", "formal verification", "differential equivalence", "legacy code", "modernization", "secure coding", "software assurance"],
+      "domains": ["cyber", "software assurance"]
+    },
+    {
+      "name": "contested-logistics",
+      "terms": ["contested logistics", "logistics", "sustainment", "predictive maintenance", "supply chain", "resupply", "autonomous logistics", "denied environment", "degraded environment"],
+      "domains": ["contested logistics"]
+    },
+    {
+      "name": "mesh-assurance",
+      "terms": ["mesh", "tactical communications", "tactical comms", "resilient communications", "resilient comms", "tak", "atak", "cursor on target", "spectrum", "waveform", "manet", "resilient network", "pnt", "navigation"],
+      "domains": ["mesh assurance", "comms"]
+    }
+  ]
+}
