@@ -8,14 +8,17 @@ let VIEW = 'now';
 const $ = (s, r = document) => r.querySelector(s);
 const el = (t, c, txt) => { const e = document.createElement(t); if (c) e.className = c; if (txt != null) e.textContent = txt; return e; };
 
-const STAGES = ['watching', 'qualifying', 'drafting', 'submitted', 'won', 'lost', 'pass'];
+const STAGES = ['watching', 'qualifying', 'drafting', 'submitted', 'won', 'pilot', 'transition', 'pom', 'program', 'lost', 'pass'];
 const COLS = [
-  { key: 'watching', label: 'Watching', match: ['watching'] },
-  { key: 'qualifying', label: 'Qualifying', match: ['qualifying'] },
-  { key: 'drafting', label: 'Drafting', match: ['drafting'] },
-  { key: 'submitted', label: 'Submitted', match: ['submitted'] },
-  { key: 'decided', label: 'Decided', match: ['won', 'lost', 'pass'] },
+  { key: 'discovery', label: 'Discovery', match: ['watching', 'qualifying'] },
+  { key: 'bid', label: 'Bid', match: ['drafting', 'submitted'] },
+  { key: 'pilot', label: 'Award · Pilot', match: ['won', 'pilot'] },
+  { key: 'transition', label: 'Transition · POM', match: ['transition', 'pom'] },
+  { key: 'program', label: 'Program of Record', match: ['program'] },
+  { key: 'closed', label: 'Closed', match: ['lost', 'pass'] },
 ];
+const WALLS = ['money', 'requirements', 'contracts', 'incentives'];
+const WALL_LABEL = { money: 'Money', requirements: 'Requirements', contracts: 'Contracts', incentives: 'Incentives' };
 
 let ASSIST = { enabled: false, model: '' };
 let CUR_OPP = null;
@@ -47,19 +50,85 @@ const QUICK = [
 function convo(id) { try { return JSON.parse(localStorage.getItem('assist:' + id) || '[]'); } catch { return []; } }
 function saveConvo(id, h) { localStorage.setItem('assist:' + id, JSON.stringify(h.slice(-20))); }
 
+const TQUICK = [
+  { a: 'transition', label: 'Structure for transition' },
+  { a: 'sponsor', label: 'Who owns the money' },
+  { a: 'outreach', label: '✉ Outreach + draft message' },
+  { a: 'pom', label: 'POM readiness' },
+  { a: 'pmadopt', label: 'PM adoption pitch' },
+  { a: 'nextstep', label: '★ Next best action' },
+];
+
 function openAssist(o) {
   CUR_OPP = o;
   $('#assist-title').textContent = o.title;
   $('#assist-meta').innerHTML = [o.source, o.type, o.agency, o.matched_asset ? 'fit: ' + o.matched_asset : '', daysLabel(o)].filter(Boolean).join(' · ');
+  // real, source-provided POCs + the sanctioned channel (anti-spam)
+  const poc = $('#assist-poc'); poc.textContent = '';
+  if ((o.contacts && o.contacts.length) || o.channel) {
+    if (o.contacts) o.contacts.forEach((c) => {
+      const d = el('div', 'poc'); d.innerHTML = `<b>${c.name}</b> ${c.role || ''}${c.email ? ' · <a href="mailto:' + c.email + '">' + c.email + '</a>' : ''}`;
+      poc.append(d);
+    });
+    if (o.channel) { const d = el('div', 'poc chan'); d.textContent = '↳ ' + o.channel; poc.append(d); }
+  }
   const qa = $('#assist-qa'); qa.textContent = '';
+  qa.append(scorecard(o)); // four-walls readiness works with or without Claude
   if (ASSIST.enabled) {
-    QUICK.forEach((q) => { const b = el('button', null, q.label); b.addEventListener('click', () => sendAssist(q.a)); qa.append(b); });
-    const d = el('button', 'mv', '→ Drafting'); d.addEventListener('click', () => moveStage(o, 'drafting')); qa.append(d);
-    const s = el('button', 'mv', '→ Submitted'); s.addEventListener('click', () => moveStage(o, 'submitted')); qa.append(s);
+    const bidRow = el('div', 'qarow');
+    QUICK.forEach((q) => { const b = el('button', null, q.label); b.addEventListener('click', () => sendAssist(q.a)); bidRow.append(b); });
+    qa.append(rowLabel('Bid'), bidRow);
+    const trow = el('div', 'qarow');
+    TQUICK.forEach((q) => { const b = el('button', null, q.label); b.addEventListener('click', () => sendAssist(q.a)); trow.append(b); });
+    qa.append(rowLabel('Cross the valley'), trow);
+    const mv = el('div', 'qarow');
+    ['drafting', 'submitted', 'won', 'pilot', 'transition', 'pom', 'program'].forEach((st) => {
+      const b = el('button', 'mv', '→ ' + st); b.addEventListener('click', () => moveStage(o, st)); mv.append(b);
+    });
+    qa.append(rowLabel('Move stage'), mv);
   }
   renderThread();
   $('#overlay').style.display = 'block';
   $('#assist').classList.add('open');
+}
+
+function rowLabel(t) { return el('div', 'qalabel', t); }
+
+// the four-walls transition-readiness scorecard + lifetime value, edited inline.
+function scorecard(o) {
+  const p = STATE[o.id] || {};
+  const walls = p.walls || {};
+  const box = el('div', 'scorecard');
+  const r = readiness(walls);
+  const head = el('div', 'sc-head');
+  head.innerHTML = `<span>Transition readiness</span><b class="${r.score >= 75 ? 'ok' : r.score >= 40 ? 'warn' : 'bad'}">${r.score}/100</b>`;
+  box.append(head);
+  if (r.score < 100) box.append(el('div', 'sc-weak', 'weakest wall → ' + r.weakest));
+  WALLS.forEach((wkey) => {
+    const w = el('div', 'wall');
+    w.append(el('span', 'wname', WALL_LABEL[wkey]));
+    const sel = el('select');
+    ['', 'gap', 'partial', 'ready'].forEach((s) => sel.appendChild(new Option(s || '—', s)));
+    sel.value = walls[wkey] || '';
+    sel.addEventListener('change', () => {
+      const nw = { ...(STATE[o.id]?.walls || {}) }; nw[wkey] = sel.value;
+      saveState(o.id, { walls: nw }, { title: o.title, agency: o.agency, url: o.url });
+    });
+    w.append(sel); box.append(w);
+  });
+  const val = el('div', 'wall');
+  val.append(el('span', 'wname', 'Value $K'));
+  const vi = el('input'); vi.type = 'number'; vi.placeholder = 'e.g. 1800'; vi.value = p.value || '';
+  let t; vi.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => saveState(o.id, { value: parseInt(vi.value) || 0 }, { title: o.title, agency: o.agency, url: o.url }), 600); });
+  val.append(vi); box.append(val);
+  return box;
+}
+
+function readiness(w) {
+  const v = (x) => x === 'ready' ? 100 : x === 'partial' ? 50 : 0;
+  let sum = 0, weak = 'Money', low = 101;
+  WALLS.forEach((k) => { const s = v(w[k]); sum += s; if (s < low) { low = s; weak = WALL_LABEL[k]; } });
+  return { score: Math.round(sum / 4), weakest: weak };
 }
 function closeAssist() { $('#assist').classList.remove('open'); $('#overlay').style.display = 'none'; CUR_OPP = null; }
 
@@ -203,7 +272,50 @@ function render() {
   document.querySelectorAll('.view').forEach((v) => v.hidden = true);
   if (VIEW === 'now') renderNow();
   else if (VIEW === 'pipeline') renderPipeline();
+  else if (VIEW === 'profit') renderProfit();
+  else if (VIEW === 'playbook') renderPlaybook();
   else renderAll();
+}
+
+async function renderProfit() {
+  const v = $('#view-profit'); v.hidden = false; v.textContent = '';
+  v.append(el('h2', null, 'Pipeline → profit'));
+  v.append(el('p', 'sub', 'Estimated lifetime value weighted by lifecycle conversion probability. Set a $ value per pursuit in its Claude panel.'));
+  const d = await fetch('/api/profit').then((r) => r.json()).catch(() => null);
+  if (!d || !d.stages || !d.stages.length) { v.append(el('p', 'empty', 'No valued pursuits yet. Open a pursuit → set its estimated value.')); return; }
+  const head = el('div', 'card');
+  head.innerHTML = `<div class="ctop"><div><div class="ctitle">Expected revenue (probability-weighted)</div><div class="meta">total pipeline $${(d.total_value).toLocaleString()}K across ${d.stages.reduce((a, s) => a + s.count, 0)} pursuits</div></div><div class="score">$${(d.expected_value).toLocaleString()}<small>K EV</small></div></div>`;
+  v.append(head);
+  const grid = el('div', 'grid'); v.append(grid);
+  const maxW = Math.max(...d.stages.map((s) => s.weighted), 1);
+  d.stages.forEach((s) => {
+    const c = el('div', 'card');
+    const pct = Math.max(3, Math.round((s.weighted / maxW) * 100));
+    c.innerHTML = `<div class="ctop"><div><div class="ctitle">${s.stage}</div><div class="meta">${s.count} pursuit${s.count === 1 ? '' : 's'} · $${s.value.toLocaleString()}K value · ${(s.prob * 100).toFixed(0)}% convert</div></div><div class="score">$${s.weighted.toLocaleString()}<small>K EV</small></div></div><div style="margin-top:8px;height:6px;border-radius:4px;background:linear-gradient(to right,var(--brand) ${pct}%,var(--panel2) ${pct}%)"></div>`;
+    grid.append(c);
+  });
+}
+
+async function renderPlaybook() {
+  const v = $('#view-playbook'); v.hidden = false; v.textContent = '';
+  const md = await fetch('/api/playbook').then((r) => r.text()).catch(() => '');
+  const pre = el('div', 'playbook'); pre.innerHTML = mdLite(md);
+  v.append(pre);
+}
+
+// minimal markdown → HTML (headings, bold, lists) for the playbook view
+function mdLite(md) {
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  return esc(md).split('\n').map((l) => {
+    if (/^### /.test(l)) return '<h3>' + l.slice(4) + '</h3>';
+    if (/^## /.test(l)) return '<h2>' + l.slice(3) + '</h2>';
+    if (/^# /.test(l)) return '<h1>' + l.slice(2) + '</h1>';
+    if (/^- /.test(l)) return '<li>' + bold(l.slice(2)) + '</li>';
+    if (/^\d+\. /.test(l)) return '<li>' + bold(l.replace(/^\d+\.\s/, '')) + '</li>';
+    if (l.trim() === '') return '<br>';
+    return '<p>' + bold(l) + '</p>';
+  }).join('');
+  function bold(s) { return s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`(.+?)`/g, '<code>$1</code>'); }
 }
 
 function renderNow() {

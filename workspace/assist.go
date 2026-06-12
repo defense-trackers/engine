@@ -31,6 +31,13 @@ var assistActions = map[string]string{
 	"outline":  "Outline the proposal in the correct prescribed structure for this opportunity. SBIR/STTR Phase I technical volume = the 12 prescribed sections in fixed order. DARPA (DPA-prefix) = WhitePaper (≤10pp, 4 sections) + ≤5-slide deck with a quad chart. For each section give one line on exactly what to put, given my matched asset and this topic's requirements.",
 	"draft":    "Draft the Technical Approach / Phase I objectives for this topic, grounded in my matched asset's real capabilities. Be concrete and specific to the requirements — no placeholders, no generic filler.",
 	"gaps":     "What are the gaps between my matched asset and this topic's requirements, and what would I need to build, demonstrate, or partner for to be competitive? Be blunt.",
+	// second-valley / transition + profit-realization actions
+	"transition": "Begin with the transition in mind for THIS opportunity: does this vehicle have a built-in production/scale path (OTA follow-on production under 10 USC 4022(f), or SBIR Phase III sole-source eligibility)? If not, how do I structure the award now so a successful pilot converts directly into a contract instead of a recompete?",
+	"sponsor":    "Help me find and approach the RESOURCE SPONSOR (who owns the money), not just the end user. For this agency/capability, who likely sponsors it, how do I get into the POM conversation early (~2 years before execution), and what bridge mechanism fits here — APFIT, mid-tier acquisition, or the software acquisition pathway? Draft the opening outreach.",
+	"pom":        "What does it take to get this programmed into the POM? Walk the timeline and the specific steps, name the validated-requirement and resource-sponsor dependencies, and recommend the bridge funding to survive until procurement dollars land.",
+	"pmadopt":    "Make adoption cheap and career-safe for the program manager. Give me the PM-risk-framed pitch (they own every schedule slip and capture none of the upside) plus the concrete integration-tax cuts to put in writing: MOSA/open interfaces, Government Purpose Rights, and ATO reciprocity.",
+	"nextstep":   "Given this pursuit's current stage and its weakest transition wall, what is the single highest-leverage action I should take next? One clear next move, why it matters, and the first concrete step.",
+	"outreach":   "Build my outreach plan for THIS opportunity. (1) Name the specific offices/POCs to engage from the named targets and real POCs in context — not a vague 'find a sponsor'. (2) For each, give the SANCTIONED channel (SBIR topic Q&A window, industry day, SAM RFI, BAA white paper, consortium, the program-office mailbox) — never a cold mass email. (3) Draft the actual message for the top 1–2: short, mission-first (their requirement, not my product), referencing the specific topic, asking one real question, signed as me. Make it the opposite of spam.",
 }
 
 type assistReq struct {
@@ -79,6 +86,7 @@ func (s *server) hAssist(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
+	pursuit := s.state[in.OppID]
 	s.mu.Unlock()
 	if opp == nil {
 		emit(map[string]string{"error": "opportunity not found — refresh"})
@@ -109,11 +117,15 @@ func (s *server) hAssist(w http.ResponseWriter, r *http.Request) {
 	}
 	msgs = append(msgs, map[string]string{"role": "user", "content": userText})
 
+	s.mu.Lock()
+	sponsors := s.sponsors.Match(opp, 6)
+	s.mu.Unlock()
+
 	reqBody, _ := json.Marshal(map[string]any{
 		"model":      assistModel(),
 		"max_tokens": 2400,
 		"stream":     true,
-		"system":     s.assistSystem(opp, detail),
+		"system":     s.assistSystem(opp, detail, pursuit, sponsors),
 		"messages":   msgs,
 	})
 
@@ -158,11 +170,13 @@ func (s *server) hAssist(w http.ResponseWriter, r *http.Request) {
 	emit(map[string]string{"done": "1"})
 }
 
-func (s *server) assistSystem(o *Opportunity, detail string) string {
+func (s *server) assistSystem(o *Opportunity, detail string, p Pursuit, sponsors []Sponsor) string {
 	var b strings.Builder
-	b.WriteString("You are Jesse's bid strategist and co-founder, embedded in his private defense-bid workspace. ")
-	b.WriteString("Your job is conversion: help him decide and then actually produce winning, submittable bids. Be concrete, specific to THIS topic and his matched asset, and blunt about fit. No padding, no generic boilerplate.\n\n")
-	b.WriteString("PROPOSAL FORMAT RULES (apply when relevant):\n")
+	b.WriteString("You are Jesse's bid + transition strategist and co-founder, embedded in his private defense workspace. ")
+	b.WriteString("Your job is PROFIT REALIZATION across the whole lifecycle — bid → award → pilot → transition → POM → program of record → revenue — not just winning the bid. Be concrete, specific to THIS opportunity and his matched asset, and blunt. No padding.\n\n")
+	b.WriteString("Operate from this doctrine (the second valley of death is crossed by engineering the bureaucracy with the same rigor as the product):\n\n")
+	b.Write(playbookMD)
+	b.WriteString("\n\nPROPOSAL FORMAT RULES (apply when relevant):\n")
 	b.WriteString("- SBIR/STTR Phase I technical volume = 12 prescribed sections in fixed order (not a free narrative).\n")
 	b.WriteString("- DARPA (DPA-prefix topics) are the exception: a WhitePaper (≤10pp, 4 sections) + a ≤5-slide deck with a quad chart.\n")
 	b.WriteString("- Phase I is feasibility/architecture; stand-alone lab + full integration are Phase II/III.\n\n")
@@ -189,7 +203,54 @@ func (s *server) assistSystem(o *Opportunity, detail string) string {
 	if detail != "" {
 		b.WriteString("\nFULL TOPIC TEXT:\n" + detail + "\n")
 	}
+	if p.Stage != "" || p.Walls != (Walls{}) || p.Value > 0 {
+		b.WriteString("\nPURSUIT STATUS (Jesse's private tracking — tailor guidance to where this is in the lifecycle and engineer the weakest wall next):\n")
+		if p.Stage != "" {
+			b.WriteString("Lifecycle stage: " + p.Stage + "\n")
+		}
+		if p.Value > 0 {
+			b.WriteString(fmt.Sprintf("Est. lifetime value: $%dK\n", p.Value))
+		}
+		rd, weakest := p.Walls.Readiness()
+		b.WriteString(fmt.Sprintf("Transition readiness %d/100 — Money:%s · Requirements:%s · Contracts:%s · Incentives:%s · weakest wall: %s\n",
+			rd, dash(p.Walls.Money), dash(p.Walls.Requirements), dash(p.Walls.Contracts), dash(p.Walls.Incentives), weakest))
+	}
+
+	if len(o.Contacts) > 0 {
+		b.WriteString("\nREAL POCs (published by the source — use exactly, do not invent others):\n")
+		for _, c := range o.Contacts {
+			b.WriteString("- " + c.Name)
+			if c.Role != "" {
+				b.WriteString(" — " + c.Role)
+			}
+			if c.Email != "" {
+				b.WriteString(" <" + c.Email + ">")
+			}
+			b.WriteString("\n")
+		}
+	}
+	if o.Channel != "" {
+		b.WriteString("SANCTIONED CHANNEL: " + o.Channel + "\n")
+	}
+	if len(sponsors) > 0 {
+		b.WriteString("\nNAMED TRANSITION TARGETS (real DoD offices for money/requirements/program/transition — name these specifically, reach via each one's channel):\n")
+		for _, s := range sponsors {
+			b.WriteString("- " + s.Office + " [" + s.Role + ", " + s.Component + "] — channel: " + s.Channel)
+			if s.Notes != "" {
+				b.WriteString(" — " + s.Notes)
+			}
+			b.WriteString("\n")
+		}
+	}
+	b.WriteString("\nOUTREACH RULES (critical): Never give vague advice like 'find a resource sponsor.' Always name the specific office(s)/POC(s) above and the exact sanctioned channel. NEVER recommend cold or mass email — prefer the official channel (SBIR topic Q&A window, industry day / APBI, SAM RFI, BAA white paper, consortium marketplace, the program-office mailbox, a warm intro). Any drafted message must be short, mission-first (their requirement, not Jesse's product), reference the specific topic, ask one real question, and read as the opposite of spam. If you don't have a named person, name the office + role and the channel to find the current incumbent — never fabricate a name or email.\n")
 	return b.String()
+}
+
+func dash(s string) string {
+	if s == "" {
+		return "unset"
+	}
+	return s
 }
 
 func redactKey(s string) string {

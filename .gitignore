@@ -10,6 +10,7 @@
 # personal/strategic and must NEVER be committed. Only workspace/*.go,
 # workspace/ui/, and workspace/capabilities.example.json ship.
 /workspace/capabilities.json
+/workspace/contacts.json
 /workspace/bidstate.json
 /workspace/dsip.json
 /workspace/cache/

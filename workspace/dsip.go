@@ -35,6 +35,14 @@ type dsipResp struct {
 		PhaseHierarchy    string `json:"phaseHierarchy"`
 		TopicStartDate    int64  `json:"topicStartDate"`
 		TopicEndDate      int64  `json:"topicEndDate"`
+		TopicQAStartDate  int64  `json:"topicQAStartDate"`
+		TopicQAEndDate    int64  `json:"topicQAEndDate"`
+		TopicQAOpen       bool   `json:"topicQAOpen"`
+		TopicManagers     []struct {
+			Name   string `json:"name"`
+			Email  string `json:"email"`
+			Center string `json:"center"`
+		} `json:"topicManagers"`
 	} `json:"data"`
 }
 
@@ -77,6 +85,18 @@ func FetchDSIP() ([]Opportunity, error) {
 				AwardText: t.SolicitationNum + " " + phaseSummary(t.PhaseHierarchy),
 				URL:       "https://www.dodsbirsttr.mil/topics-app/#/topics/" + t.TopicID,
 				DetailRef: t.TopicID,
+			}
+			for _, m := range t.TopicManagers {
+				if m.Name != "" {
+					o.Contacts = append(o.Contacts, Contact{Name: m.Name, Email: m.Email, Role: "TPOC (" + m.Center + ")"})
+				}
+			}
+			// The SBIR topic Q&A window is the SANCTIONED channel to engage the
+			// TPOC before close — not a cold email.
+			if t.TopicQAOpen && t.TopicQAEndDate > 0 {
+				o.Channel = "SBIR topic Q&A window OPEN until " + epochMS(t.TopicQAEndDate) + " — ask via the topic's official Q&A (TPOC answers on the record)"
+			} else if t.TopicQAEndDate > 0 {
+				o.Channel = "SBIR topic Q&A closed " + epochMS(t.TopicQAEndDate) + " — engage via industry day / SAM RFI / the issuing component, not cold email"
 			}
 			o.Text = strings.ToLower(strings.Join([]string{
 				o.Title, o.Agency, o.Type, t.SolicitationTitle, o.Status, o.Setaside,

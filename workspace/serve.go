@@ -19,6 +19,12 @@ var uiFS embed.FS
 //go:embed capabilities.example.json
 var exampleCaps []byte
 
+//go:embed playbook.md
+var playbookMD []byte
+
+//go:embed contacts.example.json
+var exampleContacts []byte
+
 // Options configure a workspace run.
 type Options struct {
 	Port     int
@@ -29,21 +35,24 @@ type Options struct {
 // Pursuit is Jesse's private state for one opportunity. Title/Agency/URL let a
 // seeded or manually-added pursuit render even when no live opportunity matches.
 type Pursuit struct {
-	Stage    string `json:"stage"`              // watching|qualifying|drafting|submitted|won|lost|pass
+	Stage    string `json:"stage"`              // see transition.go Stages (lifecycle to revenue)
 	Decision string `json:"decision,omitempty"` // bid|no-bid
 	Notes    string `json:"notes,omitempty"`
 	Title    string `json:"title,omitempty"`
 	Agency   string `json:"agency,omitempty"`
 	URL      string `json:"url,omitempty"`
+	Value    int    `json:"value,omitempty"` // estimated lifetime value, $K (Phase I→II→bridge→PoR)
+	Walls    Walls  `json:"walls,omitempty"` // four-walls transition-readiness scorecard
 	Updated  string `json:"updated,omitempty"`
 }
 
 type server struct {
-	opts  Options
-	mu    sync.Mutex
-	opps  []Opportunity
-	caps  *Capabilities
-	state map[string]Pursuit
+	opts     Options
+	mu       sync.Mutex
+	opps     []Opportunity
+	caps     *Capabilities
+	sponsors *SponsorBook
+	state    map[string]Pursuit
 }
 
 // Run ingests + scores opportunities and serves the private dashboard locally.
@@ -62,6 +71,7 @@ func Run(o Options) error {
 	}
 	s := &server{opts: o, state: map[string]Pursuit{}}
 	s.caps = s.loadCaps()
+	s.sponsors = LoadSponsors(o.Dir)
 	s.loadState()
 	s.ingest()
 
@@ -71,6 +81,11 @@ func Run(o Options) error {
 	mux.HandleFunc("/api/refresh", s.hRefresh)
 	mux.HandleFunc("/api/assist", s.hAssist)
 	mux.HandleFunc("/api/assist-status", s.hAssistStatus)
+	mux.HandleFunc("/api/playbook", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+		w.Write(playbookMD)
+	})
+	mux.HandleFunc("/api/profit", s.hProfit)
 	mux.HandleFunc("/", s.hStatic)
 
 	addr := fmt.Sprintf("127.0.0.1:%d", o.Port)
@@ -150,6 +165,46 @@ func (s *server) hOpps(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, s.opps)
 }
 
+// hProfit weights each pursuit's estimated value by its lifecycle conversion
+// probability so Jesse sees expected revenue and where money actually converts.
+func (s *server) hProfit(w http.ResponseWriter, _ *http.Request) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	type row struct {
+		Stage    string  `json:"stage"`
+		Count    int     `json:"count"`
+		Value    int     `json:"value"`
+		Weighted int     `json:"weighted"`
+		Prob     float64 `json:"prob"`
+	}
+	agg := map[string]*row{}
+	totalVal, ev := 0, 0.0
+	for _, p := range s.state {
+		st := p.Stage
+		if st == "" {
+			st = "watching"
+		}
+		a := agg[st]
+		if a == nil {
+			a = &row{Stage: st, Prob: stageProb[st]}
+			agg[st] = a
+		}
+		a.Count++
+		a.Value += p.Value
+		w := float64(p.Value) * stageProb[st]
+		a.Weighted += int(w)
+		totalVal += p.Value
+		ev += w
+	}
+	var rows []row
+	for _, st := range Stages {
+		if a, ok := agg[st]; ok {
+			rows = append(rows, *a)
+		}
+	}
+	writeJSON(w, map[string]any{"stages": rows, "total_value": totalVal, "expected_value": int(ev)})
+}
+
 func (s *server) hState(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		var in struct {
@@ -163,7 +218,9 @@ func (s *server) hState(w http.ResponseWriter, r *http.Request) {
 		s.mu.Lock()
 		p := in.Pursuit
 		p.Updated = time.Now().UTC().Format(time.RFC3339)
-		if p.Stage == "" && p.Decision == "" && p.Notes == "" {
+		empty := p.Stage == "" && p.Decision == "" && p.Notes == "" && p.Value == 0 &&
+			p.Walls == (Walls{})
+		if empty {
 			delete(s.state, in.ID) // clearing a pursuit removes it
 		} else {
 			s.state[in.ID] = p

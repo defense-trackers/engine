@@ -29,9 +29,11 @@ type Opportunity struct {
 	Closes    string `json:"closes,omitempty"` // YYYY-MM-DD ("" = none/rolling)
 	AwardText string `json:"award_text,omitempty"`
 	Setaside  string `json:"setaside,omitempty"`
-	URL       string `json:"url,omitempty"`
-	DetailRef string `json:"detail_ref,omitempty"` // DSIP topicId, for lazy full-text fetch
-	Text      string `json:"-"`                     // searchable blob (title+agency+type+notes); not serialized
+	URL       string    `json:"url,omitempty"`
+	DetailRef string    `json:"detail_ref,omitempty"` // DSIP topicId, for lazy full-text fetch
+	Contacts  []Contact `json:"contacts,omitempty"`   // real government POCs from the source
+	Channel   string    `json:"channel,omitempty"`    // the sanctioned engagement channel (e.g. SBIR Q&A window)
+	Text      string    `json:"-"`                    // searchable blob; not serialized
 
 	// scoring (filled by Score)
 	Score        int    `json:"score"`
@@ -42,6 +44,14 @@ type Opportunity struct {
 	MatchedAsset string `json:"matched_asset,omitempty"`
 	DaysLeft     int    `json:"days_left"` // -1 when no/unparseable close date
 	ActNow       bool   `json:"act_now"`
+}
+
+// Contact is a real, source-provided government point of contact (e.g. a DSIP
+// topic's TPOC). Never fabricated — only what the source publishes.
+type Contact struct {
+	Name  string `json:"name"`
+	Email string `json:"email,omitempty"`
+	Role  string `json:"role,omitempty"`
 }
 
 // readJSON fetches bytes from an http(s) URL or a local file path.
