@@ -1,0 +1,36 @@
+{
+  "id": "pipeline-sam-autonomy",
+  "tracker": "pipeline",
+  "method": "api",
+  "url": "https://api.sam.gov/prod/opportunities/v2/search",
+  "enabled": true,
+  "cadence_hours": 24,
+  "rate_limit_ms": 1500,
+  "auth_env": "SAM_API_KEY",
+  "auth_mode": "header:X-Api-Key",
+  "query": {
+    "limit": "100",
+    "postedFrom": "{{today_us-180d}}",
+    "postedTo": "{{today_us}}",
+    "title": "autonomous"
+  },
+  "array_path": "opportunitiesData",
+  "key_field": "noticeId",
+  "field_map": {
+    "title": "title",
+    "agency": "fullParentPathName",
+    "posted": "postedDate",
+    "closes": "responseDeadLine",
+    "number": "solicitationNumber",
+    "type": "type",
+    "setaside": "typeOfSetAsideDescription",
+    "url": "uiLink"
+  },
+  "include": ["Defense", "Air Force", "Army", "Navy", "Space", "DARPA", "Marine Corps"],
+  "include_fields": ["fullParentPathName"],
+  "exclude": ["Award Notice", "Justification", "Radiology", "Clinical", "Dental", "Nursing", "Behavioral Health", "Medical Center", "Pharmac"],
+  "date_field": "closes",
+  "min_records": 0,
+  "max_delta_pct": 100,
+  "notes": "SAM.gov contract opportunities, title 'autonomous', DoD-filtered. Autonomy + tiny-ML edge domain."
+}

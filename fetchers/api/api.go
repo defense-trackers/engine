@@ -135,7 +135,7 @@ func buildURL(c core.Contract, page int) string {
 	}
 	q := u.Query()
 	for k, v := range c.Query {
-		q.Set(k, v)
+		q.Set(k, expandDates(v))
 	}
 	if c.Paginate == "page" {
 		q.Set("page", fmt.Sprint(page))
@@ -159,9 +159,20 @@ func buildURL(c core.Contract, page int) string {
 // (lower rate limit) rather than failing, so local runs work without secrets.
 func authHeaders(c core.Contract) map[string]string {
 	h := map[string]string{}
-	if c.AuthMode == "header" {
+	switch {
+	case c.AuthMode == "header":
 		if v := os.Getenv(c.AuthEnv); v != "" {
 			h["Authorization"] = "Bearer " + v
+		}
+	case strings.HasPrefix(c.AuthMode, "header:"):
+		// header:X-Api-Key injects the raw token under a custom header (no Bearer
+		// prefix). Keeping the key in a header instead of the query string means
+		// it never appears in a URL, so it can't leak into error messages or the
+		// public status.json. Used for SAM.gov / api.data.gov.
+		if name := strings.TrimPrefix(c.AuthMode, "header:"); name != "" {
+			if v := os.Getenv(c.AuthEnv); v != "" {
+				h[name] = v
+			}
 		}
 	}
 	if strings.EqualFold(c.HTTPMethod, "POST") {
@@ -311,19 +322,24 @@ func applyURLTemplate(tmpl string, m map[string]interface{}) string {
 	})
 }
 
-var dateTok = regexp.MustCompile(`\{\{today(?:-(\d+)d)?\}\}`)
+var dateTok = regexp.MustCompile(`\{\{today(_us)?(?:-(\d+)d)?\}\}`)
 
-// expandDates replaces {{today}} and {{today-Nd}} with YYYY-MM-DD so rolling
-// query windows (e.g. USAspending) stay current with no manual edits.
+// expandDates replaces date tokens so rolling query windows stay current with no
+// manual edits: {{today}} / {{today-Nd}} emit YYYY-MM-DD (USAspending, grants.gov);
+// {{today_us}} / {{today_us-Nd}} emit MM/DD/YYYY (SAM.gov postedFrom/postedTo).
 func expandDates(s string) string {
 	return dateTok.ReplaceAllStringFunc(s, func(tok string) string {
 		sub := dateTok.FindStringSubmatch(tok)
+		layout := "2006-01-02"
+		if sub[1] == "_us" {
+			layout = "01/02/2006"
+		}
 		d := time.Now().UTC()
-		if sub[1] != "" {
-			if n, err := strconv.Atoi(sub[1]); err == nil {
+		if sub[2] != "" {
+			if n, err := strconv.Atoi(sub[2]); err == nil {
 				d = d.AddDate(0, 0, -n)
 			}
 		}
-		return d.Format("2006-01-02")
+		return d.Format(layout)
 	})
 }
