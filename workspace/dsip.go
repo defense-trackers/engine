@@ -76,6 +76,7 @@ func FetchDSIP() ([]Opportunity, error) {
 				Setaside:  "SBIR/STTR (small business)",
 				AwardText: t.SolicitationNum + " " + phaseSummary(t.PhaseHierarchy),
 				URL:       "https://www.dodsbirsttr.mil/topics-app/#/topics/" + t.TopicID,
+				DetailRef: t.TopicID,
 			}
 			o.Text = strings.ToLower(strings.Join([]string{
 				o.Title, o.Agency, o.Type, t.SolicitationTitle, o.Status, o.Setaside,
@@ -87,6 +88,74 @@ func FetchDSIP() ([]Opportunity, error) {
 		}
 	}
 	return out, nil
+}
+
+// FetchDSIPDetail pulls a topic's full objective/description/phase text so the
+// assistant reads the real requirements, not just the title. Best-effort.
+func FetchDSIPDetail(topicID string) string {
+	if topicID == "" {
+		return ""
+	}
+	u := "https://www.dodsbirsttr.mil/topics/api/public/topics/" + url.PathEscape(topicID) + "/details"
+	req, _ := http.NewRequest("GET", u, nil)
+	req.Header.Set("User-Agent", "Mozilla/5.0 (defense-trackers-workspace)")
+	req.Header.Set("Accept", "application/json")
+	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return ""
+	}
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	var d struct {
+		Objective        string `json:"objective"`
+		Description      string `json:"description"`
+		Phase1Description string `json:"phase1Description"`
+		Keywords         string `json:"keywords"`
+		ITAR             string `json:"itar"`
+	}
+	if json.Unmarshal(body, &d) != nil {
+		return ""
+	}
+	parts := []string{}
+	add := func(label, v string) {
+		if strings.TrimSpace(v) != "" {
+			parts = append(parts, label+": "+stripHTML(v))
+		}
+	}
+	add("OBJECTIVE", d.Objective)
+	add("DESCRIPTION", d.Description)
+	add("PHASE I", d.Phase1Description)
+	add("KEYWORDS", d.Keywords)
+	add("ITAR", d.ITAR)
+	out := strings.Join(parts, "\n\n")
+	if len(out) > 9000 {
+		out = out[:9000] + "…"
+	}
+	return out
+}
+
+// stripHTML removes tags so topic bodies read cleanly in the prompt.
+func stripHTML(s string) string {
+	var b strings.Builder
+	depth := 0
+	for _, r := range s {
+		switch r {
+		case '<':
+			depth++
+		case '>':
+			if depth > 0 {
+				depth--
+			}
+		default:
+			if depth == 0 {
+				b.WriteRune(r)
+			}
+		}
+	}
+	return strings.Join(strings.Fields(b.String()), " ")
 }
 
 func epochMS(ms int64) string {

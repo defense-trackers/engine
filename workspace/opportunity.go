@@ -30,7 +30,8 @@ type Opportunity struct {
 	AwardText string `json:"award_text,omitempty"`
 	Setaside  string `json:"setaside,omitempty"`
 	URL       string `json:"url,omitempty"`
-	Text      string `json:"-"` // searchable blob (title+agency+type+notes); not serialized
+	DetailRef string `json:"detail_ref,omitempty"` // DSIP topicId, for lazy full-text fetch
+	Text      string `json:"-"`                     // searchable blob (title+agency+type+notes); not serialized
 
 	// scoring (filled by Score)
 	Score        int    `json:"score"`

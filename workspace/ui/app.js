@@ -17,14 +17,111 @@ const COLS = [
   { key: 'decided', label: 'Decided', match: ['won', 'lost', 'pass'] },
 ];
 
+let ASSIST = { enabled: false, model: '' };
+let CUR_OPP = null;
+
 async function boot() {
   await load();
+  ASSIST = await fetch('/api/assist-status').then((r) => r.json()).catch(() => ({ enabled: false }));
   document.querySelectorAll('.tab').forEach((t) =>
     t.addEventListener('click', () => { VIEW = t.dataset.view; setActive(); render(); }));
   $('#refresh').addEventListener('click', async (e) => {
     e.target.textContent = '…'; await fetch('/api/refresh', { method: 'POST' }); await load(); render(); e.target.textContent = '↻ Refresh';
   });
+  $('#assist-close').addEventListener('click', closeAssist);
+  $('#overlay').addEventListener('click', closeAssist);
+  $('#assist-send').addEventListener('click', () => sendAssist());
+  $('#assist-input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAssist(); } });
   render();
+}
+
+// ---- Claude bid assistant ----
+const QUICK = [
+  { a: 'bidpass', label: 'Bid or pass?' },
+  { a: 'wintheme', label: 'Win theme' },
+  { a: 'outline', label: 'Outline volume' },
+  { a: 'draft', label: 'Draft tech approach' },
+  { a: 'gaps', label: 'Gaps' },
+];
+
+function convo(id) { try { return JSON.parse(localStorage.getItem('assist:' + id) || '[]'); } catch { return []; } }
+function saveConvo(id, h) { localStorage.setItem('assist:' + id, JSON.stringify(h.slice(-20))); }
+
+function openAssist(o) {
+  CUR_OPP = o;
+  $('#assist-title').textContent = o.title;
+  $('#assist-meta').innerHTML = [o.source, o.type, o.agency, o.matched_asset ? 'fit: ' + o.matched_asset : '', daysLabel(o)].filter(Boolean).join(' · ');
+  const qa = $('#assist-qa'); qa.textContent = '';
+  if (ASSIST.enabled) {
+    QUICK.forEach((q) => { const b = el('button', null, q.label); b.addEventListener('click', () => sendAssist(q.a)); qa.append(b); });
+    const d = el('button', 'mv', '→ Drafting'); d.addEventListener('click', () => moveStage(o, 'drafting')); qa.append(d);
+    const s = el('button', 'mv', '→ Submitted'); s.addEventListener('click', () => moveStage(o, 'submitted')); qa.append(s);
+  }
+  renderThread();
+  $('#overlay').style.display = 'block';
+  $('#assist').classList.add('open');
+}
+function closeAssist() { $('#assist').classList.remove('open'); $('#overlay').style.display = 'none'; CUR_OPP = null; }
+
+function renderThread() {
+  const t = $('#thread'); t.textContent = '';
+  if (!ASSIST.enabled) {
+    t.innerHTML = `<div class="disabled-note">Claude isn't connected yet. Set <b>ANTHROPIC_API_KEY</b> in your environment and restart the workspace:<br><br><code>set ANTHROPIC_API_KEY=sk-ant-…</code><br><code>go run . workspace</code><br><br>The key stays on this machine — it's never published.</div>`;
+    return;
+  }
+  convo(CUR_OPP.id).forEach((m) => {
+    const d = el('div', 'msg ' + (m.role === 'user' ? 'u' : 'a'));
+    d.textContent = (m.role === 'user' ? '› ' : '') + m.content;
+    t.append(d);
+  });
+  t.scrollTop = t.scrollHeight;
+}
+
+async function moveStage(o, stage) {
+  await saveState(o.id, { stage }, { title: o.title, agency: o.agency, url: o.url });
+  const d = el('div', 'msg a'); d.textContent = `✓ Moved to ${stage}.`; $('#thread').append(d);
+  $('#thread').scrollTop = $('#thread').scrollHeight;
+}
+
+async function sendAssist(action) {
+  if (!ASSIST.enabled || !CUR_OPP) return;
+  const input = $('#assist-input');
+  const message = action ? '' : input.value.trim();
+  if (!action && !message) return;
+  const id = CUR_OPP.id;
+  const hist = convo(id);
+  const userLabel = action ? QUICK.find((q) => q.a === action)?.label || action : message;
+  hist.push({ role: 'user', content: userLabel });
+  saveConvo(id, hist);
+  input.value = '';
+  renderThread();
+
+  const ans = el('div', 'msg a'); ans.textContent = '…'; $('#thread').append(ans); $('#thread').scrollTop = 1e9;
+  let acc = '';
+  try {
+    const resp = await fetch('/api/assist', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ opp_id: id, action: action || '', message,
+        history: convo(id).slice(0, -1).map((m) => ({ role: m.role, content: m.content })) }),
+    });
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const parts = buf.split('\n\n'); buf = parts.pop();
+      for (const p of parts) {
+        const line = p.replace(/^data:\s*/, '').trim();
+        if (!line) continue;
+        let ev; try { ev = JSON.parse(line); } catch { continue; }
+        if (ev.error) { ans.className = 'msg err'; ans.textContent = ev.error; }
+        else if (ev.t) { acc += ev.t; ans.textContent = acc; $('#thread').scrollTop = 1e9; }
+      }
+    }
+  } catch (e) { ans.className = 'msg err'; ans.textContent = 'stream failed: ' + e.message; }
+  if (acc) { const h = convo(id); h.push({ role: 'assistant', content: acc }); saveConvo(id, h); }
 }
 
 async function load() {
@@ -94,7 +191,11 @@ function oppCard(o, now) {
     `<span class="bar">elig <b>${o.eligibility}</b></span>` +
     `<span class="bar">runway <b>${o.runway}</b></span>` +
     `<span class="bar">value <b>${o.value}</b></span>`;
-  card.append(top, bars, controls(o.id));
+  const row = el('div', 'ctl');
+  const realize = el('button', 'realize', '◎ Realize with Claude');
+  realize.addEventListener('click', () => openAssist(o));
+  row.append(realize);
+  card.append(top, bars, controls(o.id), row);
   return card;
 }
 

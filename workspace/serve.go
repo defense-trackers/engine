@@ -69,6 +69,8 @@ func Run(o Options) error {
 	mux.HandleFunc("/api/opportunities", s.hOpps)
 	mux.HandleFunc("/api/state", s.hState)
 	mux.HandleFunc("/api/refresh", s.hRefresh)
+	mux.HandleFunc("/api/assist", s.hAssist)
+	mux.HandleFunc("/api/assist-status", s.hAssistStatus)
 	mux.HandleFunc("/", s.hStatic)
 
 	addr := fmt.Sprintf("127.0.0.1:%d", o.Port)
