@@ -3,10 +3,10 @@
   "tracker": "authorizations",
   "method": "rss",
   "url": "https://news.google.com/rss/search?q=%22Impact+Level+5%22+OR+%22IL5%22+DISA+authorization&hl=en-US&gl=US&ceid=US:en",
-  "enabled": true,
+  "enabled": false,
   "cadence_hours": 12,
   "rate_limit_ms": 1000,
   "min_records": 1,
   "max_delta_pct": 100,
-  "notes": "Google News PR monitoring for DoD IL authorization announcements. Confirmed working feed. The full query URL is the source — no query merging."
+  "notes": "Google News PR monitoring for DoD IL authorization announcements. Confirmed working feed. The full query URL is the source \u00e2\u20ac\u201d no query merging. DISABLED: Google News RSS returns 503 from datacenter IPs \u2014 chronically unreliable"
 }

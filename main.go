@@ -86,6 +86,11 @@ func cmdFetch(args []string) int {
 	if dr := core.PublishDeadlinesFromCloses(*out, *quarantine); dr.Source != "" {
 		fmt.Printf("  aggregate  deadlines              +%d -%d ~%d\n", dr.Added, dr.Removed, dr.Changed)
 	}
+	// On a full run, drop status/records for sources no longer enabled so a retired
+	// source doesn't linger as a permanent "needs attention" or leave stale rows.
+	if *only == "" {
+		core.PruneOrphans(*out, cs)
+	}
 	if err := core.WriteMetrics(*out); err != nil {
 		fmt.Fprintln(os.Stderr, "metrics:", err)
 	}

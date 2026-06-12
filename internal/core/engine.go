@@ -152,6 +152,58 @@ func CommitRecords(c Contract, recs []Record, outDir, cacheDir, quarantineDir st
 	return res
 }
 
+// syntheticSources are source IDs produced by aggregators (not contracts); prune
+// must preserve them.
+var syntheticSources = map[string]bool{"deadlines-solicitations": true}
+
+// PruneOrphans removes status entries and current.json records for sources that
+// are no longer enabled (disabled or deleted contracts), so a retired source
+// doesn't linger as a permanent "needs attention" or leave stale rows in a
+// tracker. Enabled-but-failing sources stay (they're still in the set).
+func PruneOrphans(outDir string, contracts []Contract) {
+	keep := map[string]bool{}
+	for id := range syntheticSources {
+		keep[id] = true
+	}
+	for _, c := range contracts {
+		if c.Enabled {
+			keep[c.ID] = true
+		}
+	}
+	// prune status entries
+	st := readStatus(outDir)
+	stChanged := false
+	for id := range st {
+		if !keep[id] {
+			delete(st, id)
+			stChanged = true
+		}
+	}
+	if stChanged {
+		_ = writeStatus(outDir, st)
+	}
+	// prune orphaned records from each tracker snapshot
+	for _, t := range ListTrackers(outDir) {
+		cur, err := loadCurrent(outDir, t)
+		if err != nil || cur == nil {
+			continue
+		}
+		kept := make([]Record, 0, len(cur.Records))
+		removed := false
+		for _, r := range cur.Records {
+			if r.Source == "" || keep[r.Source] {
+				kept = append(kept, r)
+			} else {
+				removed = true
+			}
+		}
+		if removed {
+			cur.Records = kept
+			_ = writeCurrent(outDir, *cur)
+		}
+	}
+}
+
 // dropExpired removes records whose date field is strictly before today (UTC).
 // Records with no/unparseable date are kept (e.g. rolling solicitations).
 func dropExpired(recs []Record, field string) []Record {
@@ -191,8 +243,11 @@ func dedupByURL(recs []Record) []Record {
 // and keeps last-good live; it never publishes suspect data.
 func Validate(c Contract, old *State, recs []Record) error {
 	min := c.MinRecords
-	if min == 0 && !c.AllowEmpty {
-		min = 1 // default floor, unless the contract opts into honest-empty results
+	if min == 0 {
+		min = 1 // default floor
+	}
+	if c.AllowEmpty {
+		min = 0 // opt-in: a successful 0-record result is honest, not a failure
 	}
 	if len(recs) < min {
 		return fmt.Errorf("invariant: %d records below minimum %d", len(recs), min)

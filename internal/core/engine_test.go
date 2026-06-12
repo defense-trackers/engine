@@ -76,4 +76,8 @@ func TestValidateAllowEmpty(t *testing.T) {
 	if err := Validate(Contract{AllowEmpty: true}, nil, nil); err != nil {
 		t.Fatalf("allow_empty should accept 0 records, got %v", err)
 	}
+	// allow_empty must override an explicit min_records: 1 (the bug this guards).
+	if err := Validate(Contract{MinRecords: 1, AllowEmpty: true}, nil, nil); err != nil {
+		t.Fatalf("allow_empty should override min_records=1, got %v", err)
+	}
 }

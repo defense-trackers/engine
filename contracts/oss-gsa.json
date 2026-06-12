@@ -3,7 +3,7 @@
   "tracker": "oss-index",
   "method": "api",
   "url": "https://api.github.com/orgs/GSA/repos",
-  "enabled": true,
+  "enabled": false,
   "cadence_hours": 24,
   "rate_limit_ms": 2000,
   "auth_env": "GITHUB_TOKEN",
@@ -25,7 +25,7 @@
   ],
   "min_records": 1,
   "max_delta_pct": 100,
-  "notes": "GSA GitHub org (gov digital services), non-archived, most-recent 100.",
+  "notes": "GSA GitHub org (gov digital services), non-archived, most-recent 100. DISABLED: GSA digital services, not defense",
   "recent_field": "pushed_at",
   "recent_days": 365,
   "include": [
