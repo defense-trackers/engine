@@ -179,21 +179,28 @@ func anchorChainHead(trackerDir string) {
 	}
 }
 
-// verifyTrustAnchors checks the trust artifacts for one tracker dir when present.
-// It returns a non-empty reason if an artifact exists but does not match the
-// current CHAIN head (e.g. the head was rewritten but the old timestamp kept).
-// Absent artifacts are not an error — anchoring is optional.
-func verifyTrustAnchors(trackerDir string) string {
-	chainBytes, err := os.ReadFile(filepath.Join(trackerDir, "CHAIN"))
-	if err != nil {
+// verifyTrustAnchors checks a tracker's RFC 3161 timestamp (when present) against
+// the chain's history. `heads` is the sequence of running heads re-derived from the
+// events (oldest→newest); the CHAIN file holds `head + "\n"`, so each head's
+// timestamp imprint is sha256(head + "\n"). A stored token must commit to one of
+// those real historical heads:
+//
+//   - a coordinated history rewrite changes every downstream head, so the token
+//     (which the maintainer cannot re-mint at the TSA) matches none → flagged;
+//   - a legitimate append made while the TSA was briefly unreachable leaves the
+//     token committing to a slightly older but still-real head → not flagged.
+//
+// Absent token = no error (anchoring is best-effort/optional).
+func verifyTrustAnchors(trackerDir string, heads []string) string {
+	tsr, err := os.ReadFile(filepath.Join(trackerDir, "CHAIN.tsr"))
+	if err != nil || len(tsr) == 0 {
 		return ""
 	}
-	tsrPath := filepath.Join(trackerDir, "CHAIN.tsr")
-	if tsr, err := os.ReadFile(tsrPath); err == nil && len(tsr) > 0 {
-		h := sha256.Sum256(chainBytes)
-		if !timestampCommitsTo(tsr, h[:]) {
-			return "timestamp does not match current head"
+	for _, h := range heads {
+		imprint := sha256.Sum256([]byte(h + "\n"))
+		if timestampCommitsTo(tsr, imprint[:]) {
+			return "" // token commits to a real head in this history
 		}
 	}
-	return ""
+	return "timestamp matches no head in the chain — history may have been rewritten"
 }

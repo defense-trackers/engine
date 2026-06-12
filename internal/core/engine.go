@@ -350,6 +350,7 @@ func VerifyChain(outDir, tracker string) ([]string, error) {
 		}
 		sort.Strings(files)
 		running := "genesis"
+		heads := []string{} // every running head, for the timestamp-anchor check
 		valid := true
 		for _, fp := range files {
 			b, err := os.ReadFile(fp)
@@ -368,6 +369,7 @@ func VerifyChain(outDir, tracker string) ([]string, error) {
 				}
 				h := sha256.Sum256([]byte(line))
 				running = hex.EncodeToString(h[:])
+				heads = append(heads, running)
 			}
 			if !valid {
 				break
@@ -377,11 +379,12 @@ func VerifyChain(outDir, tracker string) ([]string, error) {
 		if err != nil || strings.TrimSpace(string(head)) != running {
 			valid = false
 		}
-		// When a trust anchor is present, the stored RFC 3161 timestamp must
-		// commit to the current head — catches a head rewritten without (or with
-		// a stale) timestamp, which a bare hash chain alone cannot detect.
+		// The RFC 3161 timestamp (when present) must commit to one of the real
+		// historical heads — catches a coordinated history rewrite that the bare
+		// hash chain alone cannot detect, without false-alarming on a legit append
+		// made while the TSA was briefly unreachable.
 		if valid {
-			if reason := verifyTrustAnchors(trackerDir(outDir, t)); reason != "" {
+			if reason := verifyTrustAnchors(trackerDir(outDir, t), heads); reason != "" {
 				valid = false
 			}
 		}

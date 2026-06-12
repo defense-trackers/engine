@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/asn1"
+	"encoding/hex"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +12,22 @@ import (
 	"path/filepath"
 	"testing"
 )
+
+// mockTSA returns an httptest server that echoes each request's imprint as a
+// minimal token committing to it — lets the full anchor path run hermetically.
+func mockTSA(t *testing.T) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		var req tsRequest
+		if _, err := asn1.Unmarshal(body, &req); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		tok := append([]byte{0x30, 0x22, 0x04, 0x20}, req.MessageImprint.HashedMessage...)
+		w.Write(tok)
+	}))
+}
 
 func TestWriteFileAtomicRoundTrip(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "sub", "f.json")
@@ -93,22 +110,36 @@ func TestTimestampCommitsTo(t *testing.T) {
 	}
 }
 
-func TestVerifyTrustAnchorsTimestampMismatch(t *testing.T) {
+func tokenFor(head string) []byte {
+	imp := sha256.Sum256([]byte(head + "\n"))
+	return append([]byte{0x30, 0x22, 0x04, 0x20}, imp[:]...)
+}
+
+func TestVerifyTrustAnchorsHistory(t *testing.T) {
 	td := filepath.Join(t.TempDir(), "data", "tk")
 	os.MkdirAll(td, 0o755)
-	os.WriteFile(filepath.Join(td, "CHAIN"), []byte("abc\n"), 0o644)
-	h := sha256.Sum256([]byte("abc\n"))
-	// matching token → no complaint
-	tok := append([]byte{0x04, 0x20}, h[:]...)
-	os.WriteFile(filepath.Join(td, "CHAIN.tsr"), tok, 0o644)
-	if r := verifyTrustAnchors(td); r != "" {
-		t.Fatalf("matching timestamp flagged: %q", r)
+	heads := []string{"headA", "headB"} // oldest→newest
+
+	// token committing to the latest head → fine
+	os.WriteFile(filepath.Join(td, "CHAIN.tsr"), tokenFor("headB"), 0o644)
+	if r := verifyTrustAnchors(td, heads); r != "" {
+		t.Fatalf("current-head timestamp flagged: %q", r)
 	}
-	// stale token (commits to a different head) → flagged
-	wrong := sha256.Sum256([]byte("rewritten\n"))
-	os.WriteFile(filepath.Join(td, "CHAIN.tsr"), append([]byte{0x04, 0x20}, wrong[:]...), 0o644)
-	if r := verifyTrustAnchors(td); r == "" {
-		t.Fatal("stale timestamp not flagged — head could be rewritten undetected")
+	// token committing to an older but real head (legit append while TSA was
+	// down) → still fine, no false alarm
+	os.WriteFile(filepath.Join(td, "CHAIN.tsr"), tokenFor("headA"), 0o644)
+	if r := verifyTrustAnchors(td, heads); r != "" {
+		t.Fatalf("older-but-real head timestamp flagged (false positive): %q", r)
+	}
+	// token committing to a head that no longer exists (coordinated rewrite) → flagged
+	os.WriteFile(filepath.Join(td, "CHAIN.tsr"), tokenFor("rewritten-head"), 0o644)
+	if r := verifyTrustAnchors(td, heads); r == "" {
+		t.Fatal("rewritten history not flagged — timestamp anchor not protecting")
+	}
+	// no token → not an error (anchoring optional)
+	os.Remove(filepath.Join(td, "CHAIN.tsr"))
+	if r := verifyTrustAnchors(td, heads); r != "" {
+		t.Fatalf("absent token treated as error: %q", r)
 	}
 }
 
@@ -158,6 +189,44 @@ func TestSignChainHeadUnsetIsNoop(t *testing.T) {
 	out, err := signChainHead("whatever")
 	if err != nil || out != nil {
 		t.Fatalf("unset SIGNET_CMD should be a no-op, got %q %v", out, err)
+	}
+}
+
+// TestCoordinatedRewriteCaughtByTimestamp is the differentiator: an attacker who
+// controls the repo edits an event AND recomputes CHAIN so the bare hash chain
+// still verifies — but cannot re-mint the TSA token, so the timestamp anchor
+// catches the rewrite. Runs hermetically against a mock TSA.
+func TestCoordinatedRewriteCaughtByTimestamp(t *testing.T) {
+	srv := mockTSA(t)
+	defer srv.Close()
+	t.Setenv("TSA_URL", srv.URL)
+
+	dir := t.TempDir()
+	if err := appendEvents(dir, "tk", Diff(nil, []Record{rec("a", "alpha")}, "src", "2026-01-01T00:00:00Z")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "data", "tk", "CHAIN.tsr")); err != nil {
+		t.Fatal("anchor path did not write CHAIN.tsr")
+	}
+	if bad, _ := VerifyChain(dir, "tk"); len(bad) != 0 {
+		t.Fatalf("clean chain failed verify: %v", bad)
+	}
+
+	// coordinated rewrite: change the event line AND fix CHAIN to match it
+	evPath := mustGlobOne(t, dir, "tk")
+	raw, _ := os.ReadFile(evPath)
+	line := bytes.TrimRight(raw, "\n")
+	rewritten := bytes.Replace(line, []byte("alpha"), []byte("AAAAA"), 1)
+	if bytes.Equal(line, rewritten) {
+		t.Fatal("setup: event line unchanged")
+	}
+	os.WriteFile(evPath, append(rewritten, '\n'), 0o644)
+	h := sha256.Sum256(rewritten)
+	os.WriteFile(filepath.Join(dir, "data", "tk", "CHAIN"), []byte(hex.EncodeToString(h[:])+"\n"), 0o644)
+
+	bad, _ := VerifyChain(dir, "tk")
+	if len(bad) == 0 {
+		t.Fatal("coordinated rewrite NOT caught — the timestamp anchor failed its one job")
 	}
 }
 
