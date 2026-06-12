@@ -8,11 +8,28 @@
   "rate_limit_ms": 1000,
   "array_path": "data.Products",
   "key_field": "id",
-  "field_map": { "title": "cso", "status": "status", "impact": "impact_level", "model": "service_model", "assessor": "independent_assessor", "date": "auth_date", "url": "website" },
-  "include": ["artificial intelligence", "machine learning", "ai/ml", "genai", "generative ai", "llm"],
+  "field_map": {
+    "title": "cso",
+    "status": "status",
+    "impact": "impact_level",
+    "model": "service_model",
+    "assessor": "independent_assessor",
+    "date": "auth_date",
+    "url": "website"
+  },
+  "include": [
+    "artificial intelligence",
+    "machine learning",
+    "ai/ml",
+    "genai",
+    "generative ai",
+    "llm"
+  ],
   "default_url": "https://marketplace.fedramp.gov/products",
   "date_field": "date",
   "min_records": 1,
   "max_delta_pct": 100,
-  "notes": "FedRAMP authorized products (659) filtered to AI/ML platforms via include over the product JSON (matches service descriptions). Confirmed shape (data.Products[])."
+  "notes": "FedRAMP cloud authorizations from the last ~4 years \u2014 the IL-deployable platforms a defense AI builder can actually buy onto. (Not AI-only; it is the live FedRAMP marketplace, recency-filtered to drop long-stale entries.)",
+  "recent_field": "auth_date",
+  "recent_days": 1460
 }

@@ -42,7 +42,7 @@ type Contract struct {
 	FieldMap   map[string]string `json:"field_map,omitempty"`   // output field -> source dot-path
 	Query      map[string]string `json:"query,omitempty"`       // extra query params
 	AuthEnv    string            `json:"auth_env,omitempty"`    // env var holding a token/key
-	AuthMode   string            `json:"auth_mode,omitempty"`   // "header" (Bearer) | "query:<name>"
+	AuthMode   string            `json:"auth_mode,omitempty"`   // "header" (Bearer) | "header:<Name>" (raw value). No query-string auth — keys never go in a URL.
 	Paginate   string            `json:"paginate,omitempty"`    // "page" | "link" | "" (single)
 	PerPage    int               `json:"per_page,omitempty"`    // page size for paginate=page
 	MaxPages   int               `json:"max_pages,omitempty"`   // hard cap on pages fetched
@@ -50,6 +50,8 @@ type Contract struct {
 	ExcludeFields []string `json:"exclude_fields,omitempty"` // restrict the exclude match to these field paths (precision); empty = whole item
 	Include      []string `json:"include,omitempty"`       // keep ONLY items containing at least one of these
 	IncludeFields []string `json:"include_fields,omitempty"` // restrict the include match to these field paths (precision); empty = whole item
+	RecentField  string  `json:"recent_field,omitempty"`  // item date field; with recent_days, drop items older than the cutoff (e.g. pushed_at)
+	RecentDays   int     `json:"recent_days,omitempty"`   // freshness window in days for recent_field (0 = no recency filter)
 	LimitRecords int     `json:"limit_records,omitempty"` // cap to the first N records after mapping (0 = no cap)
 
 	// --- curate method (maintained JSON file) ---
@@ -60,8 +62,9 @@ type Contract struct {
 	DefaultURL  string `json:"default_url,omitempty"`  // fallback source URL for records that still have none
 
 	// --- output options ---
-	EmitICal  bool   `json:"emit_ical,omitempty"`  // also emit feeds/<tracker>.ics
-	DateField string `json:"date_field,omitempty"` // record field holding a date (ical + display)
+	EmitICal    bool   `json:"emit_ical,omitempty"`    // also emit feeds/<tracker>.ics
+	DateField   string `json:"date_field,omitempty"`   // record field holding a date (ical + display)
+	ExpireField string `json:"expire_field,omitempty"` // record field holding a deadline; rows past it are dropped at commit (→ "removed" event)
 
 	Notes string `json:"notes,omitempty"`
 }

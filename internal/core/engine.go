@@ -91,6 +91,11 @@ func CommitRecords(c Contract, recs []Record, outDir, cacheDir, quarantineDir st
 			recs[i].Fields["url"] = c.DefaultURL
 		}
 	}
+	// Drop records past their deadline so the live set is forward-looking. They
+	// stay in the changelog (an expiry shows up as a normal "removed" event).
+	if c.ExpireField != "" {
+		recs = dropExpired(recs, c.ExpireField)
+	}
 
 	// A tracker's current.json may aggregate several sources. Diff and validate
 	// THIS source against only its own prior records; leave the other sources'
@@ -121,6 +126,7 @@ func CommitRecords(c Contract, recs []Record, outDir, cacheDir, quarantineDir st
 	merged := make([]Record, 0, len(others)+len(recs))
 	merged = append(merged, others...)
 	merged = append(merged, recs...)
+	merged = dedupByURL(merged) // collapse the same opportunity surfaced by >1 source
 	st := State{Source: c.Tracker, Tracker: c.Tracker, FetchedAt: now,
 		Schema: SchemaVersion, Records: merged}
 	if err := writeCurrent(outDir, st); err != nil {
@@ -144,6 +150,41 @@ func CommitRecords(c Contract, recs []Record, outDir, cacheDir, quarantineDir st
 		Message: fmt.Sprintf("+%d -%d ~%d", res.Added, res.Removed, res.Changed),
 	})
 	return res
+}
+
+// dropExpired removes records whose date field is strictly before today (UTC).
+// Records with no/unparseable date are kept (e.g. rolling solicitations).
+func dropExpired(recs []Record, field string) []Record {
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	kept := make([]Record, 0, len(recs))
+	for _, r := range recs {
+		if v := r.Fields[field]; v != "" {
+			if d := parseAnyDate(v); !d.IsZero() && d.Before(today) {
+				continue
+			}
+		}
+		kept = append(kept, r)
+	}
+	return kept
+}
+
+// dedupByURL keeps the first record for each normalized non-empty source URL, so
+// the same opportunity surfaced by multiple sources appears once. Records without
+// a URL are always kept.
+func dedupByURL(recs []Record) []Record {
+	seen := map[string]bool{}
+	out := make([]Record, 0, len(recs))
+	for _, r := range recs {
+		u := strings.TrimRight(strings.ToLower(strings.TrimSpace(r.Fields["url"])), "/")
+		if u != "" {
+			if seen[u] {
+				continue
+			}
+			seen[u] = true
+		}
+		out = append(out, r)
+	}
+	return out
 }
 
 // Validate is the never-lie gate. A failed invariant quarantines the batch

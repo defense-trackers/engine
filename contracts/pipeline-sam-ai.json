@@ -26,11 +26,32 @@
     "setaside": "typeOfSetAsideDescription",
     "url": "uiLink"
   },
-  "include": ["Defense", "Air Force", "Army", "Navy", "Space", "DARPA", "Marine Corps"],
-  "include_fields": ["fullParentPathName"],
-  "exclude": ["Award Notice", "Justification", "Radiology", "Clinical", "Dental", "Nursing", "Behavioral Health", "Medical Center", "Pharmac"],
+  "include": [
+    "Defense",
+    "Air Force",
+    "Army",
+    "Navy",
+    "Space",
+    "DARPA",
+    "Marine Corps"
+  ],
+  "include_fields": [
+    "fullParentPathName"
+  ],
+  "exclude": [
+    "Award Notice",
+    "Justification",
+    "Radiology",
+    "Clinical",
+    "Dental",
+    "Nursing",
+    "Behavioral Health",
+    "Medical Center",
+    "Pharmac"
+  ],
   "date_field": "closes",
   "min_records": 0,
   "max_delta_pct": 100,
-  "notes": "SAM.gov contract opportunities (public v2 search), title 'artificial intelligence', DoD-filtered (drops VA/health-agency AI). On-prem AI domain. Key via X-Api-Key header (never in URL)."
+  "notes": "SAM.gov contract opportunities (public v2 search), title 'artificial intelligence', DoD-filtered (drops VA/health-agency AI). On-prem AI domain. Key via X-Api-Key header (never in URL).",
+  "expire_field": "closes"
 }

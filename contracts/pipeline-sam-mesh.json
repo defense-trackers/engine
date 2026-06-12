@@ -26,11 +26,32 @@
     "setaside": "typeOfSetAsideDescription",
     "url": "uiLink"
   },
-  "include": ["Defense", "Air Force", "Army", "Navy", "Space", "DARPA", "Marine Corps"],
-  "include_fields": ["fullParentPathName"],
-  "exclude": ["Award Notice", "Justification", "Radiology", "Clinical", "Dental", "Nursing", "Behavioral Health", "Medical Center", "Pharmac"],
+  "include": [
+    "Defense",
+    "Air Force",
+    "Army",
+    "Navy",
+    "Space",
+    "DARPA",
+    "Marine Corps"
+  ],
+  "include_fields": [
+    "fullParentPathName"
+  ],
+  "exclude": [
+    "Award Notice",
+    "Justification",
+    "Radiology",
+    "Clinical",
+    "Dental",
+    "Nursing",
+    "Behavioral Health",
+    "Medical Center",
+    "Pharmac"
+  ],
   "date_field": "closes",
   "min_records": 0,
   "max_delta_pct": 100,
-  "notes": "SAM.gov contract opportunities, title 'mesh network', DoD-filtered. Mesh-net assurance domain (low volume, high signal)."
+  "notes": "SAM.gov contract opportunities, title 'mesh network', DoD-filtered. Mesh-net assurance domain (low volume, high signal).",
+  "expire_field": "closes"
 }

@@ -104,6 +104,12 @@ func mapItems(items []interface{}, c core.Contract) []core.Record {
 		if len(c.Include) > 0 && !includesScoped(m, c.Include, c.IncludeFields) {
 			continue
 		}
+		if c.RecentField != "" && c.RecentDays > 0 {
+			if d := parseItemDate(stringify(get(m, c.RecentField))); !d.IsZero() &&
+				time.Since(d) > time.Duration(c.RecentDays)*24*time.Hour {
+				continue // older than the freshness window (e.g. an abandoned repo)
+			}
+		}
 		seen[key] = true
 
 		fields := map[string]string{}
@@ -322,6 +328,26 @@ func applyURLTemplate(tmpl string, m map[string]interface{}) string {
 		field := tplTok.FindStringSubmatch(tok)[1]
 		return stringify(get(m, field))
 	})
+}
+
+// parseItemDate parses common API date formats (RFC3339 / ISO date) for the
+// recency filter; returns the zero time when unparseable.
+func parseItemDate(s string) time.Time {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return time.Time{}
+	}
+	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05Z", "2006-01-02"} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t
+		}
+	}
+	if len(s) >= 10 {
+		if t, err := time.Parse("2006-01-02", s[:10]); err == nil {
+			return t
+		}
+	}
+	return time.Time{}
 }
 
 var dateTok = regexp.MustCompile(`\{\{today(_us)?(?:-(\d+)d)?\}\}`)

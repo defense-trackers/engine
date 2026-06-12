@@ -6,15 +6,56 @@
   "enabled": true,
   "cadence_hours": 168,
   "rate_limit_ms": 1000,
-  "query": { "keyword": "\"artificial intelligence\"", "printFields": "id,title,awardeeName,estimatedTotalAmt,startDate,fundProgramName,agency,program,abstractText", "rpp": "50" },
+  "query": {
+    "keyword": "\"artificial intelligence\"",
+    "printFields": "id,title,awardeeName,estimatedTotalAmt,startDate,fundProgramName,agency,program,abstractText",
+    "rpp": "50"
+  },
   "array_path": "response.award",
   "key_field": "id",
-  "field_map": { "title": "title", "awardee": "awardeeName", "amount": "estimatedTotalAmt", "date": "startDate", "program": "fundProgramName", "agency": "agency" },
+  "field_map": {
+    "title": "title",
+    "awardee": "awardeeName",
+    "amount": "estimatedTotalAmt",
+    "date": "startDate",
+    "program": "fundProgramName",
+    "agency": "agency"
+  },
   "url_template": "https://www.nsf.gov/awardsearch/showAward?AWD_ID={id}",
-  "include": ["artificial intelligence", "machine learning", "deep learning", "neural network", "autonomous", "computer vision", "language model"],
-  "include_fields": ["title"],
+  "include": [
+    "artificial intelligence",
+    "machine learning",
+    "deep learning",
+    "neural network",
+    "autonomous",
+    "computer vision",
+    "language model"
+  ],
+  "include_fields": [
+    "title"
+  ],
   "date_field": "date",
   "min_records": 1,
   "max_delta_pct": 100,
-  "notes": "NSF awards matching 'artificial intelligence', filtered to AI/ML over the award JSON (program + abstract). Keyless GET (response.award[])."
+  "notes": "NSF awards matching 'artificial intelligence', filtered to AI/ML over the award JSON (program + abstract). Keyless GET (response.award[]). Academic-pipeline noise (REU/RET/dissertation/workshop) excluded.",
+  "exclude": [
+    "REU Site",
+    "RET ",
+    "Research Experiences for Undergraduates",
+    "Research Experiences for Teachers",
+    "CAREER:",
+    "undergraduate",
+    "K-12",
+    "Postdoctoral Fellowship",
+    "Doctoral Dissertation",
+    "Workshop",
+    "Conference",
+    "Travel",
+    "classroom",
+    "curriculum"
+  ],
+  "exclude_fields": [
+    "title",
+    "fundProgramName"
+  ]
 }
