@@ -101,6 +101,8 @@ func Run(o Options) error {
 		w.Write(playbookMD)
 	})
 	mux.HandleFunc("/api/profit", s.hProfit)
+	mux.HandleFunc("/api/draft", s.hDraft)
+	mux.HandleFunc("/api/company-kit", s.hCompanyKit)
 	mux.HandleFunc("/", s.hStatic)
 
 	addr := fmt.Sprintf("127.0.0.1:%d", o.Port)

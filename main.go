@@ -58,6 +58,32 @@ func cmdWorkspace(args []string) int {
 		}
 		return 0
 	}
+	// `workspace draft <oppId>` — generate the submittable volume to files.
+	if len(args) > 0 && args[0] == "draft" {
+		df := flag.NewFlagSet("workspace draft", flag.ExitOnError)
+		dir := df.String("dir", `C:\trackers\workspace`, "private workspace dir")
+		data := df.String("data", "https://defense-trackers.github.io", "trackers source")
+		_ = df.Parse(args[1:])
+		if df.NArg() < 1 {
+			fmt.Fprintln(os.Stderr, "usage: engine workspace draft <oppId>")
+			return 64
+		}
+		if err := workspace.RunDraft(workspace.Options{Dir: *dir, DataBase: *data}, df.Arg(0)); err != nil {
+			return 1
+		}
+		return 0
+	}
+	// `workspace company-kit [--build]` — the stable facts/voice every draft reuses.
+	if len(args) > 0 && args[0] == "company-kit" {
+		cf := flag.NewFlagSet("workspace company-kit", flag.ExitOnError)
+		dir := cf.String("dir", `C:\trackers\workspace`, "private workspace dir")
+		build := cf.Bool("build", false, "synthesize a fresh kit from dossiers + the Rafiq brain")
+		_ = cf.Parse(args[1:])
+		if err := workspace.RunCompanyKit(workspace.Options{Dir: *dir}, *build); err != nil {
+			return 1
+		}
+		return 0
+	}
 	fs := flag.NewFlagSet("workspace", flag.ExitOnError)
 	port := fs.Int("port", 8765, "localhost port")
 	dir := fs.String("dir", `C:\trackers\workspace`, "private workspace dir (capabilities/state/cache)")

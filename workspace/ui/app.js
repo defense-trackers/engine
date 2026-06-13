@@ -80,6 +80,10 @@ function openAssist(o) {
   if (ASSIST.enabled) {
     const bidRow = el('div', 'qarow');
     QUICK.forEach((q) => { const b = el('button', null, q.label); b.addEventListener('click', () => sendAssist(q.a)); bidRow.append(b); });
+    const draftBtn = el('button', 'mv', '✍ Draft volume → files');
+    draftBtn.title = 'Claude writes the full submittable volume to editable files (runs on your subscription)';
+    draftBtn.addEventListener('click', () => draftVolume(o));
+    bidRow.append(draftBtn);
     qa.append(rowLabel('Bid'), bidRow);
     const trow = el('div', 'qarow');
     TQUICK.forEach((q) => { const b = el('button', null, q.label); b.addEventListener('click', () => sendAssist(q.a)); trow.append(b); });
@@ -207,6 +211,38 @@ async function sendAssist(action) {
     }
   } catch (e) { ans.className = 'msg err'; ans.textContent = 'stream failed: ' + e.message; }
   if (acc) { const h = convo(id); h.push({ role: 'assistant', content: acc }); saveConvo(id, h); }
+}
+
+// draftVolume streams a full submittable volume to files, showing per-section
+// progress in the thread, then the output folder.
+async function draftVolume(o) {
+  const t = $('#thread');
+  const head = el('div', 'msg u'); head.textContent = '› ✍ Drafting the volume to files…'; t.append(head);
+  const prog = el('div', 'msg a'); prog.textContent = 'Starting…'; t.append(prog); t.scrollTop = 1e9;
+  let lines = [];
+  try {
+    const resp = await fetch('/api/draft', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ opp_id: o.id }),
+    });
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const parts = buf.split('\n\n'); buf = parts.pop();
+      for (const p of parts) {
+        const line = p.replace(/^data:\s*/, '').trim();
+        if (!line) continue;
+        let ev; try { ev = JSON.parse(line); } catch { continue; }
+        if (ev.error) { prog.className = 'msg err'; prog.textContent = ev.error; }
+        else if (ev.t) { lines.push(ev.t); prog.textContent = lines.slice(-14).join('\n'); t.scrollTop = 1e9; }
+        else if (ev.dir) { const d = el('div', 'msg a'); d.innerHTML = `<b>✓ Volume written.</b> Files are in:<br><code>${ev.dir}</code><br>Open <code>volume.md</code> for the combined draft, or the numbered section files to edit.`; t.append(d); t.scrollTop = 1e9; }
+      }
+    }
+  } catch (e) { prog.className = 'msg err'; prog.textContent = 'draft failed: ' + e.message; }
 }
 
 async function load() {
