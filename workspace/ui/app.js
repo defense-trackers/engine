@@ -61,6 +61,8 @@ const TQUICK = [
 
 function openAssist(o) {
   CUR_OPP = o;
+  const via = ASSIST.backend === 'subscription' ? ' · via Max subscription' : ASSIST.backend === 'api' ? ' · via API key' : '';
+  $('.ah .who').textContent = '◎ CLAUDE — BID STRATEGIST' + via;
   $('#assist-title').textContent = o.title;
   $('#assist-meta').innerHTML = [o.source, o.type, o.agency, o.matched_asset ? 'fit: ' + o.matched_asset : '', daysLabel(o)].filter(Boolean).join(' · ');
   // real, source-provided POCs + the sanctioned channel (anti-spam)
@@ -135,7 +137,7 @@ function closeAssist() { $('#assist').classList.remove('open'); $('#overlay').st
 function renderThread() {
   const t = $('#thread'); t.textContent = '';
   if (!ASSIST.enabled) {
-    t.innerHTML = `<div class="disabled-note">Claude isn't connected yet. Set <b>ANTHROPIC_API_KEY</b> in your environment and restart the workspace:<br><br><code>set ANTHROPIC_API_KEY=sk-ant-…</code><br><code>go run . workspace</code><br><br>The key stays on this machine — it's never published.</div>`;
+    t.innerHTML = `<div class="disabled-note">Claude isn't connected. Easiest: install + log in to <b>Claude Code</b> — the workspace will use your <b>Max subscription</b> (no per-token cost):<br><br><code>npm i -g @anthropic-ai/claude-code</code><br><code>claude login</code><br><code>go run . workspace</code><br><br>Or set <b>ANTHROPIC_API_KEY</b> for the pay-per-token API. Everything stays on this machine.</div>`;
     return;
   }
   convo(CUR_OPP.id).forEach((m) => {

@@ -8,14 +8,16 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 )
 
-// assist wires the real Claude API into the private workspace. The key is read
-// from ANTHROPIC_API_KEY and stays on this machine — nothing here is published,
-// so (unlike the public site) a live frontier model is appropriate. This is a
-// bid-proposal strategist, NOT any offensive-cyber capability path.
+// assist wires Claude into the private workspace as a bid + transition strategist.
+// It prefers the local Claude Code CLI (your Max subscription — no per-token cost),
+// and falls back to the ANTHROPIC_API_KEY pay-per-token API only if you choose.
+// Either way it runs locally; nothing is published. This is bid-PROPOSAL help, NOT
+// any offensive-cyber capability path.
 
 func assistModel() string {
 	if m := strings.TrimSpace(os.Getenv("ASSIST_MODEL")); m != "" {
@@ -24,16 +26,44 @@ func assistModel() string {
 	return "claude-opus-4-8"
 }
 
-// quick-action prompts oriented at conversion (decide → theme → outline → draft).
+// assistBackend picks how to reach Claude:
+//   - "subscription": the local `claude` CLI (Claude Code) on your Max plan — default
+//   - "api": the ANTHROPIC_API_KEY pay-per-token API
+//
+// Override with ASSIST_BACKEND=subscription|api.
+func assistBackend() string {
+	forced := strings.ToLower(strings.TrimSpace(os.Getenv("ASSIST_BACKEND")))
+	_, cliErr := exec.LookPath("claude")
+	hasCLI := cliErr == nil
+	hasKey := strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY")) != ""
+	switch forced {
+	case "api":
+		if hasKey {
+			return "api"
+		}
+	case "subscription", "cli":
+		if hasCLI {
+			return "subscription"
+		}
+	}
+	if hasCLI {
+		return "subscription" // default: ride the Max subscription, no token cost
+	}
+	if hasKey {
+		return "api"
+	}
+	return ""
+}
+
+// quick-action prompts oriented at conversion (decide → theme → outline → draft → transition).
 var assistActions = map[string]string{
 	"bidpass":  "Give me a clear BID or PASS recommendation for this opportunity. 2–4 concrete reasons tied to capability fit, eligibility, deadline runway, and award/strategic value. End with one line: 'RECOMMENDATION: BID' or 'RECOMMENDATION: PASS'.",
 	"wintheme": "What is the single strongest win theme for this topic using my matched capability? One-sentence theme, then 3 supporting discriminators that separate me from a generic bidder.",
 	"outline":  "Outline the proposal in the correct prescribed structure for this opportunity. SBIR/STTR Phase I technical volume = the 12 prescribed sections in fixed order. DARPA (DPA-prefix) = WhitePaper (≤10pp, 4 sections) + ≤5-slide deck with a quad chart. For each section give one line on exactly what to put, given my matched asset and this topic's requirements.",
 	"draft":    "Draft the Technical Approach / Phase I objectives for this topic, grounded in my matched asset's real capabilities. Be concrete and specific to the requirements — no placeholders, no generic filler.",
 	"gaps":     "What are the gaps between my matched asset and this topic's requirements, and what would I need to build, demonstrate, or partner for to be competitive? Be blunt.",
-	// second-valley / transition + profit-realization actions
 	"transition": "Begin with the transition in mind for THIS opportunity: does this vehicle have a built-in production/scale path (OTA follow-on production under 10 USC 4022(f), or SBIR Phase III sole-source eligibility)? If not, how do I structure the award now so a successful pilot converts directly into a contract instead of a recompete?",
-	"sponsor":    "Help me find and approach the RESOURCE SPONSOR (who owns the money), not just the end user. For this agency/capability, who likely sponsors it, how do I get into the POM conversation early (~2 years before execution), and what bridge mechanism fits here — APFIT, mid-tier acquisition, or the software acquisition pathway? Draft the opening outreach.",
+	"sponsor":    "Help me find and approach the RESOURCE SPONSOR (who owns the money), not just the end user. Name the specific offices from the targets in context, how I get into the POM conversation early (~2 years before execution), and which bridge fits here — APFIT, mid-tier acquisition, or the software acquisition pathway.",
 	"pom":        "What does it take to get this programmed into the POM? Walk the timeline and the specific steps, name the validated-requirement and resource-sponsor dependencies, and recommend the bridge funding to survive until procurement dollars land.",
 	"pmadopt":    "Make adoption cheap and career-safe for the program manager. Give me the PM-risk-framed pitch (they own every schedule slip and capture none of the upside) plus the concrete integration-tax cuts to put in writing: MOSA/open interfaces, Government Purpose Rights, and ATO reciprocity.",
 	"nextstep":   "Given this pursuit's current stage and its weakest transition wall, what is the single highest-leverage action I should take next? One clear next move, why it matters, and the first concrete step.",
@@ -51,8 +81,8 @@ type assistReq struct {
 }
 
 func (s *server) hAssistStatus(w http.ResponseWriter, _ *http.Request) {
-	enabled := strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY")) != ""
-	writeJSON(w, map[string]any{"enabled": enabled, "model": assistModel()})
+	be := assistBackend()
+	writeJSON(w, map[string]any{"enabled": be != "", "backend": be, "model": assistModel()})
 }
 
 func (s *server) hAssist(w http.ResponseWriter, r *http.Request) {
@@ -67,9 +97,9 @@ func (s *server) hAssist(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	key := strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY"))
-	if key == "" {
-		emit(map[string]string{"error": "Set ANTHROPIC_API_KEY in your environment and restart the workspace to enable Claude."})
+	backend := assistBackend()
+	if backend == "" {
+		emit(map[string]string{"error": "Claude isn't connected. Install + log in to Claude Code (uses your Max subscription, no extra cost), or set ANTHROPIC_API_KEY. Then restart the workspace."})
 		return
 	}
 	var in assistReq
@@ -87,6 +117,7 @@ func (s *server) hAssist(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	pursuit := s.state[in.OppID]
+	sponsors := s.sponsors.Match(opp, 6)
 	s.mu.Unlock()
 	if opp == nil {
 		emit(map[string]string{"error": "opportunity not found — refresh"})
@@ -95,7 +126,7 @@ func (s *server) hAssist(w http.ResponseWriter, r *http.Request) {
 
 	detail := ""
 	if opp.DetailRef != "" {
-		detail = FetchDSIPDetail(opp.DetailRef) // full topic text for real grounding
+		detail = FetchDSIPDetail(opp.DetailRef)
 	}
 	userText := strings.TrimSpace(in.Message)
 	if a, ok := assistActions[in.Action]; ok {
@@ -106,7 +137,89 @@ func (s *server) hAssist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build the request: stable context in the system prompt, turns in messages.
+	system := s.assistSystem(opp, detail, pursuit, sponsors)
+	// flatten recent history into the prompt (print mode is one-shot)
+	var prompt strings.Builder
+	for _, h := range in.History {
+		who := "Jesse"
+		if h.Role == "assistant" {
+			who = "You (Claude)"
+		}
+		prompt.WriteString(who + ": " + h.Content + "\n\n")
+	}
+	prompt.WriteString("Jesse: " + userText)
+
+	if backend == "subscription" {
+		runClaudeCLI(emit, system, prompt.String())
+	} else {
+		runAPI(emit, system, in, userText)
+	}
+}
+
+// runClaudeCLI streams a response from the local Claude Code CLI on the user's
+// subscription. System prompt goes via a temp file (avoids arg-length limits);
+// the prompt goes on stdin.
+func runClaudeCLI(emit func(any), system, prompt string) {
+	f, err := os.CreateTemp("", "ws-sys-*.txt")
+	if err != nil {
+		emit(map[string]string{"error": "temp file: " + err.Error()})
+		return
+	}
+	defer os.Remove(f.Name())
+	f.WriteString(system)
+	f.Close()
+
+	cmd := exec.Command("claude", "-p",
+		"--system-prompt-file", f.Name(),
+		"--model", assistModel(),
+		"--output-format", "stream-json",
+		"--include-partial-messages",
+		"--verbose")
+	cmd.Stdin = strings.NewReader(prompt)
+	var errBuf bytes.Buffer
+	cmd.Stderr = &errBuf
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		emit(map[string]string{"error": err.Error()})
+		return
+	}
+	if err := cmd.Start(); err != nil {
+		emit(map[string]string{"error": "claude CLI start: " + err.Error()})
+		return
+	}
+	sc := bufio.NewScanner(stdout)
+	sc.Buffer(make([]byte, 64*1024), 8*1024*1024)
+	got := false
+	for sc.Scan() {
+		var ev struct {
+			Type  string `json:"type"`
+			Event struct {
+				Type  string `json:"type"`
+				Delta struct {
+					Text string `json:"text"`
+				} `json:"delta"`
+			} `json:"event"`
+		}
+		if json.Unmarshal(sc.Bytes(), &ev) == nil && ev.Type == "stream_event" &&
+			ev.Event.Type == "content_block_delta" && ev.Event.Delta.Text != "" {
+			emit(map[string]string{"t": ev.Event.Delta.Text})
+			got = true
+		}
+	}
+	cmd.Wait()
+	if !got {
+		msg := strings.TrimSpace(errBuf.String())
+		if msg == "" {
+			msg = "no output from Claude Code"
+		}
+		emit(map[string]string{"error": redactKey(msg)})
+	}
+	emit(map[string]string{"done": "1"})
+}
+
+// runAPI streams from the ANTHROPIC_API_KEY pay-per-token API (opt-in fallback).
+func runAPI(emit func(any), system string, in assistReq, userText string) {
+	key := strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY"))
 	msgs := []map[string]string{}
 	for _, h := range in.History {
 		role := h.Role
@@ -116,26 +229,17 @@ func (s *server) hAssist(w http.ResponseWriter, r *http.Request) {
 		msgs = append(msgs, map[string]string{"role": role, "content": h.Content})
 	}
 	msgs = append(msgs, map[string]string{"role": "user", "content": userText})
-
-	s.mu.Lock()
-	sponsors := s.sponsors.Match(opp, 6)
-	s.mu.Unlock()
-
 	reqBody, _ := json.Marshal(map[string]any{
-		"model":      assistModel(),
-		"max_tokens": 2400,
-		"stream":     true,
-		"system":     s.assistSystem(opp, detail, pursuit, sponsors),
-		"messages":   msgs,
+		"model": assistModel(), "max_tokens": 2400, "stream": true,
+		"system": system, "messages": msgs,
 	})
-
 	hreq, _ := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewReader(reqBody))
 	hreq.Header.Set("x-api-key", key)
 	hreq.Header.Set("anthropic-version", "2023-06-01")
 	hreq.Header.Set("content-type", "application/json")
 	resp, err := (&http.Client{Timeout: 180 * time.Second}).Do(hreq)
 	if err != nil {
-		emit(map[string]string{"error": "Claude request failed: " + err.Error()})
+		emit(map[string]string{"error": "Claude API failed: " + err.Error()})
 		return
 	}
 	defer resp.Body.Close()
@@ -144,8 +248,6 @@ func (s *server) hAssist(w http.ResponseWriter, r *http.Request) {
 		emit(map[string]string{"error": fmt.Sprintf("Claude API %d: %s", resp.StatusCode, redactKey(string(b)))})
 		return
 	}
-
-	// Parse Anthropic SSE, forward only text deltas to the browser.
 	sc := bufio.NewScanner(resp.Body)
 	sc.Buffer(make([]byte, 64*1024), 1024*1024)
 	for sc.Scan() {
@@ -157,7 +259,6 @@ func (s *server) hAssist(w http.ResponseWriter, r *http.Request) {
 		if payload == "" || payload == "[DONE]" {
 			continue
 		}
-		// pull text out of content_block_delta events
 		var ev struct {
 			Delta struct {
 				Text string `json:"text"`
@@ -183,7 +284,11 @@ func (s *server) assistSystem(o *Opportunity, detail string, p Pursuit, sponsors
 	b.WriteString("JESSE'S ASSETS (match the opportunity to these):\n")
 	if s.caps != nil {
 		for _, a := range s.caps.Assets {
-			b.WriteString("- " + a.Name + ": " + strings.Join(a.Domains, ", ") + " (" + strings.Join(a.Terms[:min(6, len(a.Terms))], ", ") + ")\n")
+			n := len(a.Terms)
+			if n > 6 {
+				n = 6
+			}
+			b.WriteString("- " + a.Name + ": " + strings.Join(a.Domains, ", ") + " (" + strings.Join(a.Terms[:n], ", ") + ")\n")
 		}
 	}
 	b.WriteString("\nCURRENT OPPORTUNITY:\n")
@@ -215,7 +320,6 @@ func (s *server) assistSystem(o *Opportunity, detail string, p Pursuit, sponsors
 		b.WriteString(fmt.Sprintf("Transition readiness %d/100 — Money:%s · Requirements:%s · Contracts:%s · Incentives:%s · weakest wall: %s\n",
 			rd, dash(p.Walls.Money), dash(p.Walls.Requirements), dash(p.Walls.Contracts), dash(p.Walls.Incentives), weakest))
 	}
-
 	if len(o.Contacts) > 0 {
 		b.WriteString("\nREAL POCs (published by the source — use exactly, do not invent others):\n")
 		for _, c := range o.Contacts {
