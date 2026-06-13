@@ -50,7 +50,16 @@ func cmdWorkspace(args []string) int {
 	port := fs.Int("port", 8765, "localhost port")
 	dir := fs.String("dir", `C:\trackers\workspace`, "private workspace dir (capabilities/state/cache)")
 	data := fs.String("data", "https://defense-trackers.github.io", "trackers source: live URL or local site dir")
+	ground := fs.Bool("ground", false, "review each asset's repo with Claude Code and rewrite capabilities.json from ground truth, then exit")
+	only := fs.String("only", "", "with --ground: limit to one asset by name")
 	_ = fs.Parse(args)
+	if *ground {
+		if err := workspace.Ground(*dir, *only); err != nil {
+			fmt.Fprintln(os.Stderr, "ground:", err)
+			return 1
+		}
+		return 0
+	}
 	if err := workspace.Run(workspace.Options{Port: *port, Dir: *dir, DataBase: *data}); err != nil {
 		fmt.Fprintln(os.Stderr, "workspace:", err)
 		return 1

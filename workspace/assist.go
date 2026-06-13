@@ -281,14 +281,23 @@ func (s *server) assistSystem(o *Opportunity, detail string, p Pursuit, sponsors
 	b.WriteString("- SBIR/STTR Phase I technical volume = 12 prescribed sections in fixed order (not a free narrative).\n")
 	b.WriteString("- DARPA (DPA-prefix topics) are the exception: a WhitePaper (≤10pp, 4 sections) + a ≤5-slide deck with a quad chart.\n")
 	b.WriteString("- Phase I is feasibility/architecture; stand-alone lab + full integration are Phase II/III.\n\n")
-	b.WriteString("JESSE'S ASSETS (match the opportunity to these):\n")
+	b.WriteString("JESSE'S ASSETS (match the opportunity to these; cite the grounded facts, don't invent):\n")
 	if s.caps != nil {
 		for _, a := range s.caps.Assets {
-			n := len(a.Terms)
-			if n > 6 {
-				n = 6
+			b.WriteString("- " + a.Name)
+			if a.TRL != "" {
+				b.WriteString(" [" + a.TRL + "]")
 			}
-			b.WriteString("- " + a.Name + ": " + strings.Join(a.Domains, ", ") + " (" + strings.Join(a.Terms[:n], ", ") + ")\n")
+			if a.Summary != "" {
+				b.WriteString(": " + a.Summary)
+			} else {
+				n := len(a.Terms)
+				if n > 6 {
+					n = 6
+				}
+				b.WriteString(": " + strings.Join(a.Domains, ", ") + " (" + strings.Join(a.Terms[:n], ", ") + ")")
+			}
+			b.WriteString("\n")
 		}
 	}
 	b.WriteString("\nCURRENT OPPORTUNITY:\n")

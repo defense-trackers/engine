@@ -17,6 +17,9 @@ type Asset struct {
 	Name    string   `json:"name"`
 	Terms   []string `json:"terms"`
 	Domains []string `json:"domains"`
+	Repo    string   `json:"repo,omitempty"`    // local repo path; Claude Code reviews it to ground the profile
+	Summary string   `json:"summary,omitempty"` // grounded one-liner (filled by `ground`)
+	TRL     string   `json:"trl,omitempty"`     // grounded technology readiness level
 }
 
 func LoadCapabilities(path string) (*Capabilities, error) {
