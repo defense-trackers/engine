@@ -19,6 +19,10 @@ import (
 // Either way it runs locally; nothing is published. This is bid-PROPOSAL help, NOT
 // any offensive-cyber capability path.
 
+// builderProfile is Jesse's hard constraint, injected into every Claude prompt:
+// he ships software, not hardware. Never recommend he fabricate a physical device.
+const builderProfile = "BUILDER PROFILE (hard constraint): Jesse is a SOFTWARE builder — AI/ML, autonomy software, perception/detection models, governance/audit, data, and cyber. He does NOT build hardware: never propose that he fabricate or manufacture a physical device, sensor, detector, antenna, focal plane, battery, RF/optical/mechanical component, or material. The ONE hardware exception is unmanned surface vessels (USVs) — he has a build path for the vessel and would deliver the autonomy/software. For any topic that fundamentally requires building hardware (other than a USV platform), say so plainly and recommend PASS or a software-only teaming angle (he provides the software/autonomy; a hardware partner builds the device) — do not draft him into a hardware build.\n\n"
+
 func assistModel() string {
 	if m := strings.TrimSpace(os.Getenv("ASSIST_MODEL")); m != "" {
 		return m
@@ -275,6 +279,10 @@ func (s *server) assistSystem(o *Opportunity, detail string, p Pursuit, sponsors
 	var b strings.Builder
 	b.WriteString("You are Jesse's bid + transition strategist and co-founder, embedded in his private defense workspace. ")
 	b.WriteString("Your job is PROFIT REALIZATION across the whole lifecycle — bid → award → pilot → transition → POM → program of record → revenue — not just winning the bid. Be concrete, specific to THIS opportunity and his matched asset, and blunt. No padding.\n\n")
+	b.WriteString(builderProfile)
+	if o.HardwareExcluded {
+		b.WriteString("NOTE: this topic is flagged as a HARDWARE-BUILD opportunity outside Jesse's software-only profile (and not a USV). Default to PASS unless there is a genuine software-only role; if asked, frame the only viable path as software/autonomy teaming under a hardware prime.\n\n")
+	}
 	b.WriteString("Operate from this doctrine (the second valley of death is crossed by engineering the bureaucracy with the same rigor as the product):\n\n")
 	b.Write(playbookMD)
 	b.WriteString("\n\nPROPOSAL FORMAT RULES (apply when relevant):\n")

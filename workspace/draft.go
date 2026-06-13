@@ -91,6 +91,7 @@ func planFor(o *Opportunity) draftPlan {
 // draftContext builds the shared grounding every section prompt carries.
 func (s *server) draftContext(o *Opportunity, detail string) string {
 	var b strings.Builder
+	b.WriteString(builderProfile)
 	b.Write(playbookMD)
 	b.WriteString("\n\nPHASE GUARDRAILS: Phase I is feasibility/architecture; a stand-alone lab and full integration are Phase II/III. ")
 	b.WriteString("Cite the matched asset's REAL grounded metrics — never invent numbers, identifiers, or past performance. No placeholders.\n\n")

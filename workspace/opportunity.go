@@ -41,9 +41,10 @@ type Opportunity struct {
 	Eligibility  int    `json:"eligibility"`
 	Runway       int    `json:"runway"`
 	Value        int    `json:"value"`
-	MatchedAsset string `json:"matched_asset,omitempty"`
-	DaysLeft     int    `json:"days_left"` // -1 when no/unparseable close date
-	ActNow       bool   `json:"act_now"`
+	MatchedAsset     string `json:"matched_asset,omitempty"`
+	DaysLeft         int    `json:"days_left"` // -1 when no/unparseable close date
+	ActNow           bool   `json:"act_now"`
+	HardwareExcluded bool   `json:"hardware_excluded,omitempty"` // hardware-build topic outside Jesse's software-only profile (USV exempt)
 }
 
 // Contact is a real, source-provided government point of contact (e.g. a DSIP

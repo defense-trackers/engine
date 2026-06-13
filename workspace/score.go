@@ -41,14 +41,92 @@ func Score(opps []Opportunity, cap *Capabilities, now time.Time) {
 	today := now.UTC().Truncate(24 * time.Hour)
 	for i := range opps {
 		o := &opps[i]
-		o.Capability, o.MatchedAsset = capabilityFit(o.Text, cap)
+		// Jesse builds SOFTWARE only (USVs are the one hardware exception). A topic
+		// whose deliverable is fabricating a physical device/material is a no-go:
+		// zero its capability, strip the (spurious) asset match, and keep it out of
+		// act-now / the brief. It stays visible in All (badged) for transparency.
+		o.HardwareExcluded = hardwareExcluded(o.Text)
+		if o.HardwareExcluded {
+			o.Capability, o.MatchedAsset = 0, ""
+		} else {
+			o.Capability, o.MatchedAsset = capabilityFit(o.Text, cap)
+		}
 		o.Eligibility = eligibilityScore(o)
 		o.DaysLeft, o.Runway = runwayScore(o.Closes, today)
 		o.Value = valueScore(o)
 		o.Score = o.Capability + o.Eligibility + o.Runway + o.Value
-		o.ActNow = o.Eligibility >= 12 && o.Capability >= 20 &&
+		o.ActNow = !o.HardwareExcluded && o.Eligibility >= 12 && o.Capability >= 20 &&
 			o.DaysLeft >= 1 && o.DaysLeft <= 30
 	}
+}
+
+// USV platform topics — Jesse has a build path for unmanned surface vessels, so
+// these are NOT excluded even though they're "hardware."
+var usvSignals = []string{
+	"unmanned surface", "surface vessel", "surface vehicle", " usv", "usv ",
+	"(usv", "autonomous surface", "maritime autonomous surface", " asv ",
+}
+
+// Software-deliverable signals — if the ask is fundamentally software/AI/data/cyber,
+// it's in Jesse's wheelhouse even when hardware nouns appear in passing.
+var softwareSignals = []string{
+	"software", "algorithm", "artificial intelligence", "machine learning",
+	"ai/ml", " ai ", " ai-", "autonomy", "autonomous software", "deep learning",
+	"neural", "llm", "large language model", "generative", "analytics",
+	"data ", "cyber", "penetration test", "red team", "rmf", " ato ",
+	"authorization to operate", "command and control", " c2 ", "mission planning",
+	"decision support", "modeling and simulation", "simulat", "digital twin",
+	"workflow", "compliance", "computer vision", "object detection",
+	"sensor fusion", "situational awareness", "data center",
+}
+
+// Hardware-fabrication signals — the deliverable is a physical device/material.
+// These are Jesse's no-go (unless the topic is a USV platform).
+var hardwareFabSignals = []string{
+	"fabricat", "photodiode", "focal plane", "nanocrystal", "colloidal",
+	"semiconductor", "wafer", "antenna", "compressor", "battery", "accelerator",
+	"linac", "linear accelerator", "amplifier", "transmitter", "waveguide",
+	"coating", "alloy", "circuit", "asic", "mems", "actuator", "propulsion",
+	"gimbal", "photodetector", "infrared search and track", "camera technology",
+	"thermal management", "heat spreader", "microsystem", "resonant cavity",
+	"avalanche", "acoustic sensor", "sonar", "hydrophone", "phased array",
+	"radio frequency", "rf front", "power supply", "optical payload",
+	"electro-optical payload", "transducer", "x-ray", "detector incorporating",
+	"infrared imaging", "imaging in the", "mid-wave infrared", "short wave",
+	"particulate sensor", "omni-directional acoustic",
+	// device / platform / munition builds (physical deliverables, non-USV)
+	"electronics", "seabed", "submersible", "buoy", "stowage", "munition",
+	"warhead", "projectile", "propellant", "turbine", " valve", " pump",
+	"uuv", "underwater vehicle", "unmanned underwater", "hull", "chassis",
+	"enclosure",
+}
+
+func anyContains(hay string, needles []string) bool {
+	for _, n := range needles {
+		if strings.Contains(hay, n) {
+			return true
+		}
+	}
+	return false
+}
+
+// hardwareExcluded reports whether an opportunity is a hardware-fabrication ask
+// outside Jesse's software-only profile (USV platforms exempted).
+func hardwareExcluded(text string) bool {
+	t := " " + strings.ToLower(text) + " "
+	if anyContains(t, usvSignals) {
+		return false // USV platform — he can get it built
+	}
+	hw := anyContains(t, hardwareFabSignals)
+	if !hw {
+		return false
+	}
+	// Hardware nouns present. If there's also a clear software/AI deliverable, keep
+	// it (mixed topic with a software angle Jesse can lead). Pure-fab → exclude.
+	if anyContains(t, softwareSignals) {
+		return false
+	}
+	return true
 }
 
 // capabilityFit returns 0–40 from the best-matching asset and that asset's name.

@@ -87,6 +87,7 @@ func claudeOnce(system, prompt string) (string, error) {
 func (s *server) assess(subject *Opportunity, detail string) (*Assessment, error) {
 	var sys strings.Builder
 	sys.WriteString("You are Jesse's transition strategist. Score a pursuit's STARTING transition readiness honestly using this doctrine:\n\n")
+	sys.WriteString(builderProfile)
 	sys.Write(playbookMD)
 	sys.WriteString("\n\nJESSE'S ASSETS:\n")
 	if s.caps != nil {

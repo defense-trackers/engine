@@ -308,6 +308,7 @@ function oppCard(o, now) {
   top.append(left, sc);
   const bars = el('div', 'bars');
   bars.innerHTML =
+    (o.hardware_excluded ? `<span class="bar hw">⚙ hardware — excluded (software-only)</span>` : '') +
     `<span class="bar ${o.matched_asset ? 'asset' : ''}">fit <b>${o.capability}</b>${o.matched_asset ? ' · ' + o.matched_asset : ''}</span>` +
     `<span class="bar">elig <b>${o.eligibility}</b></span>` +
     `<span class="bar">runway <b>${o.runway}</b></span>` +
@@ -526,15 +527,23 @@ function renderAll() {
   v.append(el('h2', null, `All opportunities (${OPPS.length})`));
   const f = el('input', 'filter'); f.placeholder = 'Filter title / agency / source / type…';
   v.append(f);
+  const hwn = OPPS.filter((o) => o.hardware_excluded).length;
+  const toggle = el('label', 'hwtoggle');
+  toggle.innerHTML = `<input type="checkbox" id="showhw"> show hardware-build topics excluded by your software-only profile (${hwn})`;
+  v.append(toggle);
   const grid = el('div', 'grid');
   v.append(grid);
   const draw = () => {
     const q = f.value.trim().toLowerCase();
+    const showHw = $('#showhw').checked;
     grid.textContent = '';
-    OPPS.filter((o) => !q || (o.title + o.agency + o.source + o.type).toLowerCase().includes(q))
+    OPPS.filter((o) => (showHw || !o.hardware_excluded) &&
+      (!q || (o.title + o.agency + o.source + o.type).toLowerCase().includes(q)))
       .slice(0, 300).forEach((o) => grid.append(oppCard(o, o.act_now)));
   };
-  f.addEventListener('input', draw); draw();
+  f.addEventListener('input', draw);
+  $('#showhw').addEventListener('change', draw);
+  draw();
 }
 
 boot();
