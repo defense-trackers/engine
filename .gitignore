@@ -14,3 +14,6 @@
 /workspace/bidstate.json
 /workspace/dsip.json
 /workspace/cache/
+
+# serena MCP local project state
+/.serena/
