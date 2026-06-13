@@ -96,6 +96,47 @@
   .playbook h3{font-size:13px;color:var(--ink);margin:14px 0 4px}
   .playbook li{margin:3px 0 3px 18px}.playbook code{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:13px}
   .playbook b{color:var(--ink)}.playbook p{color:#c4d2e2;margin:6px 0}
+  /* ---- Today (proactive brief) ---- */
+  .hero{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:16px;padding:22px 24px;margin-bottom:18px;
+    background:radial-gradient(900px 300px at 12% -40%,#1b3a5c55,transparent 60%),linear-gradient(180deg,#101a28,#0c131d)}
+  .hero::after{content:"";position:absolute;right:-60px;top:-60px;width:240px;height:240px;border-radius:50%;
+    background:radial-gradient(circle,#5eb1ff22,transparent 70%);pointer-events:none}
+  .hero .date{font-family:var(--mono);font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--brand)}
+  .hero .lead{font-size:24px;font-weight:700;line-height:1.25;margin:8px 0 2px;max-width:760px}
+  .hero .leadsub{color:var(--dim);font-size:14px}
+  .statstrip{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:16px 0 22px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;position:relative}
+  .stat .n{font-family:var(--mono);font-weight:700;font-size:24px;line-height:1}
+  .stat .l{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:6px}
+  .stat.ev .n{color:var(--ok)} .stat.now .n{color:var(--warn)} .stat.new .n{color:var(--brand)}
+  .section-h{display:flex;align-items:center;gap:10px;margin:22px 0 10px}
+  .section-h .ic{width:26px;height:26px;display:grid;place-items:center;border-radius:8px;font-size:14px;border:1px solid var(--line);background:var(--panel2)}
+  .section-h h3{margin:0;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink)}
+  .section-h .cnt{font-family:var(--mono);font-size:11px;color:var(--dim)}
+  .section-h.deadline .ic{color:var(--warn);border-color:#4a3c12}
+  .section-h.qa .ic{color:var(--ok);border-color:#1c5238}
+  .section-h.new .ic{color:var(--brand);border-color:#234866}
+  .section-h.move .ic{color:#b69cff;border-color:#3a2f5e}
+  .tgrid{display:grid;gap:10px;grid-template-columns:repeat(2,1fr)}
+  .tcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 15px;cursor:pointer;
+    transition:border-color .15s,transform .15s,background .15s;display:flex;flex-direction:column;gap:6px}
+  .tcard:hover{border-color:var(--brand);transform:translateY(-1px);background:var(--panel2)}
+  .tcard .tt{font-weight:600;line-height:1.3}
+  .tcard .td{font-family:var(--mono);font-size:11px;color:var(--dim);display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .tcard .det{font-size:13px;color:#c4d2e2;line-height:1.45}
+  .tcard.l-deadline{border-left:3px solid var(--warn)} .tcard.l-deadline.l-urgent{border-left-color:var(--bad)}
+  .tcard.l-qa{border-left:3px solid var(--ok)}
+  .tcard.l-new{border-left:3px solid var(--brand)}
+  .tcard.l-move{border-left:3px solid #8a6cff}
+  .chip{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
+  .chip.urgent{color:var(--bad);border-color:#5a2330}.chip.soon{color:var(--warn);border-color:#4a3c12}
+  .chip.asset{color:var(--brand);border-color:#234866}.chip.fit{color:var(--ink)}
+  .ready{display:inline-block;height:5px;width:60px;border-radius:3px;background:var(--panel2);overflow:hidden;vertical-align:middle}
+  .ready i{display:block;height:100%}
+  .tempty{color:var(--dim);font-style:italic;padding:6px 2px;grid-column:1/-1}
+  .pushrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
+  .pushrow .hint{font-size:12px;color:var(--dim)}
+  @media(max-width:760px){.statstrip{grid-template-columns:repeat(2,1fr)}.tgrid{grid-template-columns:1fr}.hero .lead{font-size:20px}}
 </style>
 </head>
 <body>
@@ -103,7 +144,8 @@
   <span class="brand">◎ BID WORKSPACE</span>
   <span class="priv">PRIVATE · LOCAL</span>
   <nav>
-    <button class="tab active" data-view="now">Act now</button>
+    <button class="tab active" data-view="today">Today</button>
+    <button class="tab" data-view="now">Act now</button>
     <button class="tab" data-view="pipeline">Pipeline</button>
     <button class="tab" data-view="profit">Profit</button>
     <button class="tab" data-view="all">All</button>
@@ -114,7 +156,8 @@
   <button class="act" id="refresh">↻ Refresh</button>
 </header>
 <main>
-  <section id="view-now" class="view"></section>
+  <section id="view-today" class="view"></section>
+  <section id="view-now" class="view" hidden></section>
   <section id="view-pipeline" class="view" hidden></section>
   <section id="view-profit" class="view" hidden></section>
   <section id="view-all" class="view" hidden></section>

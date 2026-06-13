@@ -55,8 +55,10 @@ type server struct {
 	state    map[string]Pursuit
 }
 
-// Run ingests + scores opportunities and serves the private dashboard locally.
-func Run(o Options) error {
+// newServer loads the profile, sponsor book, pursuit state, and scored
+// opportunities — everything the dashboard and the brief share — without binding a
+// port. Run() serves it; the `brief` subcommand reuses it headless.
+func newServer(o Options) (*server, error) {
 	if o.Dir == "" {
 		o.Dir = `C:\trackers\workspace`
 	}
@@ -67,15 +69,26 @@ func Run(o Options) error {
 		o.Port = 8765
 	}
 	if err := os.MkdirAll(o.Dir, 0o755); err != nil {
-		return err
+		return nil, err
 	}
 	s := &server{opts: o, state: map[string]Pursuit{}}
 	s.caps = s.loadCaps()
 	s.sponsors = LoadSponsors(o.Dir)
 	s.loadState()
 	s.ingest()
+	return s, nil
+}
+
+// Run ingests + scores opportunities and serves the private dashboard locally.
+func Run(o Options) error {
+	s, err := newServer(o)
+	if err != nil {
+		return err
+	}
+	o = s.opts
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/api/brief", s.hBrief)
 	mux.HandleFunc("/api/opportunities", s.hOpps)
 	mux.HandleFunc("/api/state", s.hState)
 	mux.HandleFunc("/api/refresh", s.hRefresh)

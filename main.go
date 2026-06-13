@@ -46,13 +46,34 @@ func main() {
 // them against his capabilities, and serves a localhost dashboard with on-disk
 // pursuit state.
 func cmdWorkspace(args []string) int {
+	// `workspace brief [--push]` — the proactive daily brief (schedulable, headless).
+	if len(args) > 0 && args[0] == "brief" {
+		bf := flag.NewFlagSet("workspace brief", flag.ExitOnError)
+		dir := bf.String("dir", `C:\trackers\workspace`, "private workspace dir")
+		data := bf.String("data", "https://defense-trackers.github.io", "trackers source")
+		push := bf.Bool("push", false, "also push the brief to ntfy (NTFY_URL or NTFY_TOPIC)")
+		_ = bf.Parse(args[1:])
+		if err := workspace.RunBrief(workspace.Options{Dir: *dir, DataBase: *data}, *push); err != nil {
+			return 1
+		}
+		return 0
+	}
 	fs := flag.NewFlagSet("workspace", flag.ExitOnError)
 	port := fs.Int("port", 8765, "localhost port")
 	dir := fs.String("dir", `C:\trackers\workspace`, "private workspace dir (capabilities/state/cache)")
 	data := fs.String("data", "https://defense-trackers.github.io", "trackers source: live URL or local site dir")
 	ground := fs.Bool("ground", false, "review each asset's repo with Claude Code and rewrite capabilities.json from ground truth, then exit")
-	only := fs.String("only", "", "with --ground: limit to one asset by name")
+	groundRemote := fs.String("ground-remote", "", "ground the FULL portfolio on a remote host over SSH, e.g. jesse@100.90.15.26:D:/projects (then exit)")
+	reground := fs.Bool("reground", false, "with --ground-remote: re-ground assets already grounded (default skips them)")
+	only := fs.String("only", "", "with --ground/--ground-remote: limit to one asset/repo by name")
 	_ = fs.Parse(args)
+	if *groundRemote != "" {
+		if err := workspace.GroundRemote(*dir, *groundRemote, *only, *reground); err != nil {
+			fmt.Fprintln(os.Stderr, "ground-remote:", err)
+			return 1
+		}
+		return 0
+	}
 	if *ground {
 		if err := workspace.Ground(*dir, *only); err != nil {
 			fmt.Fprintln(os.Stderr, "ground:", err)

@@ -3,7 +3,8 @@
 
 let OPPS = [];
 let STATE = {};
-let VIEW = 'now';
+let VIEW = 'today';
+let BRIEF = null;
 
 const $ = (s, r = document) => r.querySelector(s);
 const el = (t, c, txt) => { const e = document.createElement(t); if (c) e.className = c; if (txt != null) e.textContent = txt; return e; };
@@ -285,7 +286,8 @@ function oppCard(o, now) {
 
 function render() {
   document.querySelectorAll('.view').forEach((v) => v.hidden = true);
-  if (VIEW === 'now') renderNow();
+  if (VIEW === 'today') renderToday();
+  else if (VIEW === 'now') renderNow();
   else if (VIEW === 'pipeline') renderPipeline();
   else if (VIEW === 'profit') renderProfit();
   else if (VIEW === 'playbook') renderPlaybook();
@@ -295,18 +297,18 @@ function render() {
 async function renderProfit() {
   const v = $('#view-profit'); v.hidden = false; v.textContent = '';
   v.append(el('h2', null, 'Pipeline → profit'));
-  v.append(el('p', 'sub', 'Estimated lifetime value weighted by lifecycle conversion probability. Set a $ value per pursuit in its Claude panel.'));
+  v.append(el('p', 'sub', 'Each pursuit carries a best-case program-of-record value ceiling. Expected value = ceiling × the cumulative probability of that stage actually reaching a funded program of record — not the odds of clearing the next gate. The SBIR→PoR funnel is brutal, so a drafting/submitted bid is risk-adjusted to ~1–2%. Edit a pursuit’s ceiling in its Claude panel.'));
   const d = await fetch('/api/profit').then((r) => r.json()).catch(() => null);
   if (!d || !d.stages || !d.stages.length) { v.append(el('p', 'empty', 'No valued pursuits yet. Open a pursuit → set its estimated value.')); return; }
   const head = el('div', 'card');
-  head.innerHTML = `<div class="ctop"><div><div class="ctitle">Expected revenue (probability-weighted)</div><div class="meta">total pipeline $${(d.total_value).toLocaleString()}K across ${d.stages.reduce((a, s) => a + s.count, 0)} pursuits</div></div><div class="score">$${(d.expected_value).toLocaleString()}<small>K EV</small></div></div>`;
+  head.innerHTML = `<div class="ctop"><div><div class="ctitle">Expected revenue — risk-adjusted to program of record</div><div class="meta">best-case ceiling $${(d.total_value).toLocaleString()}K across ${d.stages.reduce((a, s) => a + s.count, 0)} pursuits</div></div><div class="score">$${(d.expected_value).toLocaleString()}<small>K expected</small></div></div>`;
   v.append(head);
   const grid = el('div', 'grid'); v.append(grid);
   const maxW = Math.max(...d.stages.map((s) => s.weighted), 1);
   d.stages.forEach((s) => {
     const c = el('div', 'card');
     const pct = Math.max(3, Math.round((s.weighted / maxW) * 100));
-    c.innerHTML = `<div class="ctop"><div><div class="ctitle">${s.stage}</div><div class="meta">${s.count} pursuit${s.count === 1 ? '' : 's'} · $${s.value.toLocaleString()}K value · ${(s.prob * 100).toFixed(0)}% convert</div></div><div class="score">$${s.weighted.toLocaleString()}<small>K EV</small></div></div><div style="margin-top:8px;height:6px;border-radius:4px;background:linear-gradient(to right,var(--brand) ${pct}%,var(--panel2) ${pct}%)"></div>`;
+    c.innerHTML = `<div class="ctop"><div><div class="ctitle">${s.stage}</div><div class="meta">${s.count} pursuit${s.count === 1 ? '' : 's'} · $${s.value.toLocaleString()}K ceiling · ${(s.prob * 100).toFixed(1)}% reach PoR</div></div><div class="score">$${s.weighted.toLocaleString()}<small>K expected</small></div></div><div style="margin-top:8px;height:6px;border-radius:4px;background:linear-gradient(to right,var(--brand) ${pct}%,var(--panel2) ${pct}%)"></div>`;
     grid.append(c);
   });
 }
@@ -332,6 +334,95 @@ function mdLite(md) {
   }).join('');
   function bold(s) { return s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`(.+?)`/g, '<code>$1</code>'); }
 }
+
+// open a brief card: deep-link into the Claude assist panel for the live opp;
+// for a pursuit with no live opp (e.g. a seeded volume), jump to the pipeline.
+function openById(id) {
+  const o = OPPS.find((x) => x.id === id);
+  if (o) { openAssist(o); return; }
+  VIEW = 'pipeline'; setActive(); render();
+}
+
+function tcard(it) {
+  const c = el('div', 'tcard l-' + it.kind + (it.urgent ? ' l-urgent' : ''));
+  const tt = el('div', 'tt', it.title);
+  const td = el('div', 'td');
+  const chips = [];
+  if (it.kind === 'move') {
+    const pct = it.score || 0;
+    const col = pct >= 75 ? 'var(--ok)' : pct >= 40 ? 'var(--warn)' : 'var(--bad)';
+    chips.push(`<span class="ready"><i style="width:${pct}%;background:${col}"></i></span>`);
+    chips.push(`<span class="chip">${pct}/100 ready</span>`);
+    if (it.weakest) chips.push(`<span class="chip soon">weak: ${it.weakest}</span>`);
+  } else {
+    if (it.days != null && it.days >= 0) {
+      const cls = it.days <= 7 ? 'urgent' : it.days <= 30 ? 'soon' : '';
+      chips.push(`<span class="chip ${cls}">${it.days === 0 ? 'today' : 'in ' + it.days + 'd'}</span>`);
+    }
+    if (it.score) chips.push(`<span class="chip fit">fit ${it.score}</span>`);
+    if (it.asset) chips.push(`<span class="chip asset">${it.asset}</span>`);
+  }
+  td.innerHTML = chips.join(' ');
+  c.append(tt, td);
+  if (it.detail) c.append(el('div', 'det', it.detail));
+  c.addEventListener('click', () => openById(it.id));
+  return c;
+}
+
+function tsection(parent, cls, icon, label, items, emptyMsg) {
+  const h = el('div', 'section-h ' + cls);
+  h.innerHTML = `<span class="ic">${icon}</span><h3>${label}</h3><span class="cnt">${items.length}</span>`;
+  parent.append(h);
+  const g = el('div', 'tgrid');
+  if (!items.length) g.append(el('div', 'tempty', emptyMsg));
+  else items.forEach((it) => g.append(tcard(it)));
+  parent.append(g);
+}
+
+async function renderToday() {
+  const v = $('#view-today'); v.hidden = false; v.textContent = '';
+  BRIEF = await fetch('/api/brief').then((r) => r.json()).catch(() => null);
+  const b = BRIEF || { deadlines: [], qa: [], new: [], moves: [], ev: 0, total_value: 0, pursuits: 0, act_now: 0, new_count: 0 };
+  const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+
+  // hero — one-line "what to do today"
+  const hero = el('div', 'hero');
+  const urgent = b.deadlines.find((d) => d.urgent);
+  const lead = urgent
+    ? `${urgent.title} closes in ${urgent.days} day${urgent.days === 1 ? '' : 's'} — make the call today.`
+    : b.deadlines.length
+      ? `Nearest deadline: ${b.deadlines[0].title} in ${b.deadlines[0].days} days.`
+      : b.new_count
+        ? `${b.new_count} new high-fit opportunit${b.new_count === 1 ? 'y' : 'ies'} surfaced. Triage them.`
+        : 'No deadlines this month — push a pursuit one wall forward.';
+  hero.innerHTML = `<div class="date">◎ Today · ${today}</div><div class="lead">${escapeHtml(lead)}</div>` +
+    `<div class="leadsub">Your private bid autopilot — deadlines, sanctioned Q&A windows, fresh fits, and the next move on every pursuit.</div>`;
+  v.append(hero);
+
+  // stats strip
+  const strip = el('div', 'statstrip');
+  const stat = (cls, n, l) => `<div class="stat ${cls}"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+  strip.innerHTML =
+    stat('ev', '$' + (b.ev || 0).toLocaleString() + 'K', 'Expected (risk-adj. to PoR)') +
+    stat('', '$' + (b.total_value || 0).toLocaleString() + 'K', 'Best-case ceiling') +
+    stat('', b.pursuits || 0, 'Active pursuits') +
+    stat('now', b.act_now || 0, 'Act-now') +
+    stat('new', b.new_count || 0, 'New high-fit');
+  v.append(strip);
+  v.append(el('p', 'sub', 'Expected value = each pursuit’s program-of-record ceiling × its cumulative probability of actually reaching a funded program (the SBIR→PoR funnel is brutal — early stages are <2%). Ceilings are editable best-case estimates; set them per pursuit in its Claude panel.'));
+
+  tsection(v, 'deadline', '⏰', 'Deadlines (≤30d)', b.deadlines, 'No tracked deadlines in the next 30 days.');
+  tsection(v, 'qa', '✓', 'Q&A windows — sanctioned channel', b.qa, 'No open topic Q&A windows right now.');
+  tsection(v, 'new', '✦', 'New high-fit opportunities', b.new, 'Nothing new since your last brief.');
+  tsection(v, 'move', '➜', 'Next move on each pursuit', b.moves, 'No live pursuits — add one from Act now.');
+
+  // push hint
+  const pr = el('div', 'pushrow');
+  pr.innerHTML = `<span class="hint">Get this pushed to your phone each morning: <code>engine workspace brief --push</code> (set <code>NTFY_TOPIC</code>), scheduled daily via Task Scheduler.</span>`;
+  v.append(pr);
+}
+
+function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 function renderNow() {
   const v = $('#view-now'); v.hidden = false; v.textContent = '';

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -121,6 +122,308 @@ func Ground(dir, only string) error {
 	}
 	fmt.Printf("grounded %d asset(s); capabilities.json + dossiers updated\n", grounded)
 	return nil
+}
+
+// --- Full-portfolio grounding over SSH (Phase 1) ---------------------------
+//
+// Jesse's entire body of work lives on the laptop `book` (D:\projects, ~40 real
+// projects). Rather than copy repos, grounding runs ON the laptop over SSH: each
+// repo is reviewed by the laptop's own `claude` CLI (his subscription, cwd=repo),
+// and only the structured dossier comes back. Results upsert into the local
+// capabilities.json so the scorer can match an opportunity to anything he's built.
+
+// remoteTarget is parsed from "user@host:D:/projects".
+type remoteTarget struct {
+	Host string // user@host (passed straight to ssh)
+	Base string // base dir holding the project repos, in the remote's native form
+}
+
+func parseRemote(remote string) (remoteTarget, error) {
+	// Split off the user@host prefix; the remainder (after the FIRST colon that
+	// is not part of a drive letter) is the path. We accept "user@host:D:/path".
+	at := strings.Index(remote, "@")
+	if at < 0 {
+		return remoteTarget{}, fmt.Errorf("remote must be user@host:path, got %q", remote)
+	}
+	// find the colon that separates host from path: the first colon after '@'
+	rest := remote[at+1:]
+	c := strings.Index(rest, ":")
+	if c < 0 {
+		return remoteTarget{}, fmt.Errorf("remote must include :path, got %q", remote)
+	}
+	host := remote[:at+1+c]
+	base := rest[c+1:]
+	if host == "" || base == "" {
+		return remoteTarget{}, fmt.Errorf("could not parse host/path from %q", remote)
+	}
+	return remoteTarget{Host: host, Base: toWinPath(base)}, nil
+}
+
+// toWinPath normalizes a forward-slash path to backslashes for Windows cmd.
+func toWinPath(p string) string { return strings.ReplaceAll(p, "/", `\`) }
+
+// sshRun executes one remote command (cmd.exe on the Windows laptop) and returns
+// stdout. stdin, when non-empty, is forwarded — `claude -p` reads its prompt there.
+func sshRun(host, remoteCmd, stdin string) (string, error) {
+	args := []string{"-o", "BatchMode=yes", "-o", "ConnectTimeout=20", host, remoteCmd}
+	cmd := exec.Command("ssh", args...)
+	if stdin != "" {
+		cmd.Stdin = strings.NewReader(stdin)
+	}
+	out, err := cmd.Output()
+	if err != nil {
+		msg := ""
+		if ee, ok := err.(*exec.ExitError); ok {
+			msg = strings.TrimSpace(string(ee.Stderr))
+		}
+		return string(out), fmt.Errorf("ssh: %v: %s", err, msg)
+	}
+	return string(out), nil
+}
+
+// sshListDirs lists the immediate subdirectory names of base on the remote.
+func sshListDirs(host, winBase string) ([]string, error) {
+	out, err := sshRun(host, `cmd /c "dir /b /ad `+winBase+`"`, "")
+	if err != nil {
+		return nil, err
+	}
+	var dirs []string
+	for _, ln := range strings.Split(out, "\n") {
+		ln = strings.TrimSpace(strings.TrimRight(ln, "\r"))
+		if ln != "" {
+			dirs = append(dirs, ln)
+		}
+	}
+	return dirs, nil
+}
+
+// claudeReviewRemote grounds one repo on the laptop: cd into it and run claude -p,
+// prompt on stdin. cwd=repo lets Claude read that project's README/docs/source.
+func claudeReviewRemote(host, winBase, name string) (string, error) {
+	repo := winBase + `\` + name
+	prompt := groundSystem + "\n\nReview THIS repository (the current working directory): read README, docs, and primary source; ignore datasets, model weights, and vendored deps. Return only the JSON."
+	remoteCmd := fmt.Sprintf(`cmd /c "cd /d %s && claude -p --model %s --output-format text"`, repo, assistModel())
+	return sshRun(host, remoteCmd, prompt)
+}
+
+// repo names that are upstream forks/frameworks or non-asset scaffolding — never
+// Jesse's own capability. Excluded from grounding.
+var hardExcludeRepos = map[string]bool{
+	"ardupilot": true, "flutter": true, "stable-diffusion-webui": true,
+	"node_modules": true, "backups": true, "backup": true, ".git": true,
+	"venv": true, ".venv": true, "vendor": true, "tmp": true, "temp": true,
+	"claude-backup": true, "downloads": true,
+}
+
+// keepRepo decides whether a directory name is one of Jesse's biddable assets.
+func keepRepo(name string) bool {
+	n := strings.ToLower(strings.TrimSpace(name))
+	if n == "" || strings.HasPrefix(n, ".") || hardExcludeRepos[n] {
+		return false
+	}
+	// review / PR / test / backup working copies
+	for _, suf := range []string{"-review", "-pr", "-test", "-tests", "-backup", "-bak", "-old", "-copy"} {
+		if strings.HasSuffix(n, suf) {
+			return false
+		}
+	}
+	if strings.Contains(n, "-pr-") || strings.Contains(n, "-review-") {
+		return false
+	}
+	return true
+}
+
+// dedupeNear collapses near-duplicate variants of the same project (keep the first
+// seen, which—after sorting—is the canonical base name). e.g. aisovereign /
+// aisovereign-v2, mutawazin / mutawazin-app / mutawazin-legacy.
+func dedupeNear(names []string) []string {
+	norm := func(s string) string {
+		s = strings.ToLower(s)
+		s = strings.ReplaceAll(s, "_", "-")
+		for _, suf := range []string{"-v2", "-v3", "-app", "-legacy", "-new", "-2", "-mobile", "-desktop", "-web"} {
+			s = strings.TrimSuffix(s, suf)
+		}
+		return s
+	}
+	seen := map[string]bool{}
+	var out []string
+	for _, n := range names {
+		k := norm(n)
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, n)
+	}
+	return out
+}
+
+// domainKeywords maps grounded terms to Jesse's bidding domains so the scorer keeps
+// a coarse domain signal even when term overlap is thin.
+var domainKeywords = map[string][]string{
+	"counter-uas":           {"drone", "uas", "counter-uas", "interceptor", "rf", "detection", "tracking"},
+	"thermal/eo-ir":         {"thermal", "infrared", "eo/ir", "eo-ir", "fcos", "convnext", "object detection"},
+	"autonomy":              {"autonomy", "autonomous", "navigation", "slam", "guidance", "swarm"},
+	"ai/ml":                 {"llm", "model", "inference", "training", "rag", "embedding", "neural", "ml", "ai"},
+	"resilient-comms":       {"mesh", "tak", "atak", "comms", "radio", "tactical", "edge", "offline"},
+	"cyber/governance":      {"signet", "audit", "rmf", "ato", "nist", "compliance", "security", "pentest", "red team"},
+	"c2/isr":                {"c2", "isr", "command", "control", "situational", "sensor fusion"},
+	"logistics":             {"logistics", "supply", "sustainment", "maintenance", "readiness"},
+}
+
+func inferDomains(terms []string) []string {
+	hay := " " + strings.ToLower(strings.Join(terms, " ")) + " "
+	var got []string
+	for dom, kws := range domainKeywords {
+		for _, kw := range kws {
+			if strings.Contains(hay, " "+kw) || strings.Contains(hay, kw+" ") {
+				got = append(got, dom)
+				break
+			}
+		}
+	}
+	sort.Strings(got)
+	return got
+}
+
+// GroundRemote enumerates Jesse's portfolio on the laptop, grounds each repo with
+// the laptop's own Claude over SSH, and upserts the results into capabilities.json
+// + dossiers. Resumable: assets already grounded (with a summary) are skipped
+// unless reground is set. only limits to one repo by name.
+func GroundRemote(dir, remote, only string, reground bool) error {
+	if dir == "" {
+		dir = `C:\trackers\workspace`
+	}
+	tgt, err := parseRemote(remote)
+	if err != nil {
+		return err
+	}
+	capsPath := filepath.Join(dir, "capabilities.json")
+	caps, err := LoadCapabilities(capsPath)
+	if err != nil {
+		// no profile yet — start from the embedded example so local assets survive
+		var c Capabilities
+		if json.Unmarshal(exampleCaps, &c) == nil {
+			caps = &c
+		} else {
+			caps = &Capabilities{}
+		}
+	}
+	dossierDir := filepath.Join(dir, "dossiers")
+	os.MkdirAll(dossierDir, 0o755)
+
+	fmt.Printf("enumerating %s on %s …\n", tgt.Base, tgt.Host)
+	dirs, err := sshListDirs(tgt.Host, tgt.Base)
+	if err != nil {
+		return fmt.Errorf("list remote dirs (is the laptop online + ssh reachable?): %w", err)
+	}
+	sort.Strings(dirs)
+	var kept []string
+	for _, d := range dirs {
+		if keepRepo(d) {
+			kept = append(kept, d)
+		}
+	}
+	kept = dedupeNear(kept)
+	fmt.Printf("found %d dirs → %d biddable repos after filtering\n", len(dirs), len(kept))
+
+	// index existing assets by lowercased name
+	idx := map[string]int{}
+	for i := range caps.Assets {
+		idx[strings.ToLower(caps.Assets[i].Name)] = i
+	}
+
+	grounded, skipped := 0, 0
+	for _, name := range kept {
+		if only != "" && !strings.EqualFold(name, only) {
+			continue
+		}
+		key := strings.ToLower(name)
+		if i, ok := idx[key]; ok && !reground {
+			// already in the profile (e.g. locally-grounded rigrun/thermalhawk/auspex,
+			// or a prior remote run) — leave it as-is.
+			if caps.Assets[i].Summary != "" {
+				skipped++
+				continue
+			}
+		}
+		fmt.Printf("grounding %s …\n", name)
+		raw, err := claudeReviewRemote(tgt.Host, tgt.Base, name)
+		if err != nil {
+			fmt.Printf("  skip %s: %v\n", name, err)
+			continue
+		}
+		js := extractJSON(raw)
+		var g groundResult
+		if js == "" || json.Unmarshal([]byte(js), &g) != nil {
+			fmt.Printf("  skip %s: could not parse grounding JSON\n", name)
+			continue
+		}
+		if g.Summary == "" {
+			fmt.Printf("  skip %s: empty grounding\n", name)
+			continue
+		}
+		// upsert
+		var a *Asset
+		if i, ok := idx[key]; ok {
+			a = &caps.Assets[i]
+		} else {
+			caps.Assets = append(caps.Assets, Asset{Name: key})
+			idx[key] = len(caps.Assets) - 1
+			a = &caps.Assets[len(caps.Assets)-1]
+		}
+		a.Summary = g.Summary
+		if g.TRL != "" {
+			a.TRL = g.TRL
+		}
+		a.Terms = mergeTerms(a.Terms, g.Terms)
+		if doms := inferDomains(a.Terms); len(doms) > 0 {
+			a.Domains = mergeTerms(a.Domains, doms)
+		}
+		if a.Repo == "" {
+			a.Repo = tgt.Host + ":" + tgt.Base + `\` + name // remote marker
+		}
+		writeDossier(dossierDir, a, &g)
+		grounded++
+		fmt.Printf("  ✓ %s: %s\n", name, truncate(g.Summary, 80))
+	}
+
+	b, _ := json.MarshalIndent(caps, "", " ")
+	if err := os.WriteFile(capsPath, b, 0o644); err != nil {
+		return err
+	}
+	fmt.Printf("done: grounded %d, skipped %d already-known; %d total assets in capabilities.json\n",
+		grounded, skipped, len(caps.Assets))
+	return nil
+}
+
+// writeDossier renders a grounded asset's human/assistant-readable dossier.
+func writeDossier(dossierDir string, a *Asset, g *groundResult) {
+	var d strings.Builder
+	d.WriteString("# " + a.Name + " — grounded capability dossier\n\n")
+	if a.TRL != "" {
+		d.WriteString("**TRL:** " + a.TRL + "\n\n")
+	}
+	d.WriteString(g.Summary + "\n\n")
+	if len(a.Domains) > 0 {
+		d.WriteString("**Domains:** " + strings.Join(a.Domains, ", ") + "\n\n")
+	}
+	if len(g.Metrics) > 0 {
+		d.WriteString("## Real metrics\n")
+		for _, m := range g.Metrics {
+			d.WriteString("- " + m + "\n")
+		}
+		d.WriteString("\n")
+	}
+	if len(g.Discriminators) > 0 {
+		d.WriteString("## Discriminators\n")
+		for _, x := range g.Discriminators {
+			d.WriteString("- " + x + "\n")
+		}
+		d.WriteString("\n")
+	}
+	d.WriteString("_Source: " + a.Repo + " (Claude Code review)_\n")
+	os.WriteFile(filepath.Join(dossierDir, a.Name+".md"), []byte(d.String()), 0o644)
 }
 
 func mergeTerms(existing, add []string) []string {

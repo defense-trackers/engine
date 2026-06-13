@@ -1,18 +1,23 @@
 package workspace
 
-// The lifecycle runs the full path to profit — not just to "submitted". Each stage
-// carries a rough conversion probability so the pipeline can weight expected revenue.
+// stageProb is the CUMULATIVE probability of a pursuit at this stage actually
+// reaching program-of-record revenue — the finish line, not just the next gate.
+// It multiplies a pursuit's PoR lifetime-value ceiling to give an honest expected
+// value. The SBIR→PoR funnel is brutal (well under 5% of Phase I awards ever reach
+// a real program), so early stages are deliberately small. These compound up the
+// lifecycle; do NOT read "submitted: 0.02" as "2% chance of award" — it's "2%
+// chance this submitted bid ends in a funded program of record."
 // Closed stages (lost/pass) are 0.
 var stageProb = map[string]float64{
-	"watching":   0.05,
-	"qualifying": 0.10,
-	"drafting":   0.15,
-	"submitted":  0.25,
-	"won":        0.40, // award
-	"pilot":      0.55, // Phase I / OTA prototype executing
-	"transition": 0.70, // second-valley engineering underway
-	"pom":        0.85, // programmed into the budget
-	"program":    1.00, // program of record — revenue realized
+	"watching":   0.003, // a topic on the radar
+	"qualifying": 0.006,
+	"drafting":   0.010, // actively writing a volume
+	"submitted":  0.020, // bid is in
+	"won":        0.05,  // Phase I / prototype award in hand
+	"pilot":      0.12,  // Phase I / OTA prototype executing
+	"transition": 0.30,  // second-valley engineering underway (sponsor + requirement)
+	"pom":        0.65,  // programmed into the budget
+	"program":    1.00,  // program of record — revenue realized
 	"lost":       0.0,
 	"pass":       0.0,
 }

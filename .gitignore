@@ -13,7 +13,15 @@
 /workspace/contacts.json
 /workspace/bidstate.json
 /workspace/dsip.json
+/workspace/brief-state.json
+/workspace/company-kit.json
 /workspace/cache/
+/workspace/dossiers/
+/workspace/drafts/
+
+# Playwright/dev screenshots, anywhere they land
+*.png
+!workspace/ui/**/*.png
 
 # serena MCP local project state
 /.serena/
