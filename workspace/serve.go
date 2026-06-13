@@ -81,6 +81,8 @@ func Run(o Options) error {
 	mux.HandleFunc("/api/refresh", s.hRefresh)
 	mux.HandleFunc("/api/assist", s.hAssist)
 	mux.HandleFunc("/api/assist-status", s.hAssistStatus)
+	mux.HandleFunc("/api/assess", s.hAssess)
+	mux.HandleFunc("/api/assess-all", s.hAssessAll)
 	mux.HandleFunc("/api/playbook", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
 		w.Write(playbookMD)

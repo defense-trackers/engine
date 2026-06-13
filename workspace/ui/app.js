@@ -123,8 +123,21 @@ function scorecard(o) {
   const vi = el('input'); vi.type = 'number'; vi.placeholder = 'e.g. 1800'; vi.value = p.value || '';
   let t; vi.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => saveState(o.id, { value: parseInt(vi.value) || 0 }, { title: o.title, agency: o.agency, url: o.url }), 600); });
   val.append(vi); box.append(val);
+  if (ASSIST.enabled) {
+    const aa = el('button', 'aabtn', '✨ Auto-assess — Claude fills value + the four walls');
+    aa.addEventListener('click', async () => {
+      aa.textContent = 'assessing… (runs on your subscription)'; aa.disabled = true;
+      const r = await fetch('/api/assess', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: o.id }) }).then((x) => x.json()).catch(() => ({ error: 'failed' }));
+      await reloadState();
+      openAssist(o);
+      if (r && r.error) { const d = el('div', 'msg err'); d.textContent = r.error; $('#thread').append(d); }
+    });
+    box.append(aa);
+  }
   return box;
 }
+
+async function reloadState() { STATE = await fetch('/api/state').then((r) => r.json()).catch(() => STATE); }
 
 function readiness(w) {
   const v = (x) => x === 'ready' ? 100 : x === 'partial' ? 50 : 0;
@@ -334,7 +347,20 @@ function renderNow() {
 
 function renderPipeline() {
   const v = $('#view-pipeline'); v.hidden = false; v.textContent = '';
-  v.append(el('h2', null, 'Pipeline — your pursuits'));
+  const head = el('div', 'phead');
+  head.append(el('h2', null, 'Pipeline — your pursuits'));
+  if (ASSIST.enabled) {
+    const aa = el('button', 'act', '✨ Auto-assess all pursuits');
+    aa.title = 'Claude fills $ value + the four transition walls for every pursuit (runs on your subscription)';
+    aa.addEventListener('click', async () => {
+      aa.textContent = 'assessing all… (~30–60s, on your subscription)'; aa.disabled = true;
+      const r = await fetch('/api/assess-all', { method: 'POST' }).then((x) => x.json()).catch(() => null);
+      await load(); render();
+      if (r) { const n = $('#stat'); if (n) n.textContent = `auto-assessed ${r.assessed}/${r.total}` + (r.failed ? ` (${r.failed} failed)` : ''); }
+    });
+    head.append(aa);
+  }
+  v.append(head);
   const board = el('div', 'kanban');
   const byId = Object.fromEntries(OPPS.map((o) => [o.id, o]));
   COLS.forEach((col) => {
