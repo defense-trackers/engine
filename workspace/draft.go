@@ -47,6 +47,16 @@ var darpaSections = []draftSection{
 	{"Cost, Schedule & Team", "FFP cost realism (≤$300K / 6mo intent), schedule with milestones, and the team's credibility from the Company Kit."},
 }
 
+// Solution-brief pathway for SAM contracts / OTAs / CSOs / BAAs (not SBIR's 12 sections).
+var solutionSections = []draftSection{
+	{"Problem & Operational Need", "The specific operational problem + which command/office owns it. Tie to the solicitation's stated need; no generic background."},
+	{"Solution & Key Innovation", "The proposed solution and what's genuinely new, grounded in the matched asset. Lead with the discriminator."},
+	{"Technical Approach & Feasibility", "How it works + why it's feasible now (the asset's real metrics/TRL), with principal risks + mitigations."},
+	{"Transition & Operational Impact", "Operational impact + the production/scale path (OTA 4022(f) follow-on / Phase III / bridge). Begin with the transition in mind."},
+	{"Team & Past Performance", "The team + relevant past performance from the Company Kit; for hardware, the US-prime + AUS-partner teaming structure. Real bios only."},
+	{"Cost, Schedule & Deliverables", "FFP cost realism, milestone schedule, and concrete deliverables for the period of performance."},
+}
+
 // QuadChart is the DARPA slide-1 quad-chart outline emitted alongside the deck.
 var quadChart = []draftSection{
 	{"Quad — What & Why (top-left)", "One-line concept + the operational problem it solves."},
@@ -81,9 +91,23 @@ type draftPlan struct {
 	Quad     []draftSection // DARPA only
 }
 
+// isContract detects SAM contract / OTA / CSO / BAA opportunities (not SBIR/STTR).
+func isContract(o *Opportunity) bool {
+	hay := strings.ToLower(o.Type + " " + o.AwardText + " " + o.Title)
+	if strings.Contains(hay, "sbir") || strings.Contains(hay, "sttr") {
+		return false
+	}
+	return o.Source == "sam" || strings.Contains(hay, "commercial solutions") ||
+		strings.Contains(hay, "other transaction") || strings.Contains(hay, " cso") ||
+		strings.Contains(hay, " ota") || strings.Contains(hay, "baa") || strings.Contains(hay, "prototype")
+}
+
 func planFor(o *Opportunity) draftPlan {
 	if isDARPA(o) {
 		return draftPlan{Pathway: "DARPA WhitePaper (≤10pp, 4 sections) + ≤5-slide deck w/ quad chart", Sections: darpaSections, Quad: quadChart}
+	}
+	if isContract(o) {
+		return draftPlan{Pathway: "Contract/OTA/CSO solution brief — 6 sections (verify against the solicitation)", Sections: solutionSections}
 	}
 	return draftPlan{Pathway: "SBIR/STTR Phase I technical volume — 12 prescribed sections", Sections: sbirSections}
 }
