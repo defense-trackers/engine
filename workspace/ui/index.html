@@ -109,6 +109,16 @@
   #statusbar b{color:var(--ink);font-weight:700}
   #statusbar .ss{color:var(--faint)}
   #statusbar .grow{flex:1}
+  #statusbar .snd{cursor:pointer}#statusbar .snd:hover b{color:var(--cyan)}
+  /* idle attract mode */
+  #idlebeam{position:fixed;inset:0;z-index:27;pointer-events:none;opacity:0;transition:opacity 1.2s;
+    background:linear-gradient(180deg,transparent,rgba(143,179,196,.07),transparent);background-size:100% 240px;background-repeat:no-repeat;background-position:0 -260px}
+  body.idle #idlebeam{opacity:1;animation:idsweep 4.5s linear infinite}
+  @keyframes idsweep{to{background-position:0 130%}}
+  body.idle #radar{opacity:.16}
+  #idlebeam::after{content:'STANDBY · MOVE TO RESUME';position:absolute;left:0;right:0;bottom:52px;text-align:center;
+    font-family:var(--mono);font-size:10px;letter-spacing:.4em;color:var(--cyan);opacity:0;transition:opacity 1s}
+  body.idle #idlebeam::after{opacity:.65;animation:pulse 2.4s ease-in-out infinite}
   h2{font-family:var(--disp);font-size:13px;font-weight:600;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;margin:0 0 16px}
   .sub{color:var(--dim);font-size:13.5px;margin:-8px 0 20px;max-width:880px}
 
@@ -130,6 +140,11 @@
   .score{font-family:var(--mono);font-weight:700;font-size:24px;text-align:right;min-width:46px;
     background:linear-gradient(180deg,#fff,#acc6d6);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 24px rgba(143,179,196,.3)}
   .score small{display:block;font-weight:500;font-size:9.5px;color:var(--dim);-webkit-text-fill-color:var(--dim);letter-spacing:.1em}
+  .meter{height:6px;border-radius:4px;background:rgba(190,210,225,.08);display:flex;overflow:hidden;margin-top:11px;border:1px solid var(--line)}
+  .meter i{height:100%;display:block;transition:width .5s cubic-bezier(.3,.8,.3,1)}
+  .meter .mc{background:linear-gradient(90deg,var(--brand2),var(--brand))}
+  .meter .me{background:#79b3ad}.meter .mr{background:#8fb3c4}.meter .mv{background:#6e96a8}
+  .meterlbl{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--faint);margin-top:5px;text-transform:uppercase}
   .bars{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}
   .bar{font-family:var(--mono);font-size:11px;color:var(--dim);background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:8px;padding:3px 9px;transition:.2s}
   .bar b{color:var(--ink)}
@@ -421,6 +436,7 @@
 <div id="grid"></div>
 <div id="grain"></div>
 <div id="crt"></div>
+<div id="idlebeam"></div>
 <div id="prog"></div>
 <div id="scan"></div>
 <div id="boot"><div class="bgrid"></div><div class="bsweep"></div><div class="bw"><div class="borb"></div><div class="bt">REALIZER</div><div class="bs">SOVEREIGN BID COMMAND DECK</div><div class="bconsole" id="bconsole"></div><div class="bpct"><span id="bpct">0</span><i>%</i></div><div class="bskip">click to enter</div></div></div>

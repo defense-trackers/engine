@@ -18,6 +18,30 @@ function tickClock() {
 }
 setInterval(tickClock, 1000);
 
+// --- optional sound design (WebAudio synth; off by default) ---
+let SOUND_ON = localStorage.getItem('snd') === '1';
+let AC = null;
+function actx() { try { if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch { } return AC; }
+function blip(freq, dur, type, gain, slideTo) {
+  if (!SOUND_ON) return; const ac = actx(); if (!ac) return;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type || 'sine'; o.frequency.setValueAtTime(freq, ac.currentTime);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, ac.currentTime + dur);
+  g.gain.setValueAtTime(gain, ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + dur);
+  o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + dur);
+}
+const snd = {
+  tick: () => blip(880, .03, 'square', .02),
+  tab: () => { blip(520, .05, 'triangle', .045); setTimeout(() => blip(820, .06, 'triangle', .035), 45); },
+  enter: () => { blip(330, .12, 'sine', .06, 660); setTimeout(() => blip(660, .2, 'sine', .05, 990), 120); },
+  lock: () => blip(1300, .012, 'sine', .01),
+};
+
+// --- idle attract mode ---
+let idleTimer;
+function resetIdle() { document.body.classList.remove('idle'); clearTimeout(idleTimer); idleTimer = setTimeout(() => document.body.classList.add('idle'), 35000); }
+
 // chromatic-aberration glitch burst (on enter + view change)
 function glitchBurst() {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -172,7 +196,7 @@ function bootSequence() {
   const boot = document.getElementById('boot');
   if (!boot) return;
   let entered = false;
-  const enter = () => { if (entered) return; entered = true; glitchBurst(); boot.classList.add('gone'); setTimeout(() => boot.remove(), 950); };
+  const enter = () => { if (entered) return; entered = true; snd.enter(); glitchBurst(); boot.classList.add('gone'); setTimeout(() => boot.remove(), 950); };
   boot.addEventListener('click', enter);
   const con = document.getElementById('bconsole');
   const pct = document.getElementById('bpct');
@@ -242,7 +266,7 @@ function initCursor() {
     mx = e.clientX; my = e.clientY;
     dot.style.transform = `translate(${mx}px,${my}px)`;
     const il = !!(e.target.closest && e.target.closest(lockSel));
-    if (il !== lock) { lock = il; document.body.classList.toggle('lock', il); }
+    if (il !== lock) { lock = il; document.body.classList.toggle('lock', il); if (il) snd.lock(); }
   }, { passive: true });
   addEventListener('pointerdown', () => document.body.classList.add('down'));
   addEventListener('pointerup', () => document.body.classList.remove('down'));
@@ -292,6 +316,16 @@ async function boot() {
   initMagnetic();
   initCardFX();
   addEventListener('resize', moveIndicator);
+  // sound toggle (delegated, since the status bar re-renders)
+  $('#statusbar').addEventListener('click', (e) => {
+    if (!(e.target.closest && e.target.closest('#sndtoggle'))) return;
+    SOUND_ON = !SOUND_ON; localStorage.setItem('snd', SOUND_ON ? '1' : '0');
+    const b = document.querySelector('#sndtoggle b'); if (b) b.textContent = SOUND_ON ? 'ON' : 'OFF';
+    if (SOUND_ON) { actx(); snd.tick(); }
+  });
+  // idle attract mode
+  ['pointermove', 'pointerdown', 'keydown', 'wheel'].forEach((ev) => addEventListener(ev, resetIdle, { passive: true }));
+  resetIdle();
   // subtle grid parallax for depth
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
     const grid = document.getElementById('grid');
@@ -306,6 +340,7 @@ async function boot() {
     t.addEventListener('click', () => {
       if (t.classList.contains('active')) return;
       VIEW = t.dataset.view;
+      snd.tab();
       glitchBurst();
       if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
         document.startViewTransition(() => { setActive(); render(); });
@@ -547,10 +582,11 @@ async function load() {
       `<span class="ss">TEAMING <b>${team}</b></span>` +
       `<span class="ss">PURSUITS <b>${Object.keys(STATE).length}</b></span>` +
       `<span class="grow"></span>` +
+      `<span class="ss snd" id="sndtoggle" title="toggle UI sound">SND <b>${SOUND_ON ? 'ON' : 'OFF'}</b></span>` +
       `<span class="ss" id="clock"></span>` +
       `<span class="ss">CLAUDE <b>${be}</b></span>`;
     tickClock();
-    sb.querySelectorAll('span:not(#clock) b').forEach((b) => scrambleText(b, b.textContent, 520));
+    sb.querySelectorAll('span:not(#clock):not(#sndtoggle) b').forEach((b) => scrambleText(b, b.textContent, 520));
   }
 }
 
@@ -618,11 +654,16 @@ function oppCard(o, now) {
     `<span class="bar">elig <b>${o.eligibility}</b></span>` +
     `<span class="bar">runway <b>${o.runway}</b></span>` +
     `<span class="bar">value <b>${o.value}</b></span>`;
+  // score composition meter (capability / eligibility / runway / value → total)
+  const meter = el('div', 'meter');
+  meter.innerHTML = `<i class="mc" style="width:${o.capability}%"></i><i class="me" style="width:${o.eligibility}%"></i><i class="mr" style="width:${o.runway}%"></i><i class="mv" style="width:${o.value}%"></i>`;
+  const mlbl = el('div', 'meterlbl');
+  mlbl.innerHTML = `<span>capability · eligibility · runway · value</span><span>${o.score}/100</span>`;
   const row = el('div', 'ctl');
   const realize = el('button', 'realize magnetic'); realize.innerHTML = svg('spark') + 'Realize with Claude';
   realize.addEventListener('click', () => openAssist(o));
   row.append(realize);
-  card.append(top, bars, controls(o.id), row);
+  card.append(top, bars, meter, mlbl, controls(o.id), row);
   card.append(el('span', 'ticks'));
   return card;
 }
