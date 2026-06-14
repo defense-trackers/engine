@@ -115,6 +115,10 @@ func FetchSAM(dir string) ([]Opportunity, error) {
 			if !strings.Contains(strings.ToUpper(d.FullParentPath), "DEPT OF DEFENSE") {
 				continue
 			}
+			// Drop facilities/construction/services noise the keyword search drags in.
+			if samNoise(d.Title) {
+				continue
+			}
 			id := "sam:" + d.SolicitationNumber
 			if d.SolicitationNumber == "" {
 				id = "sam:" + d.UILink
@@ -142,6 +146,20 @@ func FetchSAM(dir string) ([]Opportunity, error) {
 		}
 	}
 	return out, nil
+}
+
+// samNoiseTerms are facilities/construction/services contracts the keyword search
+// surfaces tangentially (e.g. "command and control FACILITY building maintenance").
+var samNoiseTerms = []string{
+	"building maintenance", "facility maintenance", "facilities maintenance",
+	"grounds maintenance", "janitorial", "custodial", "construction", "renovation",
+	"roof", "hvac", "lease of", "furniture", "landscaping", "pest control",
+	"elevator", "parking", "food service", "laundry", "refuse", "snow removal",
+	"guard service", "lawn", "paving", "fire alarm", "generator maintenance",
+}
+
+func samNoise(title string) bool {
+	return anyContains(" "+strings.ToLower(title)+" ", samNoiseTerms)
 }
 
 // samAgency shortens SAM's full org path to the trailing one or two segments.
