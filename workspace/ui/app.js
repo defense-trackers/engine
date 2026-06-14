@@ -9,6 +9,15 @@ let BRIEF = null;
 const $ = (s, r = document) => r.querySelector(s);
 const el = (t, c, txt) => { const e = document.createElement(t); if (c) e.className = c; if (txt != null) e.textContent = txt; return e; };
 
+// live Zulu clock in the status bar
+function tickClock() {
+  const c = $('#clock');
+  if (!c) return;
+  const d = new Date(), p = (n) => String(n).padStart(2, '0');
+  c.innerHTML = `<b>${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}</b>Z`;
+}
+setInterval(tickClock, 1000);
+
 // --- custom line-icon set (zero emoji; stroke = currentColor) ---
 const _s = (p) => `<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const ICON = {
@@ -452,7 +461,9 @@ async function load() {
       `<span class="ss">TEAMING <b>${team}</b></span>` +
       `<span class="ss">PURSUITS <b>${Object.keys(STATE).length}</b></span>` +
       `<span class="grow"></span>` +
+      `<span class="ss" id="clock"></span>` +
       `<span class="ss">CLAUDE <b>${be}</b></span>`;
+    tickClock();
   }
 }
 
