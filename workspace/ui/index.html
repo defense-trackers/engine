@@ -274,7 +274,7 @@
     background:linear-gradient(90deg,var(--cyan),var(--brand),var(--brand2));box-shadow:0 0 14px var(--brand)}
 
   /* ---------- cinematic boot intro ---------- */
-  #boot{position:fixed;inset:0;z-index:60;display:grid;place-items:center;cursor:pointer;
+  #boot{position:fixed;inset:0;width:100vw;height:100vh;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;
     background:radial-gradient(circle at 50% 42%,#0a1120,#04060c 72%)}
   #boot.gone{opacity:0;visibility:hidden;transform:scale(1.05);transition:opacity .9s cubic-bezier(.6,0,.2,1),transform .9s cubic-bezier(.6,0,.2,1)}
   #boot .bw{text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px}
@@ -292,7 +292,19 @@
   #boot .bline span:first-child{color:var(--faint)}
   #boot .bline .pend{color:var(--brand2)}
   #boot .bline .ok{color:var(--ok)}
-  #boot .bskip{margin-top:8px;font-family:var(--mono);font-size:9px;letter-spacing:.25em;color:rgba(152,164,176,.5);opacity:0;animation:bootTxt 1s ease 1.4s forwards}
+  #boot .bgrid{position:absolute;inset:0;pointer-events:none;opacity:0;
+    background-image:linear-gradient(rgba(143,179,196,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(143,179,196,.06) 1px,transparent 1px);
+    background-size:42px 42px;mask-image:radial-gradient(circle at 50% 45%,#000,transparent 68%);-webkit-mask-image:radial-gradient(circle at 50% 45%,#000,transparent 68%);animation:bgridIn 1.3s cubic-bezier(.2,.8,.2,1) .1s forwards}
+  @keyframes bgridIn{from{opacity:0;transform:scale(1.12)}to{opacity:1;transform:scale(1)}}
+  #boot .bsweep{position:absolute;left:0;right:0;height:220px;top:-240px;pointer-events:none;
+    background:linear-gradient(180deg,transparent,rgba(143,179,196,.10),transparent);animation:bsweepGo 2.4s ease-in-out .3s infinite}
+  @keyframes bsweepGo{to{top:120%}}
+  #boot .bpct{margin-top:2px;font-family:var(--mono);font-size:11px;letter-spacing:.22em;color:var(--brand);opacity:0;animation:bootTxt .8s ease .5s forwards}
+  #boot .bpct i{color:var(--dim);font-style:normal}
+  #boot .bskip{margin-top:10px;font-family:var(--mono);font-size:10px;letter-spacing:.3em;color:rgba(152,164,176,.35);text-transform:uppercase;opacity:0;
+    border:1px solid transparent;border-radius:999px;padding:7px 16px;transition:opacity .5s,color .5s,border-color .5s,box-shadow .5s}
+  #boot.ready .bskip{opacity:1;color:var(--cyan);border-color:rgba(190,210,225,.4);box-shadow:0 0 24px -8px var(--cyan);animation:enterPulse 1.8s ease-in-out infinite}
+  @keyframes enterPulse{50%{opacity:.5}}
   @keyframes orbIn{from{opacity:0;transform:scale(.3)}}
   @keyframes bootTxt{to{opacity:1}}
   @keyframes blineIn{to{opacity:1;transform:none}}
@@ -336,7 +348,7 @@
 <div id="grid"></div>
 <div id="prog"></div>
 <div id="scan"></div>
-<div id="boot"><div class="bw"><div class="borb"></div><div class="bt">REALIZER</div><div class="bs">SOVEREIGN BID COMMAND DECK</div><div class="bconsole" id="bconsole"></div><div class="bskip">click to enter</div></div></div>
+<div id="boot"><div class="bgrid"></div><div class="bsweep"></div><div class="bw"><div class="borb"></div><div class="bt">REALIZER</div><div class="bs">SOVEREIGN BID COMMAND DECK</div><div class="bconsole" id="bconsole"></div><div class="bpct"><span id="bpct">0</span><i>%</i></div><div class="bskip">click to enter</div></div></div>
 <header>
   <span class="brand"><span class="orb"></span><b>REALIZER</b></span>
   <span class="priv">PRIVATE · LOCAL</span>

@@ -139,21 +139,33 @@ function initBG() {
   requestAnimationFrame(frame);
 }
 
-// Cinematic "systems online" boot sequence.
+// Cinematic "systems online" boot sequence — runs, then waits for the user to enter.
 function bootSequence() {
   const boot = document.getElementById('boot');
   if (!boot) return;
-  const kill = () => { boot.classList.add('gone'); setTimeout(() => boot.remove(), 950); };
-  boot.addEventListener('click', kill);
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { boot.remove(); return; }
+  let entered = false;
+  const enter = () => { if (entered) return; entered = true; boot.classList.add('gone'); setTimeout(() => boot.remove(), 950); };
+  boot.addEventListener('click', enter);
   const con = document.getElementById('bconsole');
+  const pct = document.getElementById('bpct');
   const steps = [
     ['AUTH', 'SUBSCRIPTION LINKED'], ['CAPABILITY GRAPH', 'GROUNDED'],
     ['DSIP UPLINK', 'LIVE'], ['SAM RADAR', 'ARMED'],
     ['SIGNET GATE', 'NOMINAL'], ['COMMAND DECK', 'ONLINE'],
   ];
+  const ready = () => { boot.classList.add('ready'); if (pct) pct.textContent = '100'; };
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    steps.forEach(([k, v]) => { const l = el('div', 'bline'); l.style.animation = 'none'; l.style.opacity = '1'; l.style.transform = 'none'; l.innerHTML = `<span>${k}</span><span class="ok">${v}</span>`; con.append(l); });
+    ready();
+    return; // still waits for click — just no animation
+  }
+  // count the percentage up across the sequence
+  const t0 = performance.now(), dur = 2500;
+  const grow = (now) => { const p = Math.min(1, (now - t0) / dur); if (pct && !entered) pct.textContent = Math.round(p * 100); if (p < 1 && !entered) requestAnimationFrame(grow); };
+  requestAnimationFrame(grow);
   let i = 0;
   const tick = () => {
+    if (entered) return;
     if (i < steps.length) {
       const [k, v] = steps[i];
       const line = el('div', 'bline');
@@ -161,9 +173,9 @@ function bootSequence() {
       con.append(line);
       setTimeout(() => { const p = line.querySelector('.pend'); if (p) { p.className = 'ok'; p.textContent = v; } }, 200);
       i++;
-      setTimeout(tick, 260);
+      setTimeout(tick, 280);
     } else {
-      setTimeout(kill, 520);
+      setTimeout(ready, 360); // hold here — wait for the click
     }
   };
   setTimeout(tick, 640);
