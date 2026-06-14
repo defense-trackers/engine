@@ -108,6 +108,7 @@ func Run(o Options) error {
 	addr := fmt.Sprintf("127.0.0.1:%d", o.Port)
 	fmt.Printf("bid workspace → http://%s   (data: %s, dir: %s)\n", addr, o.DataBase, o.Dir)
 	fmt.Printf("opportunities scored: %d   pursuits: %d\n", len(s.opps), len(s.state))
+	fmt.Println(samNote())
 	return http.ListenAndServe(addr, mux)
 }
 
@@ -165,11 +166,45 @@ func (s *server) ingest() {
 		}
 		fmt.Println("note: DSIP live fetch unavailable; using cached topics if present")
 	}
+	// Wider radar: workspace-local SAM.gov sweep (USV/autonomous-vehicle/DIU/IARPA),
+	// deduped against what we already have by URL. Cached for offline reuse.
+	if sam, err := FetchSAM(); err == nil && len(sam) > 0 {
+		all = appendDedupURL(all, sam)
+		if b, e := json.Marshal(sam); e == nil {
+			_ = os.WriteFile(filepath.Join(s.opts.Dir, "sam.json"), b, 0o644)
+		}
+	} else if b, e := os.ReadFile(filepath.Join(s.opts.Dir, "sam.json")); e == nil {
+		var cached []Opportunity
+		if json.Unmarshal(b, &cached) == nil {
+			for i := range cached {
+				cached[i].Text = cached[i].searchText()
+			}
+			all = appendDedupURL(all, cached)
+		}
+	}
 	Score(all, s.caps, time.Now())
 	sort.SliceStable(all, func(i, j int) bool { return all[i].Score > all[j].Score })
 	s.mu.Lock()
 	s.opps = all
 	s.mu.Unlock()
+}
+
+// appendDedupURL appends add to base, skipping any whose URL already appears (the
+// public SAM feed and the local SAM sweep can surface the same solicitation).
+func appendDedupURL(base, add []Opportunity) []Opportunity {
+	seen := map[string]bool{}
+	for i := range base {
+		if u := strings.TrimSpace(base[i].URL); u != "" {
+			seen[u] = true
+		}
+	}
+	for i := range add {
+		if u := strings.TrimSpace(add[i].URL); u != "" && seen[u] {
+			continue
+		}
+		base = append(base, add[i])
+	}
+	return base
 }
 
 func (o Opportunity) searchText() string {

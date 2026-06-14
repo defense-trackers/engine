@@ -40,6 +40,7 @@ type Brief struct {
 	Deadlines  []BriefItem `json:"deadlines"`
 	QA         []BriefItem `json:"qa"`
 	New        []BriefItem `json:"new"`
+	Teaming    []BriefItem `json:"teaming"`
 	Moves      []BriefItem `json:"moves"`
 	EV         int         `json:"ev"`          // probability-weighted expected revenue, $K
 	TotalValue int         `json:"total_value"` // raw pipeline value, $K
@@ -171,6 +172,26 @@ func (s *server) computeBrief(markSeen bool) *Brief {
 		}
 		bs.Last = br.Generated
 		s.saveBriefState(bs)
+	}
+
+	// --- Teaming lane: hardware platforms (payloads, autonomous vehicles incl. UUV)
+	// where Jesse supplies the software brain to a prime. His #1 gap is teaming, so
+	// these get their own lane.
+	for i := range s.opps {
+		o := &s.opps[i]
+		if !o.TeamingOnly {
+			continue
+		}
+		br.Teaming = append(br.Teaming, BriefItem{
+			ID: o.ID, Kind: "teaming", Title: o.Title,
+			Detail: "find a hardware prime — you provide the software/autonomy", URL: o.URL,
+			Days: o.DaysLeft, Score: o.Score, Asset: o.MatchedAsset,
+			Urgent: o.DaysLeft >= 0 && o.DaysLeft <= 7,
+		})
+	}
+	sort.SliceStable(br.Teaming, func(i, j int) bool { return br.Teaming[i].Score > br.Teaming[j].Score })
+	if len(br.Teaming) > 12 {
+		br.Teaming = br.Teaming[:12]
 	}
 
 	// --- Per-pursuit next move: the weakest wall on each live pursuit.
@@ -319,6 +340,12 @@ func briefText(br *Brief) string {
 	if len(br.New) > 0 {
 		b.WriteString("\nNEW HIGH-FIT:\n")
 		for _, it := range br.New {
+			line(it)
+		}
+	}
+	if len(br.Teaming) > 0 {
+		b.WriteString("\nTEAMING PLAYS (you provide the software brain to a prime):\n")
+		for _, it := range br.Teaming {
 			line(it)
 		}
 	}

@@ -46,7 +46,8 @@ type Opportunity struct {
 	DaysLeft         int    `json:"days_left"` // -1 when no/unparseable close date
 	ActNow           bool   `json:"act_now"`
 	HardwareExcluded bool   `json:"hardware_excluded,omitempty"` // pure hardware build, no software role — a no-go (USV exempt)
-	TeamingOnly      bool   `json:"teaming_only,omitempty"`      // hardware topic where a software asset is the brain — sub to a hardware prime
+	TeamingOnly      bool   `json:"teaming_only,omitempty"`      // hardware platform where his software is the brain — sub to a hardware prime
+	USVPrime         bool   `json:"usv_prime,omitempty"`         // USV/surface-vessel — he builds the vessel (prime play)
 	ClearanceEdge    bool   `json:"clearance_edge,omitempty"`    // requires clearance/IL5/classified — Jesse's competitive moat
 }
 

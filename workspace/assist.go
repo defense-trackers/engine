@@ -284,7 +284,10 @@ func (s *server) assistSystem(o *Opportunity, detail string, p Pursuit, sponsors
 		b.WriteString("NOTE: this topic is flagged as a HARDWARE-BUILD opportunity outside Jesse's software-only profile (and not a USV). Default to PASS unless there is a genuine software-only role; if asked, frame the only viable path as software/autonomy teaming under a hardware prime.\n\n")
 	}
 	if o.TeamingOnly {
-		b.WriteString("NOTE: this is a TEAMING play — the deliverable involves hardware Jesse won't build, but his matched software asset is the brain (e.g. perception/autonomy/governance). Do NOT frame a solo bid. Frame it as Jesse providing the software/payload to a hardware prime or integrator: identify the likely primes, the teaming/consortium channel, and the clean software-defined interface he owns (with GPR scoping). The action is 'find the prime', not 'write the volume solo'.\n\n")
+		b.WriteString("NOTE: this is a TEAMING play — the deliverable involves hardware Jesse won't build (a payload, or an autonomous vehicle/platform like a UUV/UAV/UGV), but his software is the brain (perception/autonomy/governance). Do NOT frame a solo bid. Frame it as Jesse supplying the software/autonomy to a hardware prime or integrator: name the likely primes/integrators, the teaming/consortium channel, and the clean software-defined interface he owns (with GPR scoping). The action is 'find the prime', not 'write the volume solo'.\n\n")
+	}
+	if o.USVPrime {
+		b.WriteString("NOTE: this is a USV / unmanned-surface-vessel topic — Jesse HAS a build path for the vessel, so he can prime this (vessel + his autonomy/perception/governance software), not just sub. Treat it as a priority lane: lead with the integrated USV+software offering.\n\n")
 	}
 	if o.ClearanceEdge || anyContains(" "+strings.ToLower(detail)+" ", clearanceSignals) {
 		b.WriteString("ADVANTAGE: this topic involves clearance/classified/IL5 work — Jesse's moat (active TS/SCI + IL5-built products: rigrun classification-gating, auspex/signet IL5 audit). Most small-business competitors can't operate here. Lean into it as a discriminator and a barrier to competition.\n\n")

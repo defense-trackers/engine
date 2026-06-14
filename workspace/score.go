@@ -41,26 +41,35 @@ func Score(opps []Opportunity, cap *Capabilities, now time.Time) {
 	today := now.UTC().Truncate(24 * time.Hour)
 	for i := range opps {
 		o := &opps[i]
-		hw := hardwareExcluded(o.Text)
 		// Always compute the best software-asset match (readiness-weighted: a more
 		// bid-ready asset wins ties).
 		capScore, asset, trl := capabilityFit(o.Text, cap)
 		t := " " + strings.ToLower(o.Text) + " "
+		o.USVPrime = anyContains(t, usvSignals)
 		switch {
-		case hw && capScore >= 26 && anyContains(t, teamingHardwareSignals):
-			// Hardware topic that is a perception/payload PLATFORM where Jesse's
-			// software is genuinely the brain (e.g. thermalhawk processing an EO/IR
-			// payload or IRST). Not a solo bid — a software-teaming play under a
-			// hardware prime. (Materials/component fabrication never qualifies.)
+		case o.USVPrime:
+			// USV / surface vessel — Jesse has a build path for the vessel, so this is
+			// a PRIME play, scored normally (can be act-now).
+			o.Capability, o.MatchedAsset, o.MatchedAssetTRL = capScore, asset, trl
+		case !hardwareFab(o.Text):
+			// Software (or software-led mixed) — normal.
+			o.Capability, o.MatchedAsset, o.MatchedAssetTRL = capScore, asset, trl
+		case anyContains(t, vehiclePlatformSignals):
+			// Autonomous-vehicle / unmanned platform (UUV, UAV, UGV, submersible…).
+			// Jesse supplies the autonomy/perception software to a vehicle prime — a
+			// teaming play even if no current asset term-matches yet.
 			o.TeamingOnly = true
 			o.Capability, o.MatchedAsset, o.MatchedAssetTRL = capScore, asset, trl
-		case hw:
-			// Pure hardware fabrication with no software role — a no-go. Hidden in All
-			// by default; never act-now or in the brief.
+		case anyContains(t, teamingHardwareSignals) && capScore >= 16:
+			// Perception/payload hardware (EO/IR, IRST) where a perception asset is the
+			// brain — teaming under a hardware prime.
+			o.TeamingOnly = true
+			o.Capability, o.MatchedAsset, o.MatchedAssetTRL = capScore, asset, trl
+		default:
+			// Pure component/material/device fabrication — no software role. Hidden in
+			// All by default; never act-now or in the brief.
 			o.HardwareExcluded = true
 			o.Capability, o.MatchedAsset = 0, ""
-		default:
-			o.Capability, o.MatchedAsset, o.MatchedAssetTRL = capScore, asset, trl
 		}
 		// Clearance/IL5 is Jesse's moat: an active TS/SCI + IL5-built products let him
 		// compete where most small businesses can't. Flag it and nudge eligibility.
@@ -75,10 +84,10 @@ func Score(opps []Opportunity, cap *Capabilities, now time.Time) {
 		o.DaysLeft, o.Runway = runwayScore(o.Closes, today)
 		o.Value = valueScore(o)
 		o.Score = o.Capability + o.Eligibility + o.Runway + o.Value
-		// Act-now is for solo software bids only (hardware-excluded and teaming plays
-		// need a hardware prime first, so they're not "act now and bid").
-		o.ActNow = !hw && o.Eligibility >= 12 && o.Capability >= 20 &&
-			o.DaysLeft >= 1 && o.DaysLeft <= 30
+		// Act-now is for plays Jesse can bid himself (solo software or a USV prime).
+		// Hardware-excluded and teaming plays need a hardware prime first.
+		o.ActNow = !o.HardwareExcluded && !o.TeamingOnly && o.Eligibility >= 12 &&
+			o.Capability >= 20 && o.DaysLeft >= 1 && o.DaysLeft <= 30
 	}
 }
 
@@ -169,23 +178,34 @@ func anyContains(hay string, needles []string) bool {
 	return false
 }
 
-// hardwareExcluded reports whether an opportunity is a hardware-fabrication ask
-// outside Jesse's software-only profile (USV platforms exempted).
-func hardwareExcluded(text string) bool {
+// hardwareFab reports whether an opportunity's deliverable is fundamentally building
+// hardware (a fab signal present), with no software-led angle. USV platforms and
+// software-led mixed topics are not hardware-fab.
+func hardwareFab(text string) bool {
 	t := " " + strings.ToLower(text) + " "
 	if anyContains(t, usvSignals) {
-		return false // USV platform — he can get it built
+		return false // USV platform — Jesse builds these
 	}
-	hw := anyContains(t, hardwareFabSignals)
-	if !hw {
+	if !anyContains(t, hardwareFabSignals) {
 		return false
 	}
-	// Hardware nouns present. If there's also a clear software/AI deliverable, keep
-	// it (mixed topic with a software angle Jesse can lead). Pure-fab → exclude.
+	// Hardware nouns present. A clear software/AI deliverable means he can lead it.
 	if anyContains(t, softwareSignals) {
 		return false
 	}
 	return true
+}
+
+// vehiclePlatformSignals are autonomous-vehicle / unmanned-platform topics where
+// Jesse's autonomy/perception software is the brain — so a hardware build becomes a
+// teaming play (he supplies the software to a vehicle prime) rather than a pass.
+// USVs are handled separately (he builds those outright).
+var vehiclePlatformSignals = []string{
+	"unmanned underwater", "uuv", "submersible", "seabed", "autonomous underwater",
+	"unmanned aerial", "unmanned aircraft", " uav ", " uas ", "unmanned ground",
+	" ugv ", "autonomous vehicle", "autonomous vessel", "autonomous system",
+	"maritime autonomous", "robotic vehicle", "robotic logistic", "unmanned system",
+	"remotely operated", "ground vehicle", "underwater vehicle",
 }
 
 // capabilityFit returns 0–40 from the best-matching asset, plus that asset's name

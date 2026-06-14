@@ -38,6 +38,7 @@
   .asset{color:var(--brand)}
   .bar.hw{color:var(--bad);border-color:#5a2330}
   .bar.team{color:#5ad0c0;border-color:#1c524a}
+  .bar.usv{color:#7fc1ff;border-color:#234866}
   .bar.clr{color:var(--warn);border-color:#4a3c12}
   .bar.trl{color:var(--dim)}
   .hwtoggle{display:flex;align-items:center;gap:8px;color:var(--dim);font-size:12px;margin:-6px 0 14px;cursor:pointer}
@@ -123,6 +124,8 @@
   .section-h.qa .ic{color:var(--ok);border-color:#1c5238}
   .section-h.new .ic{color:var(--brand);border-color:#234866}
   .section-h.move .ic{color:#b69cff;border-color:#3a2f5e}
+  .section-h.team .ic{color:#5ad0c0;border-color:#1c524a}
+  .tcard.l-teaming{border-left:3px solid #5ad0c0}
   .tgrid{display:grid;gap:10px;grid-template-columns:repeat(2,1fr)}
   .tcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 15px;cursor:pointer;
     transition:border-color .15s,transform .15s,background .15s;display:flex;flex-direction:column;gap:6px}
@@ -152,6 +155,7 @@
   <nav>
     <button class="tab active" data-view="today">Today</button>
     <button class="tab" data-view="now">Act now</button>
+    <button class="tab" data-view="teaming">Teaming</button>
     <button class="tab" data-view="pipeline">Pipeline</button>
     <button class="tab" data-view="profit">Profit</button>
     <button class="tab" data-view="all">All</button>
@@ -164,6 +168,7 @@
 <main>
   <section id="view-today" class="view"></section>
   <section id="view-now" class="view" hidden></section>
+  <section id="view-teaming" class="view" hidden></section>
   <section id="view-pipeline" class="view" hidden></section>
   <section id="view-profit" class="view" hidden></section>
   <section id="view-all" class="view" hidden></section>

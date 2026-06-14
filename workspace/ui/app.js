@@ -310,7 +310,8 @@ function oppCard(o, now) {
   const trl = o.matched_asset_trl ? ' ' + trlShort(o.matched_asset_trl) : '';
   bars.innerHTML =
     (o.hardware_excluded ? `<span class="bar hw">⚙ hardware — excluded (software-only)</span>` : '') +
-    (o.teaming_only ? `<span class="bar team">🤝 software-teaming — you provide the brain</span>` : '') +
+    (o.teaming_only ? `<span class="bar team">🤝 teaming — you provide the software brain</span>` : '') +
+    (o.usv_prime ? `<span class="bar usv">⚓ USV — you can prime this</span>` : '') +
     (o.clearance_edge ? `<span class="bar clr">🔒 clearance edge</span>` : '') +
     `<span class="bar ${o.matched_asset ? 'asset' : ''}">fit <b>${o.capability}</b>${o.matched_asset ? ' · ' + o.matched_asset + trl : ''}</span>` +
     `<span class="bar">elig <b>${o.eligibility}</b></span>` +
@@ -328,6 +329,7 @@ function render() {
   document.querySelectorAll('.view').forEach((v) => v.hidden = true);
   if (VIEW === 'today') renderToday();
   else if (VIEW === 'now') renderNow();
+  else if (VIEW === 'teaming') renderTeaming();
   else if (VIEW === 'pipeline') renderPipeline();
   else if (VIEW === 'profit') renderProfit();
   else if (VIEW === 'playbook') renderPlaybook();
@@ -454,6 +456,7 @@ async function renderToday() {
   tsection(v, 'deadline', '⏰', 'Deadlines (≤30d)', b.deadlines, 'No tracked deadlines in the next 30 days.');
   tsection(v, 'qa', '✓', 'Q&A windows — sanctioned channel', b.qa, 'No open topic Q&A windows right now.');
   tsection(v, 'new', '✦', 'New high-fit opportunities', b.new, 'Nothing new since your last brief.');
+  tsection(v, 'team', '🤝', 'Teaming plays — you provide the software brain', b.teaming || [], 'No teaming plays surfaced yet (autonomous vehicles / payloads where you sub to a prime).');
   tsection(v, 'move', '➜', 'Next move on each pursuit', b.moves, 'No live pursuits — add one from Act now.');
 
   // push hint
@@ -464,6 +467,19 @@ async function renderToday() {
 
 function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function trlShort(s) { const m = String(s).match(/TRL\s*\d+/i); return m ? m[0].toUpperCase().replace(/\s+/, '') : ''; }
+
+function renderTeaming() {
+  const v = $('#view-teaming'); v.hidden = false; v.textContent = '';
+  v.append(el('h2', null, 'Teaming plays — you provide the software brain'));
+  v.append(el('p', 'sub', 'Hardware you will not build (payloads, autonomous vehicles incl. UUV/UAV/UGV) where your perception/autonomy/governance software is the brain. The move is to sub to a hardware prime/integrator - open one with Claude for the named primes + sanctioned channel. USV topics where you can prime the whole thing appear in Act now.'));
+  const team = OPPS.filter((o) => o.teaming_only);
+  const usv = OPPS.filter((o) => o.usv_prime);
+  if (usv.length) v.append(el('p', 'sub', `⚓ ${usv.length} USV / surface-vessel topic${usv.length === 1 ? '' : 's'} you can PRIME — see Act now / All.`));
+  if (!team.length) { v.append(el('p', 'empty', 'No teaming plays surfaced right now. Grounding more of your portfolio will surface more autonomy/perception teaming fits.')); return; }
+  const grid = el('div', 'grid');
+  team.sort((a, b) => b.score - a.score).forEach((o) => grid.append(oppCard(o, false)));
+  v.append(grid);
+}
 
 function renderNow() {
   const v = $('#view-now'); v.hidden = false; v.textContent = '';
