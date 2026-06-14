@@ -789,7 +789,7 @@ function oppCard(o, now) {
   if (o.url) { const a = el('a', null, o.title); a.href = o.url; a.target = '_blank'; a.rel = 'noopener'; title.append(a); }
   else title.textContent = o.title;
   const meta = el('div', 'meta');
-  meta.innerHTML = [o.source, o.type, o.agency, daysLabel(o)].filter(Boolean).join(' · ');
+  meta.innerHTML = srcChip(o.source) + [o.type, o.agency, daysLabel(o)].filter(Boolean).join(' · ');
   left.append(title, meta);
   const sc = el('div', 'score'); sc.innerHTML = `${o.score}<small>/100</small>`;
   top.append(left, sc);
@@ -979,6 +979,10 @@ async function renderToday() {
 }
 
 function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+// colored source tag so SBIR vs contract/OTA vs program reads at a glance
+const SRC_LABEL = { dsip: 'SBIR', sam: 'CONTRACT', pipeline: 'PIPELINE', programs: 'PROGRAM' };
+function srcChip(src) { return `<span class="src ${src || ''}">${SRC_LABEL[src] || (src || '').toUpperCase()}</span>`; }
 
 // lightweight markdown for streamed Claude replies (headings, bold, italic, code, lists)
 function mdChat(md) {
