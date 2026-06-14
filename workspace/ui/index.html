@@ -63,6 +63,18 @@
     background:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='180'%20height='180'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.85'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23n)'/%3E%3C/svg%3E");
     animation:grain .5s steps(3) infinite}
   @keyframes grain{0%{transform:translate(0,0)}33%{transform:translate(-6%,4%)}66%{transform:translate(4%,-5%)}100%{transform:translate(0,0)}}
+  /* CRT screen-curvature illusion: center glare + barrel corner-darkening + faint bezel + rare flicker */
+  #crt{position:fixed;inset:0;z-index:26;pointer-events:none;border-radius:18px;
+    background:radial-gradient(130% 130% at 50% 48%,rgba(190,210,225,.045) 0%,transparent 40%,rgba(0,0,0,.10) 78%,rgba(0,0,0,.30) 100%);
+    box-shadow:inset 0 0 0 1px rgba(190,210,225,.05),inset 0 0 120px 10px rgba(0,0,0,.25);animation:crtflicker 8s steps(40) infinite}
+  @keyframes crtflicker{0%,96%,100%{opacity:1}97%{opacity:.93}98.5%{opacity:.985}}
+  /* chromatic-aberration glitch burst (triggered on enter + view change) */
+  body.glitch main{animation:cglitch .3s steps(2,end) 1}
+  @keyframes cglitch{0%{filter:none;transform:translate(0)}
+    20%{filter:drop-shadow(2px 0 rgba(255,40,90,.6)) drop-shadow(-2px 0 rgba(40,200,255,.6));transform:translate(-2px,0)}
+    40%{filter:drop-shadow(-3px 0 rgba(255,40,90,.5)) drop-shadow(3px 0 rgba(40,200,255,.5));transform:translate(2px,0)}
+    60%{filter:drop-shadow(2px 0 rgba(255,40,90,.4)) drop-shadow(-2px 0 rgba(40,200,255,.4));transform:translate(-1px,0)}
+    100%{filter:none;transform:translate(0)}}
 
   /* ---------- header / nav ---------- */
   header{display:flex;align-items:center;gap:18px;padding:14px 26px;position:sticky;top:0;z-index:30;
@@ -178,6 +190,15 @@
   @keyframes waveflow2{to{background-position-x:240px}}
   .hero .date,.hero .lead{position:relative;z-index:1}
   .statstrip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:18px 0 26px}
+  /* bento: dominant hero tile + feature stat tiles + a base stat row */
+  .bento{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin:0 0 24px}
+  .bento .hero{grid-column:1/5;grid-row:1/3;margin:0}
+  .bento .fa{grid-column:5/7;grid-row:1} .bento .fb{grid-column:5/7;grid-row:2}
+  .bento .feat{justify-content:center}
+  .bento .feat .n{font-size:32px} .bento .feat{display:flex;flex-direction:column;gap:6px}
+  .bento .statrow{grid-column:1/7;grid-row:3;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:820px){.bento{display:flex;flex-direction:column}.bento .statrow{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:560px){.bento .statrow{grid-template-columns:1fr 1fr}}
   .stat{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:15px 16px;backdrop-filter:blur(12px);overflow:hidden;animation:fadeUp .5s both;transition:transform .2s,border-color .2s}
   .stat:hover{transform:translateY(-2px);border-color:var(--line2)}
   .stat:hover::after{opacity:1}
@@ -399,6 +420,7 @@
 <div id="radar"></div>
 <div id="grid"></div>
 <div id="grain"></div>
+<div id="crt"></div>
 <div id="prog"></div>
 <div id="scan"></div>
 <div id="boot"><div class="bgrid"></div><div class="bsweep"></div><div class="bw"><div class="borb"></div><div class="bt">REALIZER</div><div class="bs">SOVEREIGN BID COMMAND DECK</div><div class="bconsole" id="bconsole"></div><div class="bpct"><span id="bpct">0</span><i>%</i></div><div class="bskip">click to enter</div></div></div>

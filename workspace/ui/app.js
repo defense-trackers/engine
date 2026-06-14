@@ -18,6 +18,34 @@ function tickClock() {
 }
 setInterval(tickClock, 1000);
 
+// chromatic-aberration glitch burst (on enter + view change)
+function glitchBurst() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  document.body.classList.remove('glitch');
+  void document.body.offsetWidth; // restart the animation
+  document.body.classList.add('glitch');
+  setTimeout(() => document.body.classList.remove('glitch'), 340);
+}
+
+// scramble/decrypt flicker for live data values (numbers settle from noise)
+function scrambleText(node, finalText, dur = 520) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { node.textContent = finalText; return; }
+  const glyphs = '0123456789/#%';
+  const keep = ' $,.KZ%';
+  const t0 = performance.now();
+  const step = (now) => {
+    const p = Math.min(1, (now - t0) / dur), rev = Math.floor(p * finalText.length);
+    let out = '';
+    for (let k = 0; k < finalText.length; k++) {
+      const ch = finalText[k];
+      out += (k < rev || keep.includes(ch)) ? ch : glyphs[(Math.floor(now / 24) + k * 5) % glyphs.length];
+    }
+    node.textContent = out;
+    if (p < 1) requestAnimationFrame(step); else node.textContent = finalText;
+  };
+  requestAnimationFrame(step);
+}
+
 // --- custom line-icon set (zero emoji; stroke = currentColor) ---
 const _s = (p) => `<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const ICON = {
@@ -144,7 +172,7 @@ function bootSequence() {
   const boot = document.getElementById('boot');
   if (!boot) return;
   let entered = false;
-  const enter = () => { if (entered) return; entered = true; boot.classList.add('gone'); setTimeout(() => boot.remove(), 950); };
+  const enter = () => { if (entered) return; entered = true; glitchBurst(); boot.classList.add('gone'); setTimeout(() => boot.remove(), 950); };
   boot.addEventListener('click', enter);
   const con = document.getElementById('bconsole');
   const pct = document.getElementById('bpct');
@@ -276,7 +304,9 @@ async function boot() {
   ASSIST = await fetch('/api/assist-status').then((r) => r.json()).catch(() => ({ enabled: false }));
   document.querySelectorAll('.tab').forEach((t) =>
     t.addEventListener('click', () => {
+      if (t.classList.contains('active')) return;
       VIEW = t.dataset.view;
+      glitchBurst();
       if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
         document.startViewTransition(() => { setActive(); render(); });
       } else { setActive(); render(); }
@@ -520,6 +550,7 @@ async function load() {
       `<span class="ss" id="clock"></span>` +
       `<span class="ss">CLAUDE <b>${be}</b></span>`;
     tickClock();
+    sb.querySelectorAll('span:not(#clock) b').forEach((b) => scrambleText(b, b.textContent, 520));
   }
 }
 
@@ -714,20 +745,25 @@ async function renderToday() {
     `<div class="date">Today · ${today}</div><div class="lead">${escapeHtml(lead)}</div>` +
     `<div class="leadsub">Your private bid autopilot — deadlines, sanctioned Q&A windows, fresh fits, and the next move on every pursuit.</div>` +
     `<div class="wave2"></div><div class="wave"></div>`;
-  v.append(hero);
   if (!HERO_DECODED) { HERO_DECODED = true; const ld = hero.querySelector('.lead'); if (ld) decrypt(ld, lead, 950); }
 
-  // stats strip
-  const strip = el('div', 'statstrip');
-  const stat = (cls, n, l) => `<div class="stat ${cls}"><div class="n">${n}</div><div class="l">${l}</div></div>`;
-  strip.innerHTML =
-    stat('ev', '$' + (b.ev || 0).toLocaleString() + 'K', 'Expected (risk-adj. to PoR)') +
-    stat('', '$' + (b.total_value || 0).toLocaleString() + 'K', 'Best-case ceiling') +
-    stat('', b.pursuits || 0, 'Active pursuits') +
-    stat('now', b.act_now || 0, 'Act-now') +
-    stat('new', b.new_count || 0, 'New high-fit');
-  v.append(strip);
-  animateCounts(strip);
+  // bento: hero (dominant) + two feature stat tiles + a base row of three
+  const mkStat = (cls, n, l) => { const d = el('div', 'stat ' + cls); d.innerHTML = `<div class="n">${n}</div><div class="l">${l}</div>`; return d; };
+  const bento = el('div', 'bento');
+  const row = el('div', 'statrow');
+  row.append(
+    mkStat('', b.pursuits || 0, 'Active pursuits'),
+    mkStat('now', b.act_now || 0, 'Act-now'),
+    mkStat('new', b.new_count || 0, 'New high-fit'),
+  );
+  bento.append(
+    hero,
+    mkStat('ev feat fa', '$' + (b.ev || 0).toLocaleString() + 'K', 'Expected (risk-adj. to PoR)'),
+    mkStat('feat fb', '$' + (b.total_value || 0).toLocaleString() + 'K', 'Best-case ceiling'),
+    row,
+  );
+  v.append(bento);
+  animateCounts(bento);
   v.append(el('p', 'sub', 'Expected value = each pursuit’s program-of-record ceiling × its cumulative probability of actually reaching a funded program (the SBIR→PoR funnel is brutal — early stages are <2%). Ceilings are editable best-case estimates; set them per pursuit in its Claude panel.'));
 
   tsection(v, 'deadline', 'clock', 'Deadlines (≤30d)', b.deadlines, 'No tracked deadlines in the next 30 days.');
