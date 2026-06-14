@@ -130,14 +130,88 @@ function initBG() {
   requestAnimationFrame(frame);
 }
 
-function dismissBoot() {
-  const b = document.getElementById('boot');
-  if (b) { b.style.pointerEvents = 'none'; setTimeout(() => b.remove(), 2800); b.addEventListener('click', () => b.remove()); }
+// Cinematic "systems online" boot sequence.
+function bootSequence() {
+  const boot = document.getElementById('boot');
+  if (!boot) return;
+  const kill = () => { boot.classList.add('gone'); setTimeout(() => boot.remove(), 950); };
+  boot.addEventListener('click', kill);
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { boot.remove(); return; }
+  const con = document.getElementById('bconsole');
+  const steps = [
+    ['AUTH', 'SUBSCRIPTION LINKED'], ['CAPABILITY GRAPH', 'GROUNDED'],
+    ['DSIP UPLINK', 'LIVE'], ['SAM RADAR', 'ARMED'],
+    ['SIGNET GATE', 'NOMINAL'], ['COMMAND DECK', 'ONLINE'],
+  ];
+  let i = 0;
+  const tick = () => {
+    if (i < steps.length) {
+      const [k, v] = steps[i];
+      const line = el('div', 'bline');
+      line.innerHTML = `<span>${k}</span><span class="pend">··· init</span>`;
+      con.append(line);
+      setTimeout(() => { const p = line.querySelector('.pend'); if (p) { p.className = 'ok'; p.textContent = v; } }, 200);
+      i++;
+      setTimeout(tick, 260);
+    } else {
+      setTimeout(kill, 520);
+    }
+  };
+  setTimeout(tick, 640);
+}
+
+// Decrypt/resolve effect for the hero headline — text materializes from noise.
+let HERO_DECODED = false;
+function decrypt(node, finalText, dur = 850) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { node.textContent = finalText; return; }
+  const glyphs = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789/<>=-_::';
+  const t0 = performance.now();
+  const step = (now) => {
+    const p = Math.min(1, (now - t0) / dur);
+    const reveal = Math.floor(p * finalText.length);
+    let out = '';
+    for (let k = 0; k < finalText.length; k++) {
+      const ch = finalText[k];
+      if (k < reveal || ch === ' ') out += ch;
+      else out += glyphs[(Math.floor(now / 28) + k * 7) % glyphs.length];
+    }
+    node.textContent = out;
+    if (p < 1) requestAnimationFrame(step); else node.textContent = finalText;
+  };
+  requestAnimationFrame(step);
+}
+
+// Cursor-reactive spotlight + subtle 3D tilt on cards.
+function initCardFX() {
+  const onMove = (e) => {
+    const c = e.target.closest && e.target.closest('.card, .tcard');
+    if (!c) return;
+    const r = c.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+    c.style.setProperty('--mx', (x * 100) + '%');
+    c.style.setProperty('--my', (y * 100) + '%');
+    c.style.transform = `perspective(900px) rotateX(${(0.5 - y) * 4}deg) rotateY(${(x - 0.5) * 5}deg) translateY(-3px)`;
+  };
+  const onLeave = (e) => { const c = e.target.closest && e.target.closest('.card, .tcard'); if (c) c.style.transform = ''; };
+  document.addEventListener('pointermove', onMove, { passive: true });
+  document.addEventListener('pointerout', onLeave, { passive: true });
+}
+
+// Sliding glow indicator under the active nav tab.
+function moveIndicator() {
+  const ind = document.querySelector('.tab-ind');
+  const active = document.querySelector('.tab.active');
+  if (!ind || !active) return;
+  ind.style.opacity = '1';
+  ind.style.width = active.offsetWidth + 'px';
+  ind.style.transform = `translateX(${active.offsetLeft - 4}px)`;
 }
 
 async function boot() {
   initBG();
-  dismissBoot();
+  bootSequence();
+  initCardFX();
+  addEventListener('resize', moveIndicator);
   await load();
   ASSIST = await fetch('/api/assist-status').then((r) => r.json()).catch(() => ({ enabled: false }));
   document.querySelectorAll('.tab').forEach((t) =>
@@ -150,6 +224,8 @@ async function boot() {
   $('#assist-send').addEventListener('click', () => sendAssist());
   $('#assist-input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAssist(); } });
   render();
+  requestAnimationFrame(moveIndicator);
+  setTimeout(moveIndicator, 500); // after web fonts settle
 }
 
 // ---- Claude bid assistant ----
@@ -368,7 +444,7 @@ async function load() {
 }
 
 function done(id) { const p = STATE[id]; return p && ['won', 'lost', 'pass', 'submitted'].includes(p.stage); }
-function setActive() { document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.view === VIEW)); }
+function setActive() { document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.view === VIEW)); moveIndicator(); }
 
 async function saveState(id, patch, extra = {}) {
   const cur = STATE[id] || {};
@@ -552,9 +628,11 @@ async function renderToday() {
       : b.new_count
         ? `${b.new_count} new high-fit opportunit${b.new_count === 1 ? 'y' : 'ies'} surfaced. Triage them.`
         : 'No deadlines this month — push a pursuit one wall forward.';
-  hero.innerHTML = `<div class="date">Today · ${today}</div><div class="lead">${escapeHtml(lead)}</div>` +
+  hero.innerHTML = `<span class="cb tl"></span><span class="cb tr"></span><span class="cb bl"></span><span class="cb br"></span>` +
+    `<div class="date">Today · ${today}</div><div class="lead">${escapeHtml(lead)}</div>` +
     `<div class="leadsub">Your private bid autopilot — deadlines, sanctioned Q&A windows, fresh fits, and the next move on every pursuit.</div>`;
   v.append(hero);
+  if (!HERO_DECODED) { HERO_DECODED = true; const ld = hero.querySelector('.lead'); if (ld) decrypt(ld, lead, 950); }
 
   // stats strip
   const strip = el('div', 'statstrip');
