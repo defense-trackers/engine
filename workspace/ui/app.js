@@ -9,6 +9,50 @@ let BRIEF = null;
 const $ = (s, r = document) => r.querySelector(s);
 const el = (t, c, txt) => { const e = document.createElement(t); if (c) e.className = c; if (txt != null) e.textContent = txt; return e; };
 
+// --- custom line-icon set (zero emoji; stroke = currentColor) ---
+const _s = (p) => `<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const ICON = {
+  clock: _s('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
+  chat: _s('<path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v8A1.5 1.5 0 0 1 18.5 16H9l-4 3v-3H5.5A1.5 1.5 0 0 1 4 14.5z"/><path d="M9 10.5h6M9 7.5h2"/>'),
+  spark: _s('<path d="M12 3v6M12 15v6M3 12h6M15 12h6"/><path d="M7.5 7.5l2.2 2.2M14.3 14.3l2.2 2.2M16.5 7.5l-2.2 2.2M9.7 14.3l-2.2 2.2"/>'),
+  link: _s('<path d="M9 12a3 3 0 0 1 3-3h2.5a3.5 3.5 0 0 1 0 7H13"/><path d="M15 12a3 3 0 0 1-3 3H9.5a3.5 3.5 0 0 1 0-7H11"/>'),
+  arrow: _s('<path d="M5 12h13"/><path d="M13 6l6 6-6 6"/>'),
+  chip: _s('<rect x="7" y="7" width="10" height="10" rx="1.5"/><path d="M10 2.5v3M14 2.5v3M10 18.5v3M14 18.5v3M2.5 10h3M2.5 14h3M18.5 10h3M18.5 14h3"/>'),
+  wave: _s('<path d="M2.5 8c2 0 2 1.6 4 1.6S8.5 8 10.5 8s2 1.6 4 1.6S16.5 8 18.5 8s2 1.6 3 1.6"/><path d="M2.5 13c2 0 2 1.6 4 1.6S8.5 13 10.5 13s2 1.6 4 1.6S16.5 13 18.5 13s2 1.6 3 1.6"/><path d="M2.5 18c2 0 2 1.6 4 1.6S8.5 18 10.5 18s2 1.6 4 1.6S16.5 18 18.5 18s2 1.6 3 1.6"/>'),
+  shield: _s('<path d="M12 3l7 2.5v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10v-5z"/><path d="M9 12l2 2 4-4"/>'),
+  globe: _s('<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.4 2.5 14.6 0 17M12 3.5c-2.5 2.4-2.5 14.6 0 17"/>'),
+  doc: _s('<path d="M7 3.5h7L18 8v12.5H7z"/><path d="M13.5 3.5V8H18M9.5 12h6M9.5 15h6M9.5 9h2"/>'),
+  send: _s('<path d="M20.5 3.5L10 14"/><path d="M20.5 3.5l-6.5 17-3.5-6.5L4 10.5z"/>'),
+  target: _s('<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/>'),
+  radar: _s('<circle cx="12" cy="12" r="8.5"/><path d="M12 12l5.5-3.5"/><path d="M12 12a6 6 0 1 0 5-2.8" opacity=".5"/>'),
+};
+function svg(name) { return ICON[name] || ''; }
+
+// --- motion polish ---
+function staggerIn() {
+  // Native scroll-driven reveals handle entrance when supported — don't fight them.
+  if (window.CSS && CSS.supports && CSS.supports('animation-timeline: view()')) return;
+  const els = document.querySelectorAll('.view:not([hidden]) .card, .view:not([hidden]) .tcard, .view:not([hidden]) .stat');
+  els.forEach((e, i) => { e.style.animationDelay = Math.min(i * 35, 420) + 'ms'; });
+}
+function animateCounts(root) {
+  root.querySelectorAll('.stat .n').forEach((node) => {
+    const raw = node.textContent;
+    const m = raw.match(/-?[\d,]+/);
+    if (!m) return;
+    const target = parseInt(m[0].replace(/,/g, ''), 10);
+    if (isNaN(target)) return;
+    const pre = raw.slice(0, m.index), post = raw.slice(m.index + m[0].length);
+    const dur = 850, t0 = performance.now();
+    const tick = (now) => {
+      const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+      node.textContent = pre + Math.round(target * e).toLocaleString() + post;
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
 const STAGES = ['watching', 'qualifying', 'drafting', 'submitted', 'won', 'pilot', 'transition', 'pom', 'program', 'lost', 'pass'];
 const COLS = [
   { key: 'discovery', label: 'Discovery', match: ['watching', 'qualifying'] },
@@ -24,7 +68,76 @@ const WALL_LABEL = { money: 'Money', requirements: 'Requirements', contracts: 'C
 let ASSIST = { enabled: false, model: '' };
 let CUR_OPP = null;
 
+// --- WebGL nebula background (domain-warped FBM, Thornveil steel palette) ---
+function initBG() {
+  const cv = document.getElementById('bg');
+  if (!cv) return;
+  const gl = cv.getContext('webgl', { antialias: false, alpha: false, powerPreference: 'high-performance' });
+  if (!gl) { cv.style.display = 'none'; return; } // CSS #fx fallback shows through
+  const vsrc = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+  const fsrc = `precision highp float;uniform vec2 u_res;uniform float u_t;uniform vec2 u_m;
+  float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+  float noise(vec2 p){vec2 i=floor(p),f=fract(p);float a=hash(i),b=hash(i+vec2(1,0)),c=hash(i+vec2(0,1)),d=hash(i+vec2(1,1));vec2 u=f*f*(3.-2.*f);return mix(a,b,u.x)+(c-a)*u.y*(1.-u.x)+(d-b)*u.x*u.y;}
+  float fbm(vec2 p){float v=0.,a=.5;mat2 m=mat2(1.6,1.2,-1.2,1.6);for(int i=0;i<6;i++){v+=a*noise(p);p=m*p;a*=.5;}return v;}
+  void main(){
+    vec2 uv=(gl_FragCoord.xy-.5*u_res)/u_res.y;
+    float t=u_t*.025;
+    vec2 q=vec2(fbm(uv*1.1+t),fbm(uv*1.1+vec2(5.2,1.3)-t));
+    vec2 r=vec2(fbm(uv*1.4+1.7*q+vec2(1.7,9.2)+t*.6),fbm(uv*1.4+1.7*q+vec2(8.3,2.8)-t*.6));
+    float f=fbm(uv*1.3+2.2*r+t);
+    vec3 c1=vec3(.022,.038,.066);
+    vec3 c2=vec3(.07,.15,.27);
+    vec3 c3=vec3(.20,.33,.41);
+    vec3 c4=vec3(.56,.66,.74);
+    vec3 col=mix(c1,c2,smoothstep(.05,.7,f));
+    col=mix(col,c3,smoothstep(.45,1.05,length(r)));
+    col=mix(col,c4,smoothstep(.82,1.12,f)*.5);
+    float md=length(uv-u_m);col+=c4*.05/(md*md+.25);
+    col*=1.0-.55*length(uv*vec2(.7,1.0));
+    col+=(hash(gl_FragCoord.xy+u_t)-.5)*.035;
+    col*=.82;
+    gl_FragColor=vec4(col,1.);
+  }`;
+  const mk = (ty, src) => { const s = gl.createShader(ty); gl.shaderSource(s, src); gl.compileShader(s); return s; };
+  const prog = gl.createProgram();
+  gl.attachShader(prog, mk(gl.VERTEX_SHADER, vsrc));
+  gl.attachShader(prog, mk(gl.FRAGMENT_SHADER, fsrc));
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) { cv.style.display = 'none'; return; }
+  gl.useProgram(prog);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, 'p');
+  gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  const uRes = gl.getUniformLocation(prog, 'u_res'), uT = gl.getUniformLocation(prog, 'u_t'), uM = gl.getUniformLocation(prog, 'u_m');
+  const mouse = { x: 0, y: 0 };
+  addEventListener('pointermove', (e) => { mouse.x = (e.clientX - innerWidth / 2) / innerHeight; mouse.y = -(e.clientY - innerHeight / 2) / innerHeight; }, { passive: true });
+  const dpr = () => Math.min(devicePixelRatio || 1, 1.75);
+  const resize = () => { const w = innerWidth * dpr(), h = innerHeight * dpr(); cv.width = w; cv.height = h; gl.viewport(0, 0, w, h); };
+  addEventListener('resize', resize); resize();
+  let mx = 0, my = 0;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const t0 = performance.now();
+  const frame = (now) => {
+    mx += (mouse.x - mx) * .04; my += (mouse.y - my) * .04;
+    gl.uniform2f(uRes, cv.width, cv.height);
+    gl.uniform1f(uT, reduce ? 6 : (now - t0) / 1000);
+    gl.uniform2f(uM, mx, my);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    if (!reduce) requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
+
+function dismissBoot() {
+  const b = document.getElementById('boot');
+  if (b) { b.style.pointerEvents = 'none'; setTimeout(() => b.remove(), 2800); b.addEventListener('click', () => b.remove()); }
+}
+
 async function boot() {
+  initBG();
+  dismissBoot();
   await load();
   ASSIST = await fetch('/api/assist-status').then((r) => r.json()).catch(() => ({ enabled: false }));
   document.querySelectorAll('.tab').forEach((t) =>
@@ -54,16 +167,16 @@ function saveConvo(id, h) { localStorage.setItem('assist:' + id, JSON.stringify(
 const TQUICK = [
   { a: 'transition', label: 'Structure for transition' },
   { a: 'sponsor', label: 'Who owns the money' },
-  { a: 'outreach', label: '✉ Outreach + draft message' },
+  { a: 'outreach', label: 'Outreach + draft message' },
   { a: 'pom', label: 'POM readiness' },
   { a: 'pmadopt', label: 'PM adoption pitch' },
-  { a: 'nextstep', label: '★ Next best action' },
+  { a: 'nextstep', label: 'Next best action' },
 ];
 
 function openAssist(o) {
   CUR_OPP = o;
   const via = ASSIST.backend === 'subscription' ? ' · via Max subscription' : ASSIST.backend === 'api' ? ' · via API key' : '';
-  $('.ah .who').textContent = '◎ CLAUDE — BID STRATEGIST' + via;
+  $('.ah .who').innerHTML = svg('spark') + 'CLAUDE · BID STRATEGIST' + escapeHtml(via);
   $('#assist-title').textContent = o.title;
   $('#assist-meta').innerHTML = [o.source, o.type, o.agency, o.matched_asset ? 'fit: ' + o.matched_asset : '', daysLabel(o)].filter(Boolean).join(' · ');
   // real, source-provided POCs + the sanctioned channel (anti-spam)
@@ -80,7 +193,7 @@ function openAssist(o) {
   if (ASSIST.enabled) {
     const bidRow = el('div', 'qarow');
     QUICK.forEach((q) => { const b = el('button', null, q.label); b.addEventListener('click', () => sendAssist(q.a)); bidRow.append(b); });
-    const draftBtn = el('button', 'mv', '✍ Draft volume → files');
+    const draftBtn = el('button', 'mv'); draftBtn.innerHTML = svg('doc') + 'Draft volume → files';
     draftBtn.title = 'Claude writes the full submittable volume to editable files (runs on your subscription)';
     draftBtn.addEventListener('click', () => draftVolume(o));
     bidRow.append(draftBtn);
@@ -129,7 +242,7 @@ function scorecard(o) {
   let t; vi.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => saveState(o.id, { value: parseInt(vi.value) || 0 }, { title: o.title, agency: o.agency, url: o.url }), 600); });
   val.append(vi); box.append(val);
   if (ASSIST.enabled) {
-    const aa = el('button', 'aabtn', '✨ Auto-assess — Claude fills value + the four walls');
+    const aa = el('button', 'aabtn'); aa.innerHTML = svg('spark') + 'Auto-assess — Claude fills value + the four walls';
     aa.addEventListener('click', async () => {
       aa.textContent = 'assessing… (runs on your subscription)'; aa.disabled = true;
       const r = await fetch('/api/assess', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: o.id }) }).then((x) => x.json()).catch(() => ({ error: 'failed' }));
@@ -168,7 +281,7 @@ function renderThread() {
 
 async function moveStage(o, stage) {
   await saveState(o.id, { stage }, { title: o.title, agency: o.agency, url: o.url });
-  const d = el('div', 'msg a'); d.textContent = `✓ Moved to ${stage}.`; $('#thread').append(d);
+  const d = el('div', 'msg a'); d.textContent = `Moved to ${stage}.`; $('#thread').append(d);
   $('#thread').scrollTop = $('#thread').scrollHeight;
 }
 
@@ -217,7 +330,7 @@ async function sendAssist(action) {
 // progress in the thread, then the output folder.
 async function draftVolume(o) {
   const t = $('#thread');
-  const head = el('div', 'msg u'); head.textContent = '› ✍ Drafting the volume to files…'; t.append(head);
+  const head = el('div', 'msg u'); head.textContent = 'Drafting the volume to files…'; t.append(head);
   const prog = el('div', 'msg a'); prog.textContent = 'Starting…'; t.append(prog); t.scrollTop = 1e9;
   let lines = [];
   try {
@@ -239,7 +352,7 @@ async function draftVolume(o) {
         let ev; try { ev = JSON.parse(line); } catch { continue; }
         if (ev.error) { prog.className = 'msg err'; prog.textContent = ev.error; }
         else if (ev.t) { lines.push(ev.t); prog.textContent = lines.slice(-14).join('\n'); t.scrollTop = 1e9; }
-        else if (ev.dir) { const d = el('div', 'msg a'); d.innerHTML = `<b>✓ Volume written.</b> Files are in:<br><code>${ev.dir}</code><br>Open <code>volume.md</code> for the combined draft, or the numbered section files to edit.`; t.append(d); t.scrollTop = 1e9; }
+        else if (ev.dir) { const d = el('div', 'msg a'); d.innerHTML = `<b>Volume written.</b> Files are in:<br><code>${ev.dir}</code><br>Open <code>volume.md</code> for the combined draft, or the numbered section files to edit.`; t.append(d); t.scrollTop = 1e9; }
       }
     }
   } catch (e) { prog.className = 'msg err'; prog.textContent = 'draft failed: ' + e.message; }
@@ -309,17 +422,17 @@ function oppCard(o, now) {
   const bars = el('div', 'bars');
   const trl = o.matched_asset_trl ? ' ' + trlShort(o.matched_asset_trl) : '';
   bars.innerHTML =
-    (o.hardware_excluded ? `<span class="bar hw">⚙ hardware — excluded (software-only)</span>` : '') +
-    (o.teaming_only ? `<span class="bar team">🤝 teaming — you: software+design · partner builds</span>` : '') +
-    (o.usv_prime ? `<span class="bar usv">⚓ USV — partner builds+funds, you prime</span>` : '') +
-    (o.clearance_edge ? `<span class="bar clr">🔒 clearance edge</span>` : '') +
-    (o.allied_edge ? `<span class="bar ally">🌐 AUKUS / allied</span>` : '') +
+    (o.hardware_excluded ? `<span class="bar hw">${svg('chip')}hardware — excluded</span>` : '') +
+    (o.teaming_only ? `<span class="bar team">${svg('link')}teaming — you: software+design · partner builds</span>` : '') +
+    (o.usv_prime ? `<span class="bar usv">${svg('wave')}USV — partner builds+funds, you prime</span>` : '') +
+    (o.clearance_edge ? `<span class="bar clr">${svg('shield')}clearance edge</span>` : '') +
+    (o.allied_edge ? `<span class="bar ally">${svg('globe')}AUKUS / allied</span>` : '') +
     `<span class="bar ${o.matched_asset ? 'asset' : ''}">fit <b>${o.capability}</b>${o.matched_asset ? ' · ' + o.matched_asset + trl : ''}</span>` +
     `<span class="bar">elig <b>${o.eligibility}</b></span>` +
     `<span class="bar">runway <b>${o.runway}</b></span>` +
     `<span class="bar">value <b>${o.value}</b></span>`;
   const row = el('div', 'ctl');
-  const realize = el('button', 'realize', '◎ Realize with Claude');
+  const realize = el('button', 'realize'); realize.innerHTML = svg('spark') + 'Realize with Claude';
   realize.addEventListener('click', () => openAssist(o));
   row.append(realize);
   card.append(top, bars, controls(o.id), row);
@@ -335,6 +448,7 @@ function render() {
   else if (VIEW === 'profit') renderProfit();
   else if (VIEW === 'playbook') renderPlaybook();
   else renderAll();
+  requestAnimationFrame(staggerIn);
 }
 
 async function renderProfit() {
@@ -412,9 +526,9 @@ function tcard(it) {
   return c;
 }
 
-function tsection(parent, cls, icon, label, items, emptyMsg) {
+function tsection(parent, cls, iconName, label, items, emptyMsg) {
   const h = el('div', 'section-h ' + cls);
-  h.innerHTML = `<span class="ic">${icon}</span><h3>${label}</h3><span class="cnt">${items.length}</span>`;
+  h.innerHTML = `<span class="ic">${svg(iconName)}</span><h3>${label}</h3><span class="cnt">${items.length}</span>`;
   parent.append(h);
   const g = el('div', 'tgrid');
   if (!items.length) g.append(el('div', 'tempty', emptyMsg));
@@ -438,7 +552,7 @@ async function renderToday() {
       : b.new_count
         ? `${b.new_count} new high-fit opportunit${b.new_count === 1 ? 'y' : 'ies'} surfaced. Triage them.`
         : 'No deadlines this month — push a pursuit one wall forward.';
-  hero.innerHTML = `<div class="date">◎ Today · ${today}</div><div class="lead">${escapeHtml(lead)}</div>` +
+  hero.innerHTML = `<div class="date">Today · ${today}</div><div class="lead">${escapeHtml(lead)}</div>` +
     `<div class="leadsub">Your private bid autopilot — deadlines, sanctioned Q&A windows, fresh fits, and the next move on every pursuit.</div>`;
   v.append(hero);
 
@@ -452,13 +566,14 @@ async function renderToday() {
     stat('now', b.act_now || 0, 'Act-now') +
     stat('new', b.new_count || 0, 'New high-fit');
   v.append(strip);
+  animateCounts(strip);
   v.append(el('p', 'sub', 'Expected value = each pursuit’s program-of-record ceiling × its cumulative probability of actually reaching a funded program (the SBIR→PoR funnel is brutal — early stages are <2%). Ceilings are editable best-case estimates; set them per pursuit in its Claude panel.'));
 
-  tsection(v, 'deadline', '⏰', 'Deadlines (≤30d)', b.deadlines, 'No tracked deadlines in the next 30 days.');
-  tsection(v, 'qa', '✓', 'Q&A windows — sanctioned channel', b.qa, 'No open topic Q&A windows right now.');
-  tsection(v, 'new', '✦', 'New high-fit opportunities', b.new, 'Nothing new since your last brief.');
-  tsection(v, 'team', '🤝', 'Teaming plays — you provide the software brain', b.teaming || [], 'No teaming plays surfaced yet (autonomous vehicles / payloads where you sub to a prime).');
-  tsection(v, 'move', '➜', 'Next move on each pursuit', b.moves, 'No live pursuits — add one from Act now.');
+  tsection(v, 'deadline', 'clock', 'Deadlines (≤30d)', b.deadlines, 'No tracked deadlines in the next 30 days.');
+  tsection(v, 'qa', 'chat', 'Q&A windows — sanctioned channel', b.qa, 'No open topic Q&A windows right now.');
+  tsection(v, 'new', 'spark', 'New high-fit opportunities', b.new, 'Nothing new since your last brief.');
+  tsection(v, 'team', 'link', 'Teaming plays — you provide the software brain', b.teaming || [], 'No teaming plays surfaced yet (autonomous vehicles / payloads where you sub to a prime).');
+  tsection(v, 'move', 'arrow', 'Next move on each pursuit', b.moves, 'No live pursuits — add one from Act now.');
 
   // push hint
   const pr = el('div', 'pushrow');
@@ -475,7 +590,7 @@ function renderTeaming() {
   v.append(el('p', 'sub', 'Hardware you do not fabricate yourself (payloads, autonomous vehicles incl. UUV/UAV/UGV) where you lead software + design. Your Australian partner can build and fund the hardware as subcontractor (mind ITAR/EAR + SBIR foreign-sub limits) - open one with Claude to structure the teaming compliantly. USV topics where the partner builds+funds and you prime appear in Act now.'));
   const team = OPPS.filter((o) => o.teaming_only);
   const usv = OPPS.filter((o) => o.usv_prime);
-  if (usv.length) v.append(el('p', 'sub', `⚓ ${usv.length} USV / surface-vessel topic${usv.length === 1 ? '' : 's'} you can PRIME — see Act now / All.`));
+  if (usv.length) v.append(el('p', 'sub', `${usv.length} USV / surface-vessel topic${usv.length === 1 ? '' : 's'} you can PRIME — see Act now / All.`));
   if (!team.length) { v.append(el('p', 'empty', 'No teaming plays surfaced right now. Grounding more of your portfolio will surface more autonomy/perception teaming fits.')); return; }
   const grid = el('div', 'grid');
   team.sort((a, b) => b.score - a.score).forEach((o) => grid.append(oppCard(o, false)));
@@ -499,7 +614,7 @@ function renderPipeline() {
   const head = el('div', 'phead');
   head.append(el('h2', null, 'Pipeline — your pursuits'));
   if (ASSIST.enabled) {
-    const aa = el('button', 'act', '✨ Auto-assess all pursuits');
+    const aa = el('button', 'act'); aa.innerHTML = svg('spark') + 'Auto-assess all pursuits';
     aa.title = 'Claude fills $ value + the four transition walls for every pursuit (runs on your subscription)';
     aa.addEventListener('click', async () => {
       aa.textContent = 'assessing all… (~30–60s, on your subscription)'; aa.disabled = true;
