@@ -275,7 +275,12 @@ async function boot() {
   await load();
   ASSIST = await fetch('/api/assist-status').then((r) => r.json()).catch(() => ({ enabled: false }));
   document.querySelectorAll('.tab').forEach((t) =>
-    t.addEventListener('click', () => { VIEW = t.dataset.view; setActive(); render(); }));
+    t.addEventListener('click', () => {
+      VIEW = t.dataset.view;
+      if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.startViewTransition(() => { setActive(); render(); });
+      } else { setActive(); render(); }
+    }));
   $('#refresh').addEventListener('click', async (e) => {
     e.target.textContent = '…'; await fetch('/api/refresh', { method: 'POST' }); await load(); render(); e.target.textContent = '↻ Refresh';
   });

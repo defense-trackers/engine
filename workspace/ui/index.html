@@ -385,6 +385,11 @@
   body.lock #cdot{opacity:0}
   body.down #cring{border-color:#fff}
   @media(pointer:fine){body.hascursor,body.hascursor *{cursor:none!important}body.hascursor input,body.hascursor textarea{cursor:text!important}}
+  /* cinematic view transitions (Chrome View Transitions API) */
+  ::view-transition-old(root){animation:vtOut .26s ease forwards}
+  ::view-transition-new(root){animation:vtIn .42s cubic-bezier(.2,.8,.2,1)}
+  @keyframes vtIn{from{opacity:0;transform:translateY(14px) scale(.992);filter:blur(7px)}}
+  @keyframes vtOut{to{opacity:0;transform:translateY(-8px);filter:blur(4px)}}
   @media(prefers-reduced-motion:reduce){*{animation:none!important}#boot{display:none}#grain,#radar{display:none}}
 </style>
 </head>
