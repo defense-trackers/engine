@@ -291,10 +291,12 @@ func seedPipeline() map[string]Pursuit {
 	mk := func(stage, title, agency, notes string) Pursuit {
 		return Pursuit{Stage: stage, Title: title, Agency: agency, Notes: notes, Updated: now, Decision: "bid"}
 	}
+	// NOTE: nothing is "submitted" — Jesse has draft volumes in preparation, but has
+	// not submitted to the Government. Stages reflect that; he sets each as it moves.
 	return map[string]Pursuit{
-		"seed:NV010": mk("submitted", "DON26BZ01-NV010 ELLMENT (rigrun+signet)", "Navy/NAVAIR", "E-2D on-aircraft traceable LLM. Closed 6/3. Verify status."),
-		"seed:NV013": mk("submitted", "NV013 alchemist→TMPC", "DoW", "Memory-safety / differential-equivalence. Closed 6/3."),
-		"seed:NV023": mk("submitted", "DON26BZ01-NV023 VIGIL (rigrun+signet+thermalhawk)", "Navy/ONR", "Risk-aware regenerative multimodal ISRT. Closed 6/3."),
+		"seed:NV010": mk("drafting", "DON26BZ01-NV010 ELLMENT (rigrun+signet)", "Navy/NAVAIR", "E-2D on-aircraft traceable LLM. Volume drafted — NOT submitted. Verify the open window/next cycle."),
+		"seed:NV013": mk("drafting", "NV013 alchemist→TMPC", "DoW", "Memory-safety / differential-equivalence. Volume drafted — NOT submitted. Verify the open window/next cycle."),
+		"seed:NV023": mk("drafting", "DON26BZ01-NV023 VIGIL (rigrun+signet+thermalhawk)", "Navy/ONR", "Risk-aware regenerative multimodal ISRT. Volume drafted — NOT submitted. Verify the open window/next cycle."),
 		"seed:DV003": mk("drafting", "OSW26BZ02-DV003 rigrun+signet", "OSW (D2P2)", "SCG/PPP/OPSEC + insider-threat. Closes 6/24."),
 		"seed:NV007": mk("drafting", "DLA26BZ02-NV007 STRIKE AI (auspex+signet)", "DLA", "Cover-both governance-framed; demo defensive. Closes 6/24."),
 		"seed:DV010": mk("drafting", "DPA26BZ02-DV010 HAWKSTACK (thermalhawk)", "DARPA", "ThermalHawk into fielded EO/IR processor. WhitePaper+deck. Closes 6/24."),

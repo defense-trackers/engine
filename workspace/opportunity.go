@@ -42,9 +42,12 @@ type Opportunity struct {
 	Runway       int    `json:"runway"`
 	Value        int    `json:"value"`
 	MatchedAsset     string `json:"matched_asset,omitempty"`
+	MatchedAssetTRL  string `json:"matched_asset_trl,omitempty"` // grounded TRL of the matched asset (lead with the bid-ready horse)
 	DaysLeft         int    `json:"days_left"` // -1 when no/unparseable close date
 	ActNow           bool   `json:"act_now"`
-	HardwareExcluded bool   `json:"hardware_excluded,omitempty"` // hardware-build topic outside Jesse's software-only profile (USV exempt)
+	HardwareExcluded bool   `json:"hardware_excluded,omitempty"` // pure hardware build, no software role — a no-go (USV exempt)
+	TeamingOnly      bool   `json:"teaming_only,omitempty"`      // hardware topic where a software asset is the brain — sub to a hardware prime
+	ClearanceEdge    bool   `json:"clearance_edge,omitempty"`    // requires clearance/IL5/classified — Jesse's competitive moat
 }
 
 // Contact is a real, source-provided government point of contact (e.g. a DSIP

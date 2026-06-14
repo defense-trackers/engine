@@ -110,6 +110,74 @@ func TestHardwareExcludedZerosCapability(t *testing.T) {
 	}
 }
 
+func TestReadinessWeightedMatch(t *testing.T) {
+	now := time.Date(2026, 6, 12, 0, 0, 0, 0, time.UTC)
+	// Two assets tie on hits; the more bid-ready (higher TRL) should win and its
+	// TRL should be surfaced.
+	caps := &Capabilities{Assets: []Asset{
+		{Name: "earlyidea", Terms: []string{"llm", "inference"}, TRL: "TRL 2 (concept)"},
+		{Name: "rigrun", Terms: []string{"llm", "inference"}, TRL: "TRL 6 (validated)"},
+	}}
+	o := opp("On-prem LLM inference", "on-prem llm inference", "SBIR", "SBIR small business", "2026-07-15")
+	opps := []Opportunity{o}
+	Score(opps, caps, now)
+	if opps[0].MatchedAsset != "rigrun" {
+		t.Fatalf("readiness-weighted match should pick rigrun (TRL6) over earlyidea (TRL2), got %q", opps[0].MatchedAsset)
+	}
+	if opps[0].MatchedAssetTRL == "" {
+		t.Fatal("matched asset TRL should be surfaced")
+	}
+}
+
+func TestTeamingPlay(t *testing.T) {
+	now := time.Date(2026, 6, 12, 0, 0, 0, 0, time.UTC)
+	caps := &Capabilities{Assets: []Asset{
+		{Name: "thermalhawk", Terms: []string{"thermal", "infrared", "detection", "eo/ir"}, TRL: "TRL 4"},
+	}}
+	// EO/IR payload hardware where thermalhawk is the perception brain → teaming.
+	team := opp("Wide-FOV electro-optical payload", "scalable wide field of view electro-optical payload infrared detection", "SBIR", "SBIR small business", "2026-06-30")
+	// Materials fab that happens to mention thermal/imaging → pure exclude, NOT teaming.
+	mat := opp("MWIR focal plane", "colloidal nanocrystals for mid-wave infrared imaging thermal detection", "SBIR", "SBIR small business", "2026-06-30")
+	opps := []Opportunity{team, mat}
+	Score(opps, caps, now)
+	if !opps[0].TeamingOnly || opps[0].HardwareExcluded || opps[0].ActNow {
+		t.Fatalf("EO/IR payload should be teaming (not excluded, not act-now): teaming=%v excl=%v act=%v",
+			opps[0].TeamingOnly, opps[0].HardwareExcluded, opps[0].ActNow)
+	}
+	if opps[0].MatchedAsset != "thermalhawk" {
+		t.Fatalf("teaming play should keep the matched asset, got %q", opps[0].MatchedAsset)
+	}
+	if !opps[1].HardwareExcluded || opps[1].TeamingOnly {
+		t.Fatalf("materials fab must be hardware-excluded, not teaming: excl=%v teaming=%v",
+			opps[1].HardwareExcluded, opps[1].TeamingOnly)
+	}
+}
+
+func TestClearanceEdge(t *testing.T) {
+	now := time.Date(2026, 6, 12, 0, 0, 0, 0, time.UTC)
+	caps := testCaps()
+	// On full-and-open contracts a clearance requirement narrows the field in Jesse's
+	// favor — eligibility nudges up. (On SBIR, eligibility is already maxed, so it's a
+	// qualitative discriminator flagged for the UI/assist.)
+	hi := opp("Classified on-prem LLM", "on-prem llm inference for ts/sci sensitive compartmented il5", "Contract", "No set aside used", "2026-07-15")
+	lo := opp("Open on-prem LLM", "on-prem llm inference unclassified", "Contract", "No set aside used", "2026-07-15")
+	opps := []Opportunity{hi, lo}
+	Score(opps, caps, now)
+	if !opps[0].ClearanceEdge {
+		t.Fatal("ts/sci+il5 topic should flag clearance edge")
+	}
+	if opps[0].Eligibility <= opps[1].Eligibility {
+		t.Fatalf("clearance-required contract should score eligibility higher (%d vs %d)", opps[0].Eligibility, opps[1].Eligibility)
+	}
+	// And the SBIR case still flags the edge even though eligibility is maxed.
+	sb := opp("Classified SBIR", "on-prem llm ts/sci il5", "SBIR", "SBIR small business", "2026-07-15")
+	sbo := []Opportunity{sb}
+	Score(sbo, caps, now)
+	if !sbo[0].ClearanceEdge {
+		t.Fatal("SBIR clearance topic should still flag the edge")
+	}
+}
+
 func TestEligibilityParse(t *testing.T) {
 	now := time.Date(2026, 6, 12, 0, 0, 0, 0, time.UTC)
 	opps := []Opportunity{

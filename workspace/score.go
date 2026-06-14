@@ -41,23 +41,82 @@ func Score(opps []Opportunity, cap *Capabilities, now time.Time) {
 	today := now.UTC().Truncate(24 * time.Hour)
 	for i := range opps {
 		o := &opps[i]
-		// Jesse builds SOFTWARE only (USVs are the one hardware exception). A topic
-		// whose deliverable is fabricating a physical device/material is a no-go:
-		// zero its capability, strip the (spurious) asset match, and keep it out of
-		// act-now / the brief. It stays visible in All (badged) for transparency.
-		o.HardwareExcluded = hardwareExcluded(o.Text)
-		if o.HardwareExcluded {
+		hw := hardwareExcluded(o.Text)
+		// Always compute the best software-asset match (readiness-weighted: a more
+		// bid-ready asset wins ties).
+		capScore, asset, trl := capabilityFit(o.Text, cap)
+		t := " " + strings.ToLower(o.Text) + " "
+		switch {
+		case hw && capScore >= 26 && anyContains(t, teamingHardwareSignals):
+			// Hardware topic that is a perception/payload PLATFORM where Jesse's
+			// software is genuinely the brain (e.g. thermalhawk processing an EO/IR
+			// payload or IRST). Not a solo bid — a software-teaming play under a
+			// hardware prime. (Materials/component fabrication never qualifies.)
+			o.TeamingOnly = true
+			o.Capability, o.MatchedAsset, o.MatchedAssetTRL = capScore, asset, trl
+		case hw:
+			// Pure hardware fabrication with no software role — a no-go. Hidden in All
+			// by default; never act-now or in the brief.
+			o.HardwareExcluded = true
 			o.Capability, o.MatchedAsset = 0, ""
-		} else {
-			o.Capability, o.MatchedAsset = capabilityFit(o.Text, cap)
+		default:
+			o.Capability, o.MatchedAsset, o.MatchedAssetTRL = capScore, asset, trl
 		}
+		// Clearance/IL5 is Jesse's moat: an active TS/SCI + IL5-built products let him
+		// compete where most small businesses can't. Flag it and nudge eligibility.
+		o.ClearanceEdge = anyContains(" "+strings.ToLower(o.Text)+" ", clearanceSignals)
 		o.Eligibility = eligibilityScore(o)
+		if o.ClearanceEdge {
+			o.Eligibility += 2
+			if o.Eligibility > 20 {
+				o.Eligibility = 20
+			}
+		}
 		o.DaysLeft, o.Runway = runwayScore(o.Closes, today)
 		o.Value = valueScore(o)
 		o.Score = o.Capability + o.Eligibility + o.Runway + o.Value
-		o.ActNow = !o.HardwareExcluded && o.Eligibility >= 12 && o.Capability >= 20 &&
+		// Act-now is for solo software bids only (hardware-excluded and teaming plays
+		// need a hardware prime first, so they're not "act now and bid").
+		o.ActNow = !hw && o.Eligibility >= 12 && o.Capability >= 20 &&
 			o.DaysLeft >= 1 && o.DaysLeft <= 30
 	}
+}
+
+// teamingHardwareSignals are perception/payload PLATFORM hardware where Jesse's
+// software (thermalhawk EO/IR perception, autonomy) is genuinely the processing
+// brain — so the hardware topic becomes a software-teaming play under a prime
+// rather than a flat pass. Materials/component fabrication is deliberately NOT
+// here (software has no role in building a focal plane or nanocrystal).
+var teamingHardwareSignals = []string{
+	"infrared search and track", "irst", "camera technology", "optical payload",
+	"electro-optical payload", "eo/ir payload", "eo-ir payload", "isr payload",
+	"imaging payload", "gimbal", "targeting pod", "seeker", "sensor payload",
+	"electro-optical/infrared",
+}
+
+// clearanceSignals mark topics requiring clearance/classified/IL5 work — Jesse's
+// competitive moat. Kept conservative to avoid false positives ("secret" alone,
+// "sci" alone are too broad).
+var clearanceSignals = []string{
+	"ts/sci", "sensitive compartmented", "special access program", " sap ",
+	"il5", "il-5", "il6", "il-6", " classified", "security clearance",
+	"polygraph", "top secret", "secret clearance",
+}
+
+// trlNum extracts the integer TRL from a grounded TRL string ("TRL 6 (…)" → 6);
+// -1 when absent. Used to lead with the most bid-ready asset.
+func trlNum(s string) int {
+	s = strings.ToLower(s)
+	i := strings.Index(s, "trl")
+	if i < 0 {
+		return -1
+	}
+	for j := i + 3; j < len(s); j++ {
+		if s[j] >= '0' && s[j] <= '9' {
+			return int(s[j] - '0')
+		}
+	}
+	return -1
 }
 
 // USV platform topics — Jesse has a build path for unmanned surface vessels, so
@@ -129,12 +188,15 @@ func hardwareExcluded(text string) bool {
 	return true
 }
 
-// capabilityFit returns 0–40 from the best-matching asset and that asset's name.
-func capabilityFit(text string, cap *Capabilities) (int, string) {
+// capabilityFit returns 0–40 from the best-matching asset, plus that asset's name
+// and TRL. Readiness-weighted: on equal keyword hits the more bid-ready asset wins
+// (so a TRL-6 proven product leads over an early-stage idea), and a bid-ready match
+// gets a small bump — Jesse should bid his strongest horse.
+func capabilityFit(text string, cap *Capabilities) (int, string, string) {
 	if cap == nil || text == "" {
-		return 0, ""
+		return 0, "", ""
 	}
-	best, bestName := 0, ""
+	best, bestName, bestTRL, bestTRLn := 0, "", "", -1
 	for _, a := range cap.Assets {
 		hits := 0
 		for _, t := range a.Terms {
@@ -147,23 +209,33 @@ func capabilityFit(text string, cap *Capabilities) (int, string) {
 				hits++
 			}
 		}
-		if hits > best {
-			best, bestName = hits, a.Name
+		if hits == 0 {
+			continue
+		}
+		n := trlNum(a.TRL)
+		if hits > best || (hits == best && n > bestTRLn) {
+			best, bestName, bestTRL, bestTRLn = hits, a.Name, a.TRL, n
 		}
 	}
 	// diminishing returns: 1 hit is a real signal, 4+ saturates.
+	var score int
 	switch {
 	case best == 0:
-		return 0, ""
+		return 0, "", ""
 	case best == 1:
-		return 16, bestName
+		score = 16
 	case best == 2:
-		return 26, bestName
+		score = 26
 	case best == 3:
-		return 34, bestName
+		score = 34
 	default:
-		return 40, bestName
+		score = 40
 	}
+	// proven-asset nudge: a bid-ready match (TRL ≥ 5) edges out an early one.
+	if bestTRLn >= 5 && score < 40 {
+		score += 2
+	}
+	return score, bestName, bestTRL
 }
 
 func eligibilityScore(o *Opportunity) int {

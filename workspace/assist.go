@@ -283,6 +283,12 @@ func (s *server) assistSystem(o *Opportunity, detail string, p Pursuit, sponsors
 	if o.HardwareExcluded {
 		b.WriteString("NOTE: this topic is flagged as a HARDWARE-BUILD opportunity outside Jesse's software-only profile (and not a USV). Default to PASS unless there is a genuine software-only role; if asked, frame the only viable path as software/autonomy teaming under a hardware prime.\n\n")
 	}
+	if o.TeamingOnly {
+		b.WriteString("NOTE: this is a TEAMING play — the deliverable involves hardware Jesse won't build, but his matched software asset is the brain (e.g. perception/autonomy/governance). Do NOT frame a solo bid. Frame it as Jesse providing the software/payload to a hardware prime or integrator: identify the likely primes, the teaming/consortium channel, and the clean software-defined interface he owns (with GPR scoping). The action is 'find the prime', not 'write the volume solo'.\n\n")
+	}
+	if o.ClearanceEdge || anyContains(" "+strings.ToLower(detail)+" ", clearanceSignals) {
+		b.WriteString("ADVANTAGE: this topic involves clearance/classified/IL5 work — Jesse's moat (active TS/SCI + IL5-built products: rigrun classification-gating, auspex/signet IL5 audit). Most small-business competitors can't operate here. Lean into it as a discriminator and a barrier to competition.\n\n")
+	}
 	b.WriteString("Operate from this doctrine (the second valley of death is crossed by engineering the bureaucracy with the same rigor as the product):\n\n")
 	b.Write(playbookMD)
 	b.WriteString("\n\nPROPOSAL FORMAT RULES (apply when relevant):\n")
@@ -317,6 +323,9 @@ func (s *server) assistSystem(o *Opportunity, detail string, p Pursuit, sponsors
 	b.WriteString(fmt.Sprintf("Fit score %d/100 (capability %d, eligibility %d, runway %d, value %d)", o.Score, o.Capability, o.Eligibility, o.Runway, o.Value))
 	if o.MatchedAsset != "" {
 		b.WriteString(" — best-matched asset: " + o.MatchedAsset)
+		if o.MatchedAssetTRL != "" {
+			b.WriteString(" [" + o.MatchedAssetTRL + "]")
+		}
 	}
 	b.WriteString("\n")
 	if o.URL != "" {

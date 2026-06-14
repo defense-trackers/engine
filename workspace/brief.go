@@ -88,8 +88,8 @@ func (s *server) computeBrief(markSeen bool) *Brief {
 	for i := range s.opps {
 		o := &s.opps[i]
 		_, tracked := s.state[o.ID]
-		if o.HardwareExcluded && !tracked {
-			continue // software-only profile: keep hardware-build topics out of the brief
+		if (o.HardwareExcluded || o.TeamingOnly) && !tracked {
+			continue // brief = solo software plays; hardware/teaming need a prime first
 		}
 		if o.DaysLeft < 0 || o.DaysLeft > 30 {
 			continue
@@ -121,7 +121,7 @@ func (s *server) computeBrief(markSeen bool) *Brief {
 	// --- Open Q&A windows (the sanctioned channel) closing soon.
 	for i := range s.opps {
 		o := &s.opps[i]
-		if o.HardwareExcluded {
+		if o.HardwareExcluded || o.TeamingOnly {
 			continue
 		}
 		until, ok := qaOpenUntil(o.Channel)
@@ -146,7 +146,7 @@ func (s *server) computeBrief(markSeen bool) *Brief {
 	// --- New high-fit opportunities surfaced since the last brief.
 	for i := range s.opps {
 		o := &s.opps[i]
-		if o.HardwareExcluded || o.Score < 55 || bs.Seen[o.ID] {
+		if o.HardwareExcluded || o.TeamingOnly || o.Score < 55 || bs.Seen[o.ID] {
 			continue
 		}
 		if o.DaysLeft >= 0 && o.DaysLeft < 1 { // already closed/closing today

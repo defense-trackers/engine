@@ -307,9 +307,12 @@ function oppCard(o, now) {
   const sc = el('div', 'score'); sc.innerHTML = `${o.score}<small>/100</small>`;
   top.append(left, sc);
   const bars = el('div', 'bars');
+  const trl = o.matched_asset_trl ? ' ' + trlShort(o.matched_asset_trl) : '';
   bars.innerHTML =
     (o.hardware_excluded ? `<span class="bar hw">⚙ hardware — excluded (software-only)</span>` : '') +
-    `<span class="bar ${o.matched_asset ? 'asset' : ''}">fit <b>${o.capability}</b>${o.matched_asset ? ' · ' + o.matched_asset : ''}</span>` +
+    (o.teaming_only ? `<span class="bar team">🤝 software-teaming — you provide the brain</span>` : '') +
+    (o.clearance_edge ? `<span class="bar clr">🔒 clearance edge</span>` : '') +
+    `<span class="bar ${o.matched_asset ? 'asset' : ''}">fit <b>${o.capability}</b>${o.matched_asset ? ' · ' + o.matched_asset + trl : ''}</span>` +
     `<span class="bar">elig <b>${o.eligibility}</b></span>` +
     `<span class="bar">runway <b>${o.runway}</b></span>` +
     `<span class="bar">value <b>${o.value}</b></span>`;
@@ -460,6 +463,7 @@ async function renderToday() {
 }
 
 function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function trlShort(s) { const m = String(s).match(/TRL\s*\d+/i); return m ? m[0].toUpperCase().replace(/\s+/, '') : ''; }
 
 function renderNow() {
   const v = $('#view-now'); v.hidden = false; v.textContent = '';
