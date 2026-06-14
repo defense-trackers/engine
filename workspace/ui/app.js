@@ -202,6 +202,35 @@ function decrypt(node, finalText, dur = 850) {
   requestAnimationFrame(step);
 }
 
+// Custom HUD targeting-reticle cursor (precise dot + lagging ring that locks on).
+function initCursor() {
+  if (!matchMedia('(pointer: fine)').matches) return;
+  const dot = document.getElementById('cdot'), ring = document.getElementById('cring');
+  if (!dot || !ring) return;
+  document.body.classList.add('hascursor');
+  let mx = -100, my = -100, rx = -100, ry = -100, lock = false;
+  const lockSel = 'a,button,.tab,.tcard,.card,.kc,select,textarea,input,label,.realize,.hwtoggle,.bskip';
+  addEventListener('pointermove', (e) => {
+    mx = e.clientX; my = e.clientY;
+    dot.style.transform = `translate(${mx}px,${my}px)`;
+    const il = !!(e.target.closest && e.target.closest(lockSel));
+    if (il !== lock) { lock = il; document.body.classList.toggle('lock', il); }
+  }, { passive: true });
+  addEventListener('pointerdown', () => document.body.classList.add('down'));
+  addEventListener('pointerup', () => document.body.classList.remove('down'));
+  (function loop() { rx += (mx - rx) * .2; ry += (my - ry) * .2; ring.style.transform = `translate(${rx}px,${ry}px)`; requestAnimationFrame(loop); })();
+}
+
+// Magnetic pull on .magnetic buttons (cursor attraction).
+function initMagnetic() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  document.addEventListener('pointermove', (e) => {
+    const m = e.target.closest && e.target.closest('.magnetic');
+    document.querySelectorAll('.magnetic.pull').forEach((el2) => { if (el2 !== m) { el2.style.transform = ''; el2.classList.remove('pull'); } });
+    if (m) { const r = m.getBoundingClientRect(); const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2); m.style.transform = `translate(${dx * .22}px,${dy * .22}px)`; m.classList.add('pull'); }
+  }, { passive: true });
+}
+
 // Cursor-reactive spotlight + subtle 3D tilt on cards.
 function initCardFX() {
   const onMove = (e) => {
@@ -231,6 +260,8 @@ function moveIndicator() {
 async function boot() {
   initBG();
   bootSequence();
+  initCursor();
+  initMagnetic();
   initCardFX();
   addEventListener('resize', moveIndicator);
   // subtle grid parallax for depth
@@ -552,7 +583,7 @@ function oppCard(o, now) {
     `<span class="bar">runway <b>${o.runway}</b></span>` +
     `<span class="bar">value <b>${o.value}</b></span>`;
   const row = el('div', 'ctl');
-  const realize = el('button', 'realize'); realize.innerHTML = svg('spark') + 'Realize with Claude';
+  const realize = el('button', 'realize magnetic'); realize.innerHTML = svg('spark') + 'Realize with Claude';
   realize.addEventListener('click', () => openAssist(o));
   row.append(realize);
   card.append(top, bars, controls(o.id), row);
@@ -677,7 +708,7 @@ async function renderToday() {
   hero.innerHTML = `<span class="cb tl"></span><span class="cb tr"></span><span class="cb bl"></span><span class="cb br"></span>` +
     `<div class="date">Today · ${today}</div><div class="lead">${escapeHtml(lead)}</div>` +
     `<div class="leadsub">Your private bid autopilot — deadlines, sanctioned Q&A windows, fresh fits, and the next move on every pursuit.</div>` +
-    `<div class="wave"></div>`;
+    `<div class="wave2"></div><div class="wave"></div>`;
   v.append(hero);
   if (!HERO_DECODED) { HERO_DECODED = true; const ld = hero.querySelector('.lead'); if (ld) decrypt(ld, lead, 950); }
 
@@ -767,6 +798,7 @@ function renderPipeline() {
       kc.append(t, m);
       if (p.notes) { const n = el('div', 'm'); n.textContent = p.notes; kc.append(n); }
       kc.append(stageMover(id, p));
+      kc.append(el('span', 'ticks'));
       c.append(kc);
     });
     board.append(c);

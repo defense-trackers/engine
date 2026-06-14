@@ -52,6 +52,17 @@
   @keyframes drift2{to{transform:translate(-7vw,-5vh) scale(1.2)}}
   /* cinematic edge vignette (frames the nebula, never dims content) */
   body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;box-shadow:inset 0 0 220px 50px rgba(2,4,8,.92),inset 0 0 60px 0 rgba(2,4,8,.5)}
+  /* ambient radar sweep — fills voids with a slow scan */
+  #radar{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.07;will-change:transform;
+    background:conic-gradient(from 0deg at 50% 58%,transparent 0deg,rgba(143,179,196,.55) 16deg,transparent 34deg);
+    -webkit-mask:radial-gradient(circle at 50% 58%,#000,transparent 58%);mask:radial-gradient(circle at 50% 58%,#000,transparent 58%);
+    animation:radarSpin 16s linear infinite}
+  @keyframes radarSpin{to{transform:rotate(360deg)}}
+  /* animated film grain — tactile cinematic texture */
+  #grain{position:fixed;inset:-60px;z-index:24;pointer-events:none;opacity:.045;mix-blend-mode:overlay;
+    background:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='180'%20height='180'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.85'%20numOctaves='2'%20stitchTiles='stitch'/%3E%3C/filter%3E%3Crect%20width='100%25'%20height='100%25'%20filter='url(%23n)'/%3E%3C/svg%3E");
+    animation:grain .5s steps(3) infinite}
+  @keyframes grain{0%{transform:translate(0,0)}33%{transform:translate(-6%,4%)}66%{transform:translate(4%,-5%)}100%{transform:translate(0,0)}}
 
   /* ---------- header / nav ---------- */
   header{display:flex;align-items:center;gap:18px;padding:14px 26px;position:sticky;top:0;z-index:30;
@@ -127,7 +138,9 @@
   .col{display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px;min-height:340px;backdrop-filter:blur(12px)}
   .col h3{font-size:10.5px;font-family:var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:0 0 11px;padding-bottom:9px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
   .col h3 span{color:var(--brand);font-weight:700;background:rgba(143,179,196,.1);border:1px solid var(--line);border-radius:999px;padding:1px 7px;min-width:18px;text-align:center}
-  .kc{background:rgba(190,210,225,.05);border:1px solid var(--line);border-radius:11px;padding:11px 12px;margin-bottom:9px;transition:transform .18s,border-color .18s,box-shadow .18s}
+  .kc{position:relative;background:rgba(190,210,225,.05);border:1px solid var(--line);border-radius:11px;padding:11px 12px;margin-bottom:9px;transition:transform .18s,border-color .18s,box-shadow .18s}
+  .kc>*{position:relative;z-index:1}
+  .kc:hover .ticks{opacity:.5}
   .kc:hover{border-color:var(--line2);transform:translateY(-2px);box-shadow:0 14px 30px -18px rgba(0,0,0,.8)}
   .kc .t{font-family:var(--disp);font-size:12.5px;font-weight:600;line-height:1.35}
   .kc .m{font-family:var(--mono);font-size:10.5px;color:var(--dim);margin-top:5px;line-height:1.5}
@@ -158,6 +171,11 @@
     background-size:160px 54px;animation:waveflow 7s linear infinite;
     -webkit-mask:linear-gradient(90deg,transparent,#000 22%,#000 78%,transparent);mask:linear-gradient(90deg,transparent,#000 22%,#000 78%,transparent)}
   @keyframes waveflow{to{background-position-x:-160px}}
+  .hero .wave2{position:absolute;left:0;right:0;bottom:6px;height:74px;opacity:.10;pointer-events:none;z-index:0;
+    background:url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='240'%20height='74'%3E%3Cpath%20d='M0,37%20C30,37%2030,14%2060,14%20C90,14%2090,60%20120,60%20C150,60%20150,14%20180,14%20C210,14%20210,37%20240,37'%20fill='none'%20stroke='%23bed2e1'%20stroke-width='1.5'/%3E%3C/svg%3E") repeat-x left center;
+    background-size:240px 74px;animation:waveflow2 12s linear infinite;
+    -webkit-mask:linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent);mask:linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent)}
+  @keyframes waveflow2{to{background-position-x:240px}}
   .hero .date,.hero .lead{position:relative;z-index:1}
   .statstrip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:18px 0 26px}
   .stat{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:15px 16px;backdrop-filter:blur(12px);overflow:hidden;animation:fadeUp .5s both;transition:transform .2s,border-color .2s}
@@ -355,13 +373,27 @@
     @keyframes progFill{to{transform:scaleX(1)}}
     h2,.playbook{animation:reveal both;animation-timeline:view();animation-range:entry 0% cover 30%}
   }
-  @media(prefers-reduced-motion:reduce){*{animation:none!important}#boot{display:none}}
+  /* ---------- custom HUD targeting-reticle cursor ---------- */
+  #cdot,#cring{position:fixed;left:0;top:0;z-index:95;pointer-events:none;border-radius:50%;transform:translate(-100px,-100px)}
+  #cdot{width:5px;height:5px;margin:-2.5px 0 0 -2.5px;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+  #cring{width:28px;height:28px;margin:-14px 0 0 -14px;border:1px solid rgba(143,179,196,.55);
+    transition:width .18s,height .18s,margin .18s,border-color .18s,opacity .2s}
+  #cring::before,#cring::after{content:"";position:absolute;left:50%;top:50%;background:rgba(190,210,225,.6)}
+  #cring::before{width:1px;height:7px;transform:translate(-50%,-50%)}
+  #cring::after{width:7px;height:1px;transform:translate(-50%,-50%)}
+  body.lock #cring{width:46px;height:46px;margin:-23px 0 0 -23px;border-color:var(--cyan);box-shadow:0 0 20px -6px var(--cyan)}
+  body.lock #cdot{opacity:0}
+  body.down #cring{border-color:#fff}
+  @media(pointer:fine){body.hascursor,body.hascursor *{cursor:none!important}body.hascursor input,body.hascursor textarea{cursor:text!important}}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important}#boot{display:none}#grain,#radar{display:none}}
 </style>
 </head>
 <body>
 <canvas id="bg"></canvas>
 <div id="fx"></div>
+<div id="radar"></div>
 <div id="grid"></div>
+<div id="grain"></div>
 <div id="prog"></div>
 <div id="scan"></div>
 <div id="boot"><div class="bgrid"></div><div class="bsweep"></div><div class="bw"><div class="borb"></div><div class="bt">REALIZER</div><div class="bs">SOVEREIGN BID COMMAND DECK</div><div class="bconsole" id="bconsole"></div><div class="bpct"><span id="bpct">0</span><i>%</i></div><div class="bskip">click to enter</div></div></div>
@@ -380,7 +412,7 @@
   </nav>
   <span class="spacer"></span>
   <span id="stat" class="meta"></span>
-  <button class="act" id="refresh"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3.5V9h-5.5"/></svg> Refresh</button>
+  <button class="act magnetic" id="refresh"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3.5V9h-5.5"/></svg> Refresh</button>
 </header>
 <main>
   <section id="view-today" class="view"></section>
@@ -404,10 +436,11 @@
   <div id="thread"></div>
   <div class="ask">
     <textarea id="assist-input" placeholder="Ask Claude about this bid…" rows="1"></textarea>
-    <button id="assist-send">Ask</button>
+    <button id="assist-send" class="magnetic">Ask</button>
   </div>
 </aside>
 <footer id="statusbar"></footer>
+<div id="cring"></div><div id="cdot"></div>
 <script type="module" src="/app.js"></script>
 </body>
 </html>
