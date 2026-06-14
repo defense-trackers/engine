@@ -371,6 +371,10 @@ func (s *server) assistSystem(o *Opportunity, detail string, p Pursuit, sponsors
 	if o.Channel != "" {
 		b.WriteString("SANCTIONED CHANNEL: " + o.Channel + "\n")
 	}
+	if aw, _ := FetchAwards(s.opts.Dir, awardKeyword(o)); len(aw) > 0 {
+		b.WriteString("\nCOMPETITIVE FIELD (recent DoD SBIR/STTR awards in this space — name incumbents Jesse must differentiate from; cite real firms/$):\n")
+		b.WriteString(awardsSummary(aw))
+	}
 	if len(sponsors) > 0 {
 		b.WriteString("\nNAMED TRANSITION TARGETS (real DoD offices for money/requirements/program/transition — name these specifically, reach via each one's channel):\n")
 		for _, s := range sponsors {

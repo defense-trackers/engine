@@ -401,6 +401,10 @@ function openAssist(o) {
     draftBtn.title = 'Claude writes the full submittable volume to editable files (runs on your subscription)';
     draftBtn.addEventListener('click', () => draftVolume(o));
     bidRow.append(draftBtn);
+    const intelBtn = el('button', null); intelBtn.innerHTML = svg('radar') + 'Competitive field';
+    intelBtn.title = 'Who has won DoD SBIR/STTR awards in this space (SBIR.gov)';
+    intelBtn.addEventListener('click', () => competitiveIntel(o));
+    bidRow.append(intelBtn);
     qa.append(rowLabel('Bid'), bidRow);
     const trow = el('div', 'qarow');
     TQUICK.forEach((q) => { const b = el('button', null, q.label); b.addEventListener('click', () => sendAssist(q.a)); trow.append(b); });
@@ -560,6 +564,27 @@ async function draftVolume(o) {
       }
     }
   } catch (e) { prog.className = 'msg err'; prog.textContent = 'draft failed: ' + e.message; }
+}
+
+// Competitive field — recent DoD SBIR/STTR awards in the opp's space (SBIR.gov).
+async function competitiveIntel(o) {
+  const t = $('#thread');
+  const head = el('div', 'msg u'); head.textContent = '› Competitive field'; t.append(head);
+  const m = el('div', 'msg a'); m.textContent = 'Querying SBIR.gov award history…'; t.append(m); t.scrollTop = 1e9;
+  try {
+    const r = await fetch('/api/awards?id=' + encodeURIComponent(o.id)).then((x) => x.json());
+    if (!r.awards || !r.awards.length) {
+      m.textContent = r.ok ? `No recent DoD SBIR/STTR awards found for “${r.keyword}”.` : 'SBIR.gov is rate-limiting right now — try again shortly (results cache for 7 days once fetched).';
+      return;
+    }
+    let html = `<b>Recent DoD awards · “${escapeHtml(r.keyword)}”</b><br><span style="color:var(--dim);font-size:12px">${r.awards.length} incumbents to differentiate from:</span><br>`;
+    r.awards.slice(0, 10).forEach((a) => {
+      const bits = [a.branch, a.phase, a.year || '', a.amount ? '$' + (a.amount >= 1e6 ? (a.amount / 1e6).toFixed(1) + 'M' : Math.round(a.amount / 1000) + 'K') : ''].filter(Boolean).join(' · ');
+      html += `<div style="margin-top:6px"><b style="color:var(--ink)">${escapeHtml(a.firm || '—')}</b><br><span style="color:var(--dim);font-size:11px;font-family:var(--mono)">${escapeHtml(bits)}</span></div>`;
+    });
+    html += `<br><span style="color:var(--faint);font-size:11px">Claude has this context — ask “how do I beat these incumbents?”</span>`;
+    m.innerHTML = html; t.scrollTop = 1e9;
+  } catch (e) { m.className = 'msg err'; m.textContent = 'intel failed: ' + e.message; }
 }
 
 async function load() {
