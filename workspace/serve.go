@@ -89,6 +89,7 @@ func Run(o Options) error {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/brief", s.hBrief)
+	mux.HandleFunc("/api/dayread", s.hDayRead)
 	mux.HandleFunc("/api/opportunities", s.hOpps)
 	mux.HandleFunc("/api/state", s.hState)
 	mux.HandleFunc("/api/refresh", s.hRefresh)

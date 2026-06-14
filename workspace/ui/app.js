@@ -369,6 +369,7 @@ function convo(id) { try { return JSON.parse(localStorage.getItem('assist:' + id
 function saveConvo(id, h) { localStorage.setItem('assist:' + id, JSON.stringify(h.slice(-20))); }
 
 const TQUICK = [
+  { a: 'deepresearch', label: 'Deep research' },
   { a: 'transition', label: 'Structure for transition' },
   { a: 'sponsor', label: 'Who owns the money' },
   { a: 'outreach', label: 'Outreach + draft message' },
@@ -501,7 +502,7 @@ async function sendAssist(action) {
   if (!action && !message) return;
   const id = CUR_OPP.id;
   const hist = convo(id);
-  const userLabel = action ? QUICK.find((q) => q.a === action)?.label || action : message;
+  const userLabel = action ? ([...QUICK, ...TQUICK].find((q) => q.a === action)?.label || action) : message;
   hist.push({ role: 'user', content: userLabel });
   saveConvo(id, hist);
   input.value = '';
@@ -935,6 +936,14 @@ async function renderToday() {
   );
   v.append(bento);
   animateCounts(bento);
+  // proactive AI read of the day (on-demand)
+  if (ASSIST.enabled) {
+    const dr = el('div', 'dayread');
+    const cta = el('button', 'drcta'); cta.innerHTML = svg('spark') + "Claude’s read on today";
+    const body = el('div', 'drbody'); body.hidden = true;
+    cta.addEventListener('click', () => dayRead(cta, body));
+    dr.append(cta, body); v.append(dr);
+  }
   v.append(el('p', 'sub', 'Expected value = each pursuit’s program-of-record ceiling × its cumulative probability of actually reaching a funded program (the SBIR→PoR funnel is brutal — early stages are <2%). Ceilings are editable best-case estimates; set them per pursuit in its Claude panel.'));
 
   tsection(v, 'deadline', 'clock', 'Deadlines (≤30d)', b.deadlines, 'No tracked deadlines in the next 30 days.');
@@ -969,6 +978,27 @@ function mdChat(md) {
   return out;
 }
 function trlShort(s) { const m = String(s).match(/TRL\s*\d+/i); return m ? m[0].toUpperCase().replace(/\s+/, '') : ''; }
+
+async function dayRead(cta, body) {
+  cta.disabled = true; cta.innerHTML = svg('radar') + 'Reading the board…';
+  body.hidden = false; body.innerHTML = '<span class="drwait">analyzing pipeline…</span>';
+  let acc = '';
+  try {
+    const resp = await fetch('/api/dayread', { method: 'POST' });
+    const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true }); const parts = buf.split('\n\n'); buf = parts.pop();
+      for (const p of parts) {
+        const line = p.replace(/^data:\s*/, '').trim(); if (!line) continue;
+        let ev; try { ev = JSON.parse(line); } catch { continue; }
+        if (ev.error) { body.innerHTML = `<span class="drwait">${escapeHtml(ev.error)}</span>`; }
+        else if (ev.t) { acc += ev.t; body.innerHTML = mdChat(acc); }
+      }
+    }
+  } catch (e) { body.innerHTML = `<span class="drwait">read failed: ${escapeHtml(e.message)}</span>`; }
+  cta.disabled = false; cta.innerHTML = svg('spark') + 'Refresh read';
+}
 
 function renderTeaming() {
   const v = $('#view-teaming'); v.hidden = false; v.textContent = '';

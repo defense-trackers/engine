@@ -287,6 +287,62 @@ func (s *server) hBrief(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, s.computeBrief(false))
 }
 
+// hDayRead streams Claude's strategic read of the whole pipeline today.
+func (s *server) hDayRead(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	flush, _ := w.(http.Flusher)
+	emit := func(obj any) { b, _ := json.Marshal(obj); fmt.Fprintf(w, "data: %s\n\n", b); if flush != nil { flush.Flush() } }
+	backend := assistBackend()
+	if backend == "" {
+		emit(map[string]string{"error": "Claude isn't connected."})
+		return
+	}
+	br := s.computeBrief(false)
+	var sys strings.Builder
+	sys.WriteString("You are Jesse's chief of staff and capture strategist. Give a crisp, prioritized read of his pipeline TODAY — what to do, the biggest risk, the highest-leverage move. Ground it in the doctrine below. Markdown, tight, under 220 words, lead with the single most important action.\n\n")
+	sys.Write(playbookMD)
+	var p strings.Builder
+	p.WriteString(fmt.Sprintf("PIPELINE SNAPSHOT (%s): expected value $%dK risk-adjusted, %d active pursuits, %d act-now, %d teaming plays, %d new high-fit.\n\n", br.Generated[:10], br.EV, br.Pursuits, br.ActNow, len(br.Teaming), br.NewCount))
+	if len(br.Deadlines) > 0 {
+		p.WriteString("DEADLINES:\n")
+		for i, d := range br.Deadlines {
+			if i >= 6 {
+				break
+			}
+			p.WriteString(fmt.Sprintf("- %s (%dd)%s\n", d.Title, d.Days, ifs(d.Asset != "", " → "+d.Asset, "")))
+		}
+	}
+	if len(br.Moves) > 0 {
+		p.WriteString("\nLIVE PURSUITS (weakest transition wall):\n")
+		for i, m := range br.Moves {
+			if i >= 8 {
+				break
+			}
+			p.WriteString(fmt.Sprintf("- %s — %d/100 ready, weakest: %s\n", m.Title, m.Score, m.Weakest))
+		}
+	}
+	p.WriteString("\nGive me today's read.")
+	if backend == "subscription" {
+		runClaudeCLI(emit, sys.String(), p.String())
+	} else {
+		r, err := claudeOnce(sys.String(), p.String())
+		if err != nil {
+			emit(map[string]string{"error": err.Error()})
+		} else {
+			emit(map[string]string{"t": r})
+		}
+		emit(map[string]string{"done": "1"})
+	}
+}
+
+func ifs(cond bool, a, b string) string {
+	if cond {
+		return a
+	}
+	return b
+}
+
 // --- Push (ntfy) -----------------------------------------------------------
 
 // RunBrief builds the brief headless (no server bound) and prints it; with push,
