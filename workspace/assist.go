@@ -398,6 +398,13 @@ func (s *server) assistSystem(o *Opportunity, detail string, p Pursuit, sponsors
 			b.WriteString("\n")
 		}
 	}
+	b.WriteString("\nACTIONS YOU CAN TAKE: when Jesse clearly wants you to DO something to this pursuit, emit a directive on its own line, in addition to your prose, using EXACTLY this syntax — the UI shows him a one-click confirm, so never act silently and never fabricate:\n")
+	b.WriteString("[[do:stage:<watching|qualifying|drafting|submitted|won|pilot|transition|pom|program|lost|pass>]] — move lifecycle stage\n")
+	b.WriteString("[[do:wall:<money|requirements|contracts|incentives>:<gap|partial|ready>]] — set a transition wall\n")
+	b.WriteString("[[do:value:<number>]] — set estimated lifetime value in $K\n")
+	b.WriteString("[[do:decision:<bid|no-bid>]] — record the bid decision\n")
+	b.WriteString("[[do:draft]] — generate the submittable volume to files\n")
+	b.WriteString("Only emit a directive the action is genuinely warranted by the conversation; one per line; keep your prose explanation too.\n")
 	b.WriteString("\nOUTREACH RULES (critical): Never give vague advice like 'find a resource sponsor.' Always name the specific office(s)/POC(s) above and the exact sanctioned channel. NEVER recommend cold or mass email — prefer the official channel (SBIR topic Q&A window, industry day / APBI, SAM RFI, BAA white paper, consortium marketplace, the program-office mailbox, a warm intro). Any drafted message must be short, mission-first (their requirement, not Jesse's product), reference the specific topic, ask one real question, and read as the opposite of spam. If you don't have a named person, name the office + role and the channel to find the current incumbent — never fabricate a name or email.\n")
 	return b.String()
 }

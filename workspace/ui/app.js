@@ -533,6 +533,37 @@ async function sendAssist(action) {
     }
   } catch (e) { ans.className = 'msg err'; ans.textContent = 'stream failed: ' + e.message; }
   if (acc) { const h = convo(id); h.push({ role: 'assistant', content: acc }); saveConvo(id, h); }
+  const dirs = [...acc.matchAll(/\[\[do:([^\]]+)\]\]/g)].map((m) => m[1]);
+  if (dirs.length && CUR_OPP) renderDirectives(CUR_OPP, dirs);
+}
+
+// Confirmable action chips Claude proposed (tool use).
+function dirLabel(d) {
+  const p = d.split(':');
+  if (p[0] === 'stage') return 'Move stage → ' + p[1];
+  if (p[0] === 'wall') return 'Set ' + p[1] + ' → ' + p[2];
+  if (p[0] === 'value') return 'Set value → $' + p[1] + 'K';
+  if (p[0] === 'decision') return 'Record decision: ' + p[1];
+  if (p[0] === 'draft') return 'Draft the volume → files';
+  return d;
+}
+function applyDirective(o, d) {
+  const p = d.split(':'), ex = { title: o.title, agency: o.agency, url: o.url };
+  if (p[0] === 'stage') { saveState(o.id, { stage: p[1] }, ex); toast('Stage → ' + p[1]); }
+  else if (p[0] === 'wall') { const w = { ...(STATE[o.id]?.walls || {}) }; w[p[1]] = p[2]; saveState(o.id, { walls: w }, ex); toast(p[1] + ' → ' + p[2]); }
+  else if (p[0] === 'value') { saveState(o.id, { value: parseInt(p[1]) || 0 }, ex); toast('Value → $' + p[1] + 'K'); }
+  else if (p[0] === 'decision') { saveState(o.id, { decision: p[1] }, ex); toast('Decision: ' + p[1]); }
+  else if (p[0] === 'draft') { draftVolume(o); }
+}
+function renderDirectives(o, dirs) {
+  const t = $('#thread'); const wrap = el('div', 'dirs');
+  const lbl = el('div', 'dirlbl'); lbl.textContent = 'Claude proposes:'; wrap.append(lbl);
+  dirs.forEach((d) => {
+    const chip = el('button', 'dirchip'); chip.innerHTML = svg('spark') + dirLabel(d);
+    chip.addEventListener('click', () => { applyDirective(o, d); chip.disabled = true; chip.classList.add('done'); chip.innerHTML = svg('shield') + 'Applied'; });
+    wrap.append(chip);
+  });
+  t.append(wrap); t.scrollTop = 1e9;
 }
 
 // draftVolume streams a full submittable volume to files, showing per-section
@@ -922,7 +953,7 @@ function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '
 
 // lightweight markdown for streamed Claude replies (headings, bold, italic, code, lists)
 function mdChat(md) {
-  let s = escapeHtml(md);
+  let s = escapeHtml(String(md).replace(/\[\[do:[^\]]+\]\]/g, '')); // hide action directives from prose
   s = s.replace(/```([\s\S]*?)```/g, (_, c) => `<pre>${c.trim()}</pre>`);
   s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
   s = s.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>');
