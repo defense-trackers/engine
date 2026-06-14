@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -322,6 +323,18 @@ func (s *server) assistSystem(o *Opportunity, detail string, p Pursuit, sponsors
 			}
 			b.WriteString("\n")
 		}
+	}
+	// Deep grounding: the matched asset's full grounded dossier (real metrics/discriminators).
+	if o.MatchedAsset != "" {
+		if d, err := os.ReadFile(filepath.Join(s.opts.Dir, "dossiers", o.MatchedAsset+".md")); err == nil && len(d) > 0 {
+			b.WriteString("\nMATCHED ASSET — FULL GROUNDED DOSSIER (cite these real metrics, not invented ones):\n")
+			b.Write(d)
+			b.WriteString("\n")
+		}
+	}
+	// Company Kit: stable facts + voice (entity, PI/team bios, past performance, rights, partner).
+	if ck := LoadCompanyKit(s.opts.Dir); ck != nil {
+		b.WriteString("\n" + ck.kitContext())
 	}
 	b.WriteString("\nCURRENT OPPORTUNITY:\n")
 	b.WriteString("Title: " + o.Title + "\n")

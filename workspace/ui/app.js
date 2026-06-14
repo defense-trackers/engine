@@ -481,7 +481,8 @@ function renderThread() {
   }
   convo(CUR_OPP.id).forEach((m) => {
     const d = el('div', 'msg ' + (m.role === 'user' ? 'u' : 'a'));
-    d.textContent = (m.role === 'user' ? '› ' : '') + m.content;
+    if (m.role === 'user') d.textContent = '› ' + m.content;
+    else d.innerHTML = mdChat(m.content);
     t.append(d);
   });
   t.scrollTop = t.scrollHeight;
@@ -527,7 +528,7 @@ async function sendAssist(action) {
         if (!line) continue;
         let ev; try { ev = JSON.parse(line); } catch { continue; }
         if (ev.error) { ans.className = 'msg err'; ans.textContent = ev.error; }
-        else if (ev.t) { acc += ev.t; ans.textContent = acc; $('#thread').scrollTop = 1e9; }
+        else if (ev.t) { acc += ev.t; ans.innerHTML = mdChat(acc); $('#thread').scrollTop = 1e9; }
       }
     }
   } catch (e) { ans.className = 'msg err'; ans.textContent = 'stream failed: ' + e.message; }
@@ -918,6 +919,24 @@ async function renderToday() {
 }
 
 function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+// lightweight markdown for streamed Claude replies (headings, bold, italic, code, lists)
+function mdChat(md) {
+  let s = escapeHtml(md);
+  s = s.replace(/```([\s\S]*?)```/g, (_, c) => `<pre>${c.trim()}</pre>`);
+  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>');
+  const lines = s.split('\n'); let out = '', inList = false;
+  for (let l of lines) {
+    if (/^### /.test(l)) { if (inList) { out += '</ul>'; inList = false; } out += '<h4>' + l.slice(4) + '</h4>'; }
+    else if (/^## /.test(l)) { if (inList) { out += '</ul>'; inList = false; } out += '<h4>' + l.slice(3) + '</h4>'; }
+    else if (/^\s*[-*]\s+/.test(l)) { if (!inList) { out += '<ul>'; inList = true; } out += '<li>' + l.replace(/^\s*[-*]\s+/, '') + '</li>'; }
+    else if (/^\s*\d+\.\s+/.test(l)) { if (!inList) { out += '<ul>'; inList = true; } out += '<li>' + l.replace(/^\s*\d+\.\s+/, '') + '</li>'; }
+    else { if (inList) { out += '</ul>'; inList = false; } out += l.trim() ? '<p>' + l + '</p>' : ''; }
+  }
+  if (inList) out += '</ul>';
+  return out;
+}
 function trlShort(s) { const m = String(s).match(/TRL\s*\d+/i); return m ? m[0].toUpperCase().replace(/\s+/, '') : ''; }
 
 function renderTeaming() {

@@ -175,6 +175,17 @@ func (s *server) Draft(o *Opportunity, detail string, progress func(string)) (st
 	}
 
 	os.WriteFile(filepath.Join(outDir, "volume.md"), []byte(volume.String()), 0o644)
+
+	// Red-team critique pass: an adversarial reviewer scores the draft against the
+	// topic + win themes and lists the highest-leverage fixes — written to its own file.
+	log("Red-team review of the draft …")
+	critSys := "You are a hard, fair Government source-selection evaluator AND a capture coach reviewing Jesse's draft proposal. Score it honestly and find the highest-leverage fixes before submission. Be specific and blunt; reference sections by name.\n\nGROUNDING:\n" + ctx
+	critPrompt := "Review this DRAFT against the topic. Output markdown with: (1) a one-line verdict + a 0–100 score; (2) the 3 strongest elements; (3) the 5 highest-leverage fixes (most impactful first), each tied to a section; (4) any compliance/format risks (section structure, page intent, placeholders, unsupported claims); (5) the single sharpest win theme to lead with.\n\nDRAFT:\n" + volume.String()
+	if crit, err := claudeOnce(critSys, critPrompt); err == nil && strings.TrimSpace(crit) != "" {
+		os.WriteFile(filepath.Join(outDir, "00-reviewer-notes.md"), []byte("# Red-team reviewer notes\n\n"+strings.TrimSpace(crit)+"\n"), 0o644)
+		log("Reviewer notes → 00-reviewer-notes.md")
+	}
+
 	log("Done → " + outDir)
 	return outDir, nil
 }
