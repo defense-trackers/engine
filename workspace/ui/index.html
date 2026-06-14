@@ -409,6 +409,22 @@
     @keyframes progFill{to{transform:scaleX(1)}}
     h2,.playbook{animation:reveal both;animation-timeline:view();animation-range:entry 0% cover 30%}
   }
+  /* ---------- command palette (Cmd/Ctrl+K) ---------- */
+  #palette{position:fixed;inset:0;z-index:70;display:none;align-items:flex-start;justify-content:center;padding-top:13vh;background:rgba(3,5,10,.55);backdrop-filter:blur(7px)}
+  #palette.open{display:flex;animation:palfade .18s ease}
+  @keyframes palfade{from{opacity:0}}
+  .pal{width:620px;max-width:92vw;background:linear-gradient(180deg,rgba(12,17,28,.98),rgba(8,11,20,.99));border:1px solid var(--line2);border-radius:16px;box-shadow:0 40px 110px -30px #000,0 0 0 1px rgba(143,179,196,.12);overflow:hidden;animation:palrise .22s cubic-bezier(.2,.8,.2,1)}
+  @keyframes palrise{from{transform:translateY(-14px) scale(.98);opacity:0}}
+  .pal input{width:100%;background:none;border:none;border-bottom:1px solid var(--line);color:var(--ink);font:500 16px var(--sans);padding:17px 19px;outline:none}
+  .pal input::placeholder{color:var(--faint)}
+  .pal .res{max-height:52vh;overflow:auto;padding:8px}
+  .pal .pcat{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);padding:10px 12px 4px}
+  .pal .pi{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:14px;color:var(--ink)}
+  .pal .pi .pic{width:26px;height:26px;display:grid;place-items:center;border-radius:7px;border:1px solid var(--line);background:rgba(190,210,225,.04);color:var(--brand);flex:none}
+  .pal .pi .pl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pal .pi .tg{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.1em;flex:none}
+  .pal .pi.sel{background:linear-gradient(90deg,rgba(143,179,196,.16),rgba(143,179,196,.04));box-shadow:inset 2px 0 0 var(--brand)}
+  .pal .palfoot{display:flex;gap:18px;padding:10px 16px;border-top:1px solid var(--line);font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
   /* ---------- custom HUD targeting-reticle cursor ---------- */
   #cdot,#cring{position:fixed;left:0;top:0;z-index:95;pointer-events:none;border-radius:50%;transform:translate(-100px,-100px)}
   #cdot{width:5px;height:5px;margin:-2.5px 0 0 -2.5px;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
@@ -483,6 +499,7 @@
   </div>
 </aside>
 <footer id="statusbar"></footer>
+<div id="palette"><div class="pal"><input type="text" placeholder="Search views, actions, opportunities…  (Esc to close)" spellcheck="false"><div class="res"></div><div class="palfoot"><span>↑↓ navigate</span><span>↵ select</span><span>⌘K / / open</span></div></div></div>
 <div id="cring"></div><div id="cdot"></div>
 <script type="module" src="/app.js"></script>
 </body>

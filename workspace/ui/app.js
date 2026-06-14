@@ -337,15 +337,8 @@ async function boot() {
   await load();
   ASSIST = await fetch('/api/assist-status').then((r) => r.json()).catch(() => ({ enabled: false }));
   document.querySelectorAll('.tab').forEach((t) =>
-    t.addEventListener('click', () => {
-      if (t.classList.contains('active')) return;
-      VIEW = t.dataset.view;
-      snd.tab();
-      glitchBurst();
-      if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        document.startViewTransition(() => { setActive(); render(); });
-      } else { setActive(); render(); }
-    }));
+    t.addEventListener('click', () => switchView(t.dataset.view)));
+  initPalette();
   $('#refresh').addEventListener('click', async (e) => {
     e.target.textContent = '…'; await fetch('/api/refresh', { method: 'POST' }); await load(); render(); e.target.textContent = '↻ Refresh';
   });
@@ -589,6 +582,70 @@ async function load() {
     sb.querySelectorAll('span:not(#clock):not(#sndtoggle) b').forEach((b) => scrambleText(b, b.textContent, 520));
   }
 }
+
+const VIEWS = [['today', 'Today'], ['now', 'Act now'], ['teaming', 'Teaming'], ['pipeline', 'Pipeline'], ['profit', 'Profit'], ['all', 'All'], ['playbook', 'Playbook']];
+function switchView(v) {
+  if (v === VIEW) return;
+  VIEW = v; snd.tab(); glitchBurst();
+  if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.startViewTransition(() => { setActive(); render(); });
+  } else { setActive(); render(); }
+}
+
+// Command palette: fuzzy-jump to views, run actions, open any opportunity.
+function initPalette() {
+  const pal = document.getElementById('palette'); if (!pal) return;
+  const input = pal.querySelector('input'), res = pal.querySelector('.res');
+  let items = [], sel = 0;
+  const isOpen = () => pal.classList.contains('open');
+  const close = () => { pal.classList.remove('open'); };
+  const open = () => { pal.classList.add('open'); input.value = ''; build(''); input.focus(); };
+  const ic = (n) => `<span class="pic">${svg(n)}</span>`;
+  function build(q) {
+    q = q.toLowerCase().trim();
+    const out = [];
+    VIEWS.forEach(([v, l]) => { if (!q || l.toLowerCase().includes(q)) out.push({ cat: 'View', icon: 'arrow', label: l, tag: 'go', run: () => switchView(v) }); });
+    [['Refresh data', 'radar', () => $('#refresh').click()], ['Toggle UI sound', 'spark', () => document.querySelector('#sndtoggle')?.click()]]
+      .forEach(([l, i, fn]) => { if (!q || l.toLowerCase().includes(q)) out.push({ cat: 'Action', icon: i, label: l, tag: 'run', run: fn }); });
+    const opps = (q ? OPPS.filter((o) => (o.title + ' ' + o.agency).toLowerCase().includes(q)) : OPPS).slice(0, q ? 9 : 6);
+    opps.forEach((o) => out.push({ cat: 'Opportunity', icon: 'target', label: o.title, tag: o.matched_asset || o.source, run: () => openAssist(o) }));
+    items = out; sel = 0; render();
+  }
+  function render() {
+    let html = '', cat = '';
+    items.forEach((it, i) => {
+      if (it.cat !== cat) { cat = it.cat; html += `<div class="pcat">${cat}</div>`; }
+      html += `<div class="pi${i === sel ? ' sel' : ''}" data-i="${i}">${ic(it.icon)}<span class="pl">${escapeHtml(it.label)}</span><span class="tg">${escapeHtml(it.tag)}</span></div>`;
+    });
+    res.innerHTML = html || `<div class="pcat">No matches</div>`;
+    res.querySelectorAll('.pi').forEach((e) => {
+      e.addEventListener('mousemove', () => { sel = +e.dataset.i; markSel(); });
+      e.addEventListener('click', () => run());
+    });
+  }
+  function markSel() { res.querySelectorAll('.pi').forEach((e, i) => e.classList.toggle('sel', i === sel)); }
+  function run() { const it = items[sel]; close(); if (it) setTimeout(it.run, 60); }
+  input.addEventListener('input', () => build(input.value));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(items.length - 1, sel + 1); markSel(); scrollSel(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(0, sel - 1); markSel(); scrollSel(); }
+    else if (e.key === 'Enter') { e.preventDefault(); run(); }
+    else if (e.key === 'Escape') { close(); }
+  });
+  function scrollSel() { const e = res.querySelector('.pi.sel'); if (e) e.scrollIntoView({ block: 'nearest' }); }
+  pal.addEventListener('click', (e) => { if (e.target === pal) close(); });
+  // global hotkeys
+  addEventListener('keydown', (e) => {
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '');
+    if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing && !isOpen())) { e.preventDefault(); open(); return; }
+    if (e.key === 'Escape') { if (isOpen()) { close(); return; } closeAssist(); return; }
+    if (typing || isOpen() || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key >= '1' && e.key <= '7') { switchView(VIEWS[+e.key - 1][0]); }
+    else if (e.key === 'r') { $('#refresh').click(); }
+  });
+  PALETTE_OPEN = open;
+}
+let PALETTE_OPEN = null;
 
 function done(id) { const p = STATE[id]; return p && ['won', 'lost', 'pass', 'submitted'].includes(p.stage); }
 function setActive() { document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.view === VIEW)); moveIndicator(); }
