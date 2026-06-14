@@ -219,7 +219,7 @@ func (s *server) hDraft(w http.ResponseWriter, r *http.Request) {
 	}
 	detail := ""
 	if subj.DetailRef != "" {
-		detail = FetchDSIPDetail(subj.DetailRef)
+		detail = detailCached(s.opts.Dir, subj.DetailRef)
 	}
 	dir, err := s.Draft(subj, detail, func(line string) { emit(map[string]string{"t": line}) })
 	if err != nil {
@@ -283,7 +283,7 @@ func RunDraft(o Options, oppID string) error {
 	}
 	detail := ""
 	if subj.DetailRef != "" {
-		detail = FetchDSIPDetail(subj.DetailRef)
+		detail = detailCached(s.opts.Dir, subj.DetailRef)
 	}
 	dir, err := s.Draft(subj, detail, func(m string) { fmt.Println(m) })
 	if err != nil {

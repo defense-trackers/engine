@@ -135,7 +135,7 @@ func (s *server) hAssist(w http.ResponseWriter, r *http.Request) {
 
 	detail := ""
 	if opp.DetailRef != "" {
-		detail = FetchDSIPDetail(opp.DetailRef)
+		detail = detailCached(s.opts.Dir, opp.DetailRef)
 	}
 	userText := strings.TrimSpace(in.Message)
 	if a, ok := assistActions[in.Action]; ok {

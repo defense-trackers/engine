@@ -221,7 +221,7 @@ func (s *server) hAssess(w http.ResponseWriter, r *http.Request) {
 	}
 	detail := ""
 	if subj.DetailRef != "" {
-		detail = FetchDSIPDetail(subj.DetailRef)
+		detail = detailCached(s.opts.Dir, subj.DetailRef)
 	}
 	a, err := s.assess(subj, detail)
 	if err != nil {
@@ -255,7 +255,7 @@ func (s *server) hAssessAll(w http.ResponseWriter, _ *http.Request) {
 		}
 		detail := ""
 		if subj.DetailRef != "" {
-			detail = FetchDSIPDetail(subj.DetailRef)
+			detail = detailCached(s.opts.Dir, subj.DetailRef)
 		}
 		a, err := s.assess(subj, detail)
 		if err != nil {

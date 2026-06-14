@@ -6,10 +6,42 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
+
+// detailCached wraps FetchDSIPDetail with a 30-day on-disk cache (topic text is
+// stable) so the full readout is fast and offline-friendly after first fetch.
+func detailCached(dir, ref string) string {
+	if ref == "" {
+		return ""
+	}
+	path := filepath.Join(dir, "detail-cache.json")
+	type entry struct {
+		Fetched string `json:"fetched"`
+		Text    string `json:"text"`
+	}
+	m := map[string]entry{}
+	if b, e := os.ReadFile(path); e == nil {
+		_ = json.Unmarshal(b, &m)
+	}
+	if e, ok := m[ref]; ok {
+		if t := parseDate(e.Fetched); !t.IsZero() && time.Since(t) < 30*24*time.Hour {
+			return e.Text
+		}
+	}
+	txt := FetchDSIPDetail(ref)
+	if txt != "" {
+		m[ref] = entry{Fetched: time.Now().UTC().Format("2006-01-02"), Text: txt}
+		if b, e := json.MarshalIndent(m, "", " "); e == nil {
+			_ = os.WriteFile(path, b, 0o644)
+		}
+	}
+	return txt
+}
 
 // DSIP's topics-app SPA calls this public GET endpoint with the search criteria
 // URL-encoded into `searchParam`. It blocks datacenter IPs, so this only works

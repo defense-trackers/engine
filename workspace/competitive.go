@@ -197,6 +197,26 @@ func awardsSummary(aw []Award) string {
 	return b.String()
 }
 
+// hDetail returns the full cached topic readout for an opportunity.
+func (s *server) hDetail(w http.ResponseWriter, r *http.Request) {
+	s.mu.Lock()
+	subj := s.subjectFor(r.URL.Query().Get("id"))
+	s.mu.Unlock()
+	if subj == nil {
+		http.Error(w, "not found", 404)
+		return
+	}
+	txt := ""
+	if subj.DetailRef != "" {
+		txt = detailCached(s.opts.Dir, subj.DetailRef)
+	}
+	writeJSON(w, map[string]any{
+		"title": subj.Title, "agency": subj.Agency, "type": subj.Type,
+		"setaside": subj.Setaside, "closes": subj.Closes, "url": subj.URL,
+		"detail": txt, "award_text": subj.AwardText,
+	})
+}
+
 // hAwards returns the competitive field for an opportunity (cached, on-demand).
 func (s *server) hAwards(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Query().Get("id")

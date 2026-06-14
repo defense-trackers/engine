@@ -406,6 +406,10 @@ function openAssist(o) {
     intelBtn.title = 'Who has won DoD SBIR/STTR awards in this space (SBIR.gov)';
     intelBtn.addEventListener('click', () => competitiveIntel(o));
     bidRow.append(intelBtn);
+    const detBtn = el('button', null); detBtn.innerHTML = svg('doc') + 'Topic detail';
+    detBtn.title = 'Full topic readout (objective, description, Phase I, keywords, ITAR)';
+    detBtn.addEventListener('click', () => topicDetail(o));
+    bidRow.append(detBtn);
     qa.append(rowLabel('Bid'), bidRow);
     const trow = el('div', 'qarow');
     TQUICK.forEach((q) => { const b = el('button', null, q.label); b.addEventListener('click', () => sendAssist(q.a)); trow.append(b); });
@@ -597,6 +601,22 @@ async function draftVolume(o) {
       }
     }
   } catch (e) { prog.className = 'msg err'; prog.textContent = 'draft failed: ' + e.message; }
+}
+
+// Full topic readout (objective/description/Phase I/keywords/ITAR), cached.
+async function topicDetail(o) {
+  const t = $('#thread');
+  const head = el('div', 'msg u'); head.textContent = '› Topic detail'; t.append(head);
+  const m = el('div', 'msg a'); m.textContent = 'Loading topic readout…'; t.append(m); t.scrollTop = 1e9;
+  try {
+    const r = await fetch('/api/detail?id=' + encodeURIComponent(o.id)).then((x) => x.json());
+    let head2 = `<b>${escapeHtml(r.title || o.title)}</b><br><span style="color:var(--dim);font-size:11px;font-family:var(--mono)">${[r.agency, r.type, r.setaside, r.closes ? 'closes ' + r.closes : ''].filter(Boolean).map(escapeHtml).join(' · ')}</span>`;
+    if (!r.detail) { m.innerHTML = head2 + '<br><br><span style="color:var(--dim)">No extended topic text available for this source. ' + (r.url ? `<a href="${r.url}" target="_blank" rel="noopener">Open source ↗</a>` : '') + '</span>'; return; }
+    // bold the LABEL: prefixes the detail uses
+    const body = escapeHtml(r.detail).replace(/(^|\n\n)([A-Z][A-Z &/]+):/g, '$1<b style="color:var(--brand)">$2</b>');
+    m.innerHTML = head2 + '<br><br>' + body.replace(/\n/g, '<br>');
+    t.scrollTop = 1e9;
+  } catch (e) { m.className = 'msg err'; m.textContent = 'detail failed: ' + e.message; }
 }
 
 // Competitive field — recent DoD SBIR/STTR awards in the opp's space (SBIR.gov).
