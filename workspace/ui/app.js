@@ -556,6 +556,7 @@ function oppCard(o, now) {
   realize.addEventListener('click', () => openAssist(o));
   row.append(realize);
   card.append(top, bars, controls(o.id), row);
+  card.append(el('span', 'ticks'));
   return card;
 }
 
@@ -642,13 +643,14 @@ function tcard(it) {
   td.innerHTML = chips.join(' ');
   c.append(tt, td);
   if (it.detail) c.append(el('div', 'det', it.detail));
+  c.append(el('span', 'ticks'));
   c.addEventListener('click', () => openById(it.id));
   return c;
 }
 
 function tsection(parent, cls, iconName, label, items, emptyMsg) {
   const h = el('div', 'section-h ' + cls);
-  h.innerHTML = `<span class="ic">${svg(iconName)}</span><h3>${label}</h3><span class="cnt">${items.length}</span>`;
+  h.innerHTML = `<span class="ic">${svg(iconName)}</span><h3>${label}</h3><span class="ln"></span><span class="cnt">${items.length}</span>`;
   parent.append(h);
   const g = el('div', 'tgrid');
   if (!items.length) g.append(el('div', 'tempty', emptyMsg));
@@ -674,7 +676,8 @@ async function renderToday() {
         : 'No deadlines this month — push a pursuit one wall forward.';
   hero.innerHTML = `<span class="cb tl"></span><span class="cb tr"></span><span class="cb bl"></span><span class="cb br"></span>` +
     `<div class="date">Today · ${today}</div><div class="lead">${escapeHtml(lead)}</div>` +
-    `<div class="leadsub">Your private bid autopilot — deadlines, sanctioned Q&A windows, fresh fits, and the next move on every pursuit.</div>`;
+    `<div class="leadsub">Your private bid autopilot — deadlines, sanctioned Q&A windows, fresh fits, and the next move on every pursuit.</div>` +
+    `<div class="wave"></div>`;
   v.append(hero);
   if (!HERO_DECODED) { HERO_DECODED = true; const ld = hero.querySelector('.lead'); if (ld) decrypt(ld, lead, 950); }
 
