@@ -111,7 +111,7 @@ func Run(o Options) error {
 	addr := fmt.Sprintf("127.0.0.1:%d", o.Port)
 	fmt.Printf("bid workspace → http://%s   (data: %s, dir: %s)\n", addr, o.DataBase, o.Dir)
 	fmt.Printf("opportunities scored: %d   pursuits: %d\n", len(s.opps), len(s.state))
-	fmt.Println(samNote())
+	fmt.Println(samNote(o.Dir))
 	return http.ListenAndServe(addr, mux)
 }
 
@@ -171,7 +171,7 @@ func (s *server) ingest() {
 	}
 	// Wider radar: workspace-local SAM.gov sweep (USV/autonomous-vehicle/DIU/IARPA),
 	// deduped against what we already have by URL. Cached for offline reuse.
-	if sam, err := FetchSAM(); err == nil && len(sam) > 0 {
+	if sam, err := FetchSAM(s.opts.Dir); err == nil && len(sam) > 0 {
 		all = appendDedupURL(all, sam)
 		if b, e := json.Marshal(sam); e == nil {
 			_ = os.WriteFile(filepath.Join(s.opts.Dir, "sam.json"), b, 0o644)

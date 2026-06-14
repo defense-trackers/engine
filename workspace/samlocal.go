@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -60,10 +61,23 @@ type samResp struct {
 	} `json:"opportunitiesData"`
 }
 
+// samKey returns the SAM.gov API key from the SAM_API_KEY env var, or (turnkey) the
+// trimmed contents of <dir>/sam.key — so Jesse can drop the key in a gitignored file
+// without exposing it in a shell/transcript.
+func samKey(dir string) string {
+	if k := strings.TrimSpace(os.Getenv("SAM_API_KEY")); k != "" {
+		return k
+	}
+	if b, err := os.ReadFile(filepath.Join(dir, "sam.key")); err == nil {
+		return strings.TrimSpace(string(b))
+	}
+	return ""
+}
+
 // FetchSAM queries SAM.gov across Jesse's lane queries and returns DoD opportunities,
-// deduped by solicitation number. Empty (no error) when SAM_API_KEY is unset.
-func FetchSAM() ([]Opportunity, error) {
-	key := strings.TrimSpace(os.Getenv("SAM_API_KEY"))
+// deduped by solicitation number. Empty (no error) when no key is configured.
+func FetchSAM(dir string) ([]Opportunity, error) {
+	key := samKey(dir)
 	if key == "" {
 		return nil, nil
 	}
@@ -149,9 +163,9 @@ func samAgency(path string) string {
 }
 
 // samNote is printed at startup so Jesse knows whether the wider SAM radar is live.
-func samNote() string {
-	if strings.TrimSpace(os.Getenv("SAM_API_KEY")) == "" {
-		return "wider SAM radar OFF — set SAM_API_KEY to add USV/autonomous-vehicle/DIU/IARPA contract opps (DSIP already covers AFWERX/SpaceWERX SBIR)"
+func samNote(dir string) string {
+	if samKey(dir) == "" {
+		return "wider SAM radar OFF — drop a fresh key in " + filepath.Join(dir, "sam.key") + " (or set SAM_API_KEY) to add USV/autonomous-vehicle/DIU/IARPA contract opps"
 	}
 	return fmt.Sprintf("wider SAM radar ON — %d lane queries", len(samQueries()))
 }
