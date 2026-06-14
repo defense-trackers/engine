@@ -221,6 +221,14 @@ async function boot() {
   bootSequence();
   initCardFX();
   addEventListener('resize', moveIndicator);
+  // subtle grid parallax for depth
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const grid = document.getElementById('grid');
+    if (grid) addEventListener('pointermove', (e) => {
+      const x = (e.clientX / innerWidth - .5) * -14, y = (e.clientY / innerHeight - .5) * -14;
+      grid.style.transform = `translate(${x}px,${y}px)`;
+    }, { passive: true });
+  }
   await load();
   ASSIST = await fetch('/api/assist-status').then((r) => r.json()).catch(() => ({ enabled: false }));
   document.querySelectorAll('.tab').forEach((t) =>
