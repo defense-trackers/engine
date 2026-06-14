@@ -116,13 +116,18 @@ function animateCounts(root) {
 
 const STAGES = ['watching', 'qualifying', 'drafting', 'submitted', 'won', 'pilot', 'transition', 'pom', 'program', 'lost', 'pass'];
 const COLS = [
-  { key: 'discovery', label: 'Discovery', match: ['watching', 'qualifying'] },
-  { key: 'bid', label: 'Bid', match: ['drafting', 'submitted'] },
-  { key: 'pilot', label: 'Award · Pilot', match: ['won', 'pilot'] },
-  { key: 'transition', label: 'Transition · POM', match: ['transition', 'pom'] },
-  { key: 'program', label: 'Program of Record', match: ['program'] },
-  { key: 'closed', label: 'Closed', match: ['lost', 'pass'] },
+  { key: 'discovery', label: 'Discovery', match: ['watching', 'qualifying'], drop: 'watching' },
+  { key: 'bid', label: 'Bid', match: ['drafting', 'submitted'], drop: 'drafting' },
+  { key: 'pilot', label: 'Award · Pilot', match: ['won', 'pilot'], drop: 'won' },
+  { key: 'transition', label: 'Transition · POM', match: ['transition', 'pom'], drop: 'transition' },
+  { key: 'program', label: 'Program of Record', match: ['program'], drop: 'program' },
+  { key: 'closed', label: 'Closed', match: ['lost', 'pass'], drop: 'pass' },
 ];
+function toast(msg) {
+  const c = document.getElementById('toasts'); if (!c) return;
+  const t = el('div', 'toast'); t.textContent = msg; c.append(t);
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 400); }, 2600);
+}
 const WALLS = ['money', 'requirements', 'contracts', 'incentives'];
 const WALL_LABEL = { money: 'Money', requirements: 'Requirements', contracts: 'Contracts', incentives: 'Incentives' };
 
@@ -551,7 +556,7 @@ async function draftVolume(o) {
         let ev; try { ev = JSON.parse(line); } catch { continue; }
         if (ev.error) { prog.className = 'msg err'; prog.textContent = ev.error; }
         else if (ev.t) { lines.push(ev.t); prog.textContent = lines.slice(-14).join('\n'); t.scrollTop = 1e9; }
-        else if (ev.dir) { const d = el('div', 'msg a'); d.innerHTML = `<b>Volume written.</b> Files are in:<br><code>${ev.dir}</code><br>Open <code>volume.md</code> for the combined draft, or the numbered section files to edit.`; t.append(d); t.scrollTop = 1e9; }
+        else if (ev.dir) { const d = el('div', 'msg a'); d.innerHTML = `<b>Volume written.</b> Files are in:<br><code>${ev.dir}</code><br>Open <code>volume.md</code> for the combined draft, or the numbered section files to edit.`; t.append(d); t.scrollTop = 1e9; toast('Volume drafted → files'); }
       }
     }
   } catch (e) { prog.className = 'msg err'; prog.textContent = 'draft failed: ' + e.message; }
@@ -930,6 +935,9 @@ function renderPipeline() {
     items.forEach(([id, p]) => {
       const o = byId[id];
       const kc = el('div', 'kc');
+      kc.draggable = true;
+      kc.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', id); e.dataTransfer.effectAllowed = 'move'; kc.classList.add('drag'); });
+      kc.addEventListener('dragend', () => kc.classList.remove('drag'));
       const t = el('div', 't'); t.textContent = (o ? o.title : p.title) || id;
       const m = el('div', 'm');
       const bits = [o ? o.agency : p.agency, o ? daysLabel(o) : '', p.decision].filter(Boolean);
@@ -939,6 +947,14 @@ function renderPipeline() {
       kc.append(stageMover(id, p));
       kc.append(el('span', 'ticks'));
       c.append(kc);
+    });
+    // drop target → move pursuit into this column's stage
+    c.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; c.classList.add('dragover'); });
+    c.addEventListener('dragleave', (e) => { if (!c.contains(e.relatedTarget)) c.classList.remove('dragover'); });
+    c.addEventListener('drop', (e) => {
+      e.preventDefault(); c.classList.remove('dragover');
+      const id = e.dataTransfer.getData('text/plain');
+      if (id && STATE[id] && STATE[id].stage !== col.drop) { snd.tab(); saveState(id, { stage: col.drop }); toast('Moved to ' + col.drop); }
     });
     board.append(c);
   });
