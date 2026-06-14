@@ -600,6 +600,7 @@ function switchView(v) {
 // Command palette: fuzzy-jump to views, run actions, open any opportunity.
 function initPalette() {
   const pal = document.getElementById('palette'); if (!pal) return;
+  document.getElementById('help')?.addEventListener('click', (e) => { if (e.target.id === 'help') e.currentTarget.classList.remove('open'); });
   const input = pal.querySelector('input'), res = pal.querySelector('.res');
   let items = [], sel = 0;
   const isOpen = () => pal.classList.contains('open');
@@ -643,7 +644,9 @@ function initPalette() {
   addEventListener('keydown', (e) => {
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '');
     if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing && !isOpen())) { e.preventDefault(); open(); return; }
-    if (e.key === 'Escape') { if (isOpen()) { close(); return; } closeAssist(); return; }
+    const help = document.getElementById('help');
+    if (e.key === 'Escape') { if (isOpen()) { close(); return; } if (help && help.classList.contains('open')) { help.classList.remove('open'); return; } closeAssist(); return; }
+    if (e.key === '?' && !typing) { e.preventDefault(); if (help) help.classList.toggle('open'); return; }
     if (typing || isOpen() || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key >= '1' && e.key <= '7') { switchView(VIEWS[+e.key - 1][0]); }
     else if (e.key === 'r') { $('#refresh').click(); }
@@ -655,8 +658,16 @@ let PALETTE_OPEN = null;
 function done(id) { const p = STATE[id]; return p && ['won', 'lost', 'pass', 'submitted'].includes(p.stage); }
 function setActive() { document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.view === VIEW)); moveIndicator(); }
 
+function celebrate(stage) {
+  const f = document.getElementById('winflash');
+  if (f) { f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); }
+  if (SOUND_ON) { blip(523, .12, 'sine', .05, 784); setTimeout(() => blip(784, .14, 'sine', .045, 1047), 110); setTimeout(() => blip(1047, .22, 'sine', .04), 230); }
+  toast(stage === 'program' ? 'Program of record — revenue realized.' : 'Pursuit advanced to ' + stage + '.');
+}
+
 async function saveState(id, patch, extra = {}) {
   const cur = STATE[id] || {};
+  if (patch && patch.stage && patch.stage !== cur.stage && (patch.stage === 'won' || patch.stage === 'program')) celebrate(patch.stage);
   const next = { ...cur, ...patch, ...extra };
   if (!next.stage && !next.decision && !next.notes) { delete STATE[id]; }
   else STATE[id] = next;
@@ -954,7 +965,7 @@ function renderPipeline() {
     c.addEventListener('drop', (e) => {
       e.preventDefault(); c.classList.remove('dragover');
       const id = e.dataTransfer.getData('text/plain');
-      if (id && STATE[id] && STATE[id].stage !== col.drop) { snd.tab(); saveState(id, { stage: col.drop }); toast('Moved to ' + col.drop); }
+      if (id && STATE[id] && STATE[id].stage !== col.drop) { snd.tab(); saveState(id, { stage: col.drop }); if (col.drop !== 'won' && col.drop !== 'program') toast('Moved to ' + col.drop); }
     });
     board.append(c);
   });
