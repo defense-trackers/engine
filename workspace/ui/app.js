@@ -93,9 +93,9 @@ function initBG() {
     col=mix(col,c3,smoothstep(.45,1.05,length(r)));
     col=mix(col,c4,smoothstep(.82,1.12,f)*.5);
     float md=length(uv-u_m);col+=c4*.05/(md*md+.25);
-    col*=1.0-.55*length(uv*vec2(.7,1.0));
-    col+=(hash(gl_FragCoord.xy+u_t)-.5)*.035;
-    col*=.82;
+    col*=1.0-.62*length(uv*vec2(.7,1.0));
+    col+=(hash(gl_FragCoord.xy+u_t)-.5)*.03;
+    col*=.72;
     gl_FragColor=vec4(col,1.);
   }`;
   const mk = (ty, src) => { const s = gl.createShader(ty); gl.shaderSource(s, src); gl.compileShader(s); return s; };
@@ -441,6 +441,19 @@ async function load() {
   ]);
   const now = OPPS.filter((o) => o.act_now && !done(o.id)).length;
   $('#stat').textContent = `${OPPS.length} scored · ${now} act-now · ${Object.keys(STATE).length} pursuits`;
+  const sb = $('#statusbar');
+  if (sb) {
+    const team = OPPS.filter((o) => o.teaming_only).length;
+    const be = ASSIST.backend === 'subscription' ? 'MAX SUB' : ASSIST.backend === 'api' ? 'API' : 'OFFLINE';
+    sb.innerHTML = `<span class="sdot"></span><span><b>REALIZER</b> SECURE · LOCAL</span>` +
+      `<span class="ss">DSIP <b>LIVE</b></span>` +
+      `<span class="ss">SCORED <b>${OPPS.length}</b></span>` +
+      `<span class="ss">ACT-NOW <b>${now}</b></span>` +
+      `<span class="ss">TEAMING <b>${team}</b></span>` +
+      `<span class="ss">PURSUITS <b>${Object.keys(STATE).length}</b></span>` +
+      `<span class="grow"></span>` +
+      `<span class="ss">CLAUDE <b>${be}</b></span>`;
+  }
 }
 
 function done(id) { const p = STATE[id]; return p && ['won', 'lost', 'pass', 'submitted'].includes(p.stage); }
@@ -709,7 +722,7 @@ function renderPipeline() {
     const c = el('div', 'col');
     const items = Object.entries(STATE).filter(([, p]) => col.match.includes(p.stage));
     const h = el('h3'); h.innerHTML = `${col.label} <span>${items.length}</span>`; c.append(h);
-    if (!items.length) c.append(el('div', 'empty', '—'));
+    if (!items.length) c.append(el('div', 'empty', 'empty'));
     items.forEach(([id, p]) => {
       const o = byId[id];
       const kc = el('div', 'kc');
