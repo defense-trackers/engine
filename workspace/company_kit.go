@@ -36,6 +36,7 @@ type CompanyKit struct {
 	PastPerf    []PastPerf `json:"past_performance,omitempty"`
 	DataRights  string     `json:"data_rights,omitempty"`  // GPR / SBIR data rights stance
 	Differators []string   `json:"differentiators,omitempty"` // cross-cutting win themes
+	Partners    []string   `json:"partners,omitempty"`     // teaming partners (e.g. AUS hardware build+fund partner for USV)
 	Boilerplate string     `json:"boilerplate,omitempty"`  // voice/tone notes for drafting
 	Updated     string     `json:"updated,omitempty"`
 }
@@ -120,6 +121,9 @@ func BuildCompanyKit(dir string) error {
 		ck.DataRights = "Assert SBIR data rights on all deliverables; offer Government Purpose Rights where a transition requires it, in writing, scoped to the delivered components."
 	}
 	ck.SmallBiz = true
+	if len(ck.Partners) == 0 {
+		ck.Partners = []string{"Australian hardware partner — builds and funds hardware (esp. USV / unmanned surface vessels); Jesse leads software + design (US prime, partner as subcontractor; mind ITAR/EAR + SBIR foreign-sub limits; AUKUS Pillar II tailwind). [Fill exact entity/UEI + teaming-agreement status.]"}
+	}
 
 	merged := mergeKit(existing, ck)
 	merged.Updated = nowRFC()
@@ -176,6 +180,9 @@ func mergeKit(existing, fresh *CompanyKit) *CompanyKit {
 	if len(out.Differators) == 0 {
 		out.Differators = fresh.Differators
 	}
+	if len(out.Partners) == 0 {
+		out.Partners = fresh.Partners
+	}
 	out.SmallBiz = existing.SmallBiz || fresh.SmallBiz
 	return &out
 }
@@ -220,6 +227,9 @@ func (ck *CompanyKit) kitContext() string {
 	}
 	if len(ck.Differators) > 0 {
 		b.WriteString("Differentiators: " + strings.Join(ck.Differators, "; ") + "\n")
+	}
+	for _, p := range ck.Partners {
+		b.WriteString("Teaming partner: " + p + "\n")
 	}
 	if ck.Boilerplate != "" {
 		b.WriteString("Voice/tone: " + ck.Boilerplate + "\n")

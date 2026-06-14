@@ -310,9 +310,10 @@ function oppCard(o, now) {
   const trl = o.matched_asset_trl ? ' ' + trlShort(o.matched_asset_trl) : '';
   bars.innerHTML =
     (o.hardware_excluded ? `<span class="bar hw">⚙ hardware — excluded (software-only)</span>` : '') +
-    (o.teaming_only ? `<span class="bar team">🤝 teaming — you provide the software brain</span>` : '') +
-    (o.usv_prime ? `<span class="bar usv">⚓ USV — you can prime this</span>` : '') +
+    (o.teaming_only ? `<span class="bar team">🤝 teaming — you: software+design · partner builds</span>` : '') +
+    (o.usv_prime ? `<span class="bar usv">⚓ USV — partner builds+funds, you prime</span>` : '') +
     (o.clearance_edge ? `<span class="bar clr">🔒 clearance edge</span>` : '') +
+    (o.allied_edge ? `<span class="bar ally">🌐 AUKUS / allied</span>` : '') +
     `<span class="bar ${o.matched_asset ? 'asset' : ''}">fit <b>${o.capability}</b>${o.matched_asset ? ' · ' + o.matched_asset + trl : ''}</span>` +
     `<span class="bar">elig <b>${o.eligibility}</b></span>` +
     `<span class="bar">runway <b>${o.runway}</b></span>` +
@@ -471,7 +472,7 @@ function trlShort(s) { const m = String(s).match(/TRL\s*\d+/i); return m ? m[0].
 function renderTeaming() {
   const v = $('#view-teaming'); v.hidden = false; v.textContent = '';
   v.append(el('h2', null, 'Teaming plays — you provide the software brain'));
-  v.append(el('p', 'sub', 'Hardware you will not build (payloads, autonomous vehicles incl. UUV/UAV/UGV) where your perception/autonomy/governance software is the brain. The move is to sub to a hardware prime/integrator - open one with Claude for the named primes + sanctioned channel. USV topics where you can prime the whole thing appear in Act now.'));
+  v.append(el('p', 'sub', 'Hardware you do not fabricate yourself (payloads, autonomous vehicles incl. UUV/UAV/UGV) where you lead software + design. Your Australian partner can build and fund the hardware as subcontractor (mind ITAR/EAR + SBIR foreign-sub limits) - open one with Claude to structure the teaming compliantly. USV topics where the partner builds+funds and you prime appear in Act now.'));
   const team = OPPS.filter((o) => o.teaming_only);
   const usv = OPPS.filter((o) => o.usv_prime);
   if (usv.length) v.append(el('p', 'sub', `⚓ ${usv.length} USV / surface-vessel topic${usv.length === 1 ? '' : 's'} you can PRIME — see Act now / All.`));

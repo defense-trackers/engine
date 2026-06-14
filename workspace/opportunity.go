@@ -47,8 +47,9 @@ type Opportunity struct {
 	ActNow           bool   `json:"act_now"`
 	HardwareExcluded bool   `json:"hardware_excluded,omitempty"` // pure hardware build, no software role — a no-go (USV exempt)
 	TeamingOnly      bool   `json:"teaming_only,omitempty"`      // hardware platform where his software is the brain — sub to a hardware prime
-	USVPrime         bool   `json:"usv_prime,omitempty"`         // USV/surface-vessel — he builds the vessel (prime play)
+	USVPrime         bool   `json:"usv_prime,omitempty"`         // USV/surface-vessel — partner builds+funds, Jesse software+design (prime play)
 	ClearanceEdge    bool   `json:"clearance_edge,omitempty"`    // requires clearance/IL5/classified — Jesse's competitive moat
+	AlliedEdge       bool   `json:"allied_edge,omitempty"`       // AUKUS/allied/coalition — his Australian build+fund partner is an asset
 }
 
 // Contact is a real, source-provided government point of contact (e.g. a DSIP

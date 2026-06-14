@@ -56,24 +56,27 @@ func Score(opps []Opportunity, cap *Capabilities, now time.Time) {
 			o.Capability, o.MatchedAsset, o.MatchedAssetTRL = capScore, asset, trl
 		case anyContains(t, vehiclePlatformSignals):
 			// Autonomous-vehicle / unmanned platform (UUV, UAV, UGV, submersible…).
-			// Jesse supplies the autonomy/perception software to a vehicle prime — a
-			// teaming play even if no current asset term-matches yet.
+			// Jesse supplies the autonomy/perception software + design; his Australian
+			// partner can build & fund the platform — teaming even with no asset match.
 			o.TeamingOnly = true
 			o.Capability, o.MatchedAsset, o.MatchedAssetTRL = capScore, asset, trl
-		case anyContains(t, teamingHardwareSignals) && capScore >= 16:
-			// Perception/payload hardware (EO/IR, IRST) where a perception asset is the
-			// brain — teaming under a hardware prime.
+		case !anyContains(t, exoticFabSignals) && capScore >= 16:
+			// Buildable hardware (payload, device, system) where Jesse has a genuine
+			// software/design angle (an asset matches). He does software+design; his
+			// Australian partner builds & funds the hardware — a teaming play.
 			o.TeamingOnly = true
 			o.Capability, o.MatchedAsset, o.MatchedAssetTRL = capScore, asset, trl
 		default:
-			// Pure component/material/device fabrication — no software role. Hidden in
-			// All by default; never act-now or in the brief.
+			// Exotic materials/foundry/physics fabrication (focal planes, nanocrystals,
+			// accelerators…) — outside even the partner's build scope, or no software/
+			// design role. Hidden in All by default; never act-now or in the brief.
 			o.HardwareExcluded = true
 			o.Capability, o.MatchedAsset = 0, ""
 		}
 		// Clearance/IL5 is Jesse's moat: an active TS/SCI + IL5-built products let him
 		// compete where most small businesses can't. Flag it and nudge eligibility.
 		o.ClearanceEdge = anyContains(" "+strings.ToLower(o.Text)+" ", clearanceSignals)
+		o.AlliedEdge = anyContains(t, alliedSignals) // AUKUS/allied — his AUS partner is an asset here
 		o.Eligibility = eligibilityScore(o)
 		if o.ClearanceEdge {
 			o.Eligibility += 2
@@ -91,16 +94,27 @@ func Score(opps []Opportunity, cap *Capabilities, now time.Time) {
 	}
 }
 
-// teamingHardwareSignals are perception/payload PLATFORM hardware where Jesse's
-// software (thermalhawk EO/IR perception, autonomy) is genuinely the processing
-// brain — so the hardware topic becomes a software-teaming play under a prime
-// rather than a flat pass. Materials/component fabrication is deliberately NOT
-// here (software has no role in building a focal plane or nanocrystal).
-var teamingHardwareSignals = []string{
-	"infrared search and track", "irst", "camera technology", "optical payload",
-	"electro-optical payload", "eo/ir payload", "eo-ir payload", "isr payload",
-	"imaging payload", "gimbal", "targeting pod", "seeker", "sensor payload",
-	"electro-optical/infrared",
+// exoticFabSignals are materials / foundry / device-physics fabrication asks that
+// fall outside Jesse's build scope AND outside his Australian partner's (a USV /
+// hardware-integration partner doesn't run a semiconductor fab). These stay hard-
+// excluded even with the partner. Buildable hardware (platforms, payloads, devices)
+// is NOT here — that becomes a partner-teaming play when Jesse has a software/design
+// angle.
+var exoticFabSignals = []string{
+	"photodiode", "focal plane", "nanocrystal", "colloidal", "semiconductor",
+	"wafer", "photodetector", "resonant cavity", "avalanche", "detector incorporating",
+	"infrared imaging", "imaging in the", "mid-wave infrared", "short wave",
+	"particulate sensor", "coating", "alloy", "heat spreader", "microsystem",
+	"accelerator", "linac", "linear accelerator", "x-ray", "propellant", "fabricat",
+	"transducer", "colloidal nanocrystal",
+}
+
+// alliedSignals mark AUKUS / allied / coalition / partner-nation topics — a strength
+// for Jesse given his Australian build+fund partner (AUKUS Pillar II maritime
+// autonomy is an explicit cooperation lane).
+var alliedSignals = []string{
+	"aukus", "allied", "coalition", "partner nation", "partner-nation",
+	"combined", "interoperab", "five eyes", "fvey", "australia", "foreign military",
 }
 
 // clearanceSignals mark topics requiring clearance/classified/IL5 work — Jesse's

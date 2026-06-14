@@ -19,9 +19,12 @@ import (
 // Either way it runs locally; nothing is published. This is bid-PROPOSAL help, NOT
 // any offensive-cyber capability path.
 
-// builderProfile is Jesse's hard constraint, injected into every Claude prompt:
-// he ships software, not hardware. Never recommend he fabricate a physical device.
-const builderProfile = "BUILDER PROFILE (hard constraint): Jesse is a SOFTWARE builder — AI/ML, autonomy software, perception/detection models, governance/audit, data, and cyber. He does NOT build hardware: never propose that he fabricate or manufacture a physical device, sensor, detector, antenna, focal plane, battery, RF/optical/mechanical component, or material. The ONE hardware exception is unmanned surface vessels (USVs) — he has a build path for the vessel and would deliver the autonomy/software. For any topic that fundamentally requires building hardware (other than a USV platform), say so plainly and recommend PASS or a software-only teaming angle (he provides the software/autonomy; a hardware partner builds the device) — do not draft him into a hardware build.\n\n"
+// builderProfile is Jesse's structural constraint, injected into every Claude prompt.
+const builderProfile = "BUILDER PROFILE: Jesse builds SOFTWARE and DESIGN — AI/ML, autonomy, perception/detection, governance/audit, data, cyber, and system design. He does NOT fabricate hardware himself. He HAS an Australian partner that BUILDS and FUNDS hardware (especially USVs / unmanned surface vessels); on those efforts Jesse leads software + design and the partner builds & funds the metal. So hardware is viable as a TEAM, not solo:\n" +
+	"- USV / maritime-autonomy topics are a PRIORITY lane: the partner funds+builds the vessel, Jesse delivers autonomy/perception/software+design. Lead with the integrated offering. (AUKUS Pillar II maritime autonomy is an explicit US–AUS cooperation lane — a tailwind.)\n" +
+	"- Other buildable hardware (payloads, platforms, devices, autonomous vehicles) where Jesse has a real software/design role → frame as teaming: Jesse software+design, partner builds+funds.\n" +
+	"- Pure materials/foundry/device-physics fabrication (focal planes, nanocrystals, semiconductors, accelerators) is out of scope for both — PASS.\n" +
+	"COMPLIANCE GUARDRAILS (the partner is FOREIGN — Australian): for US SBIR/STTR Jesse must be the US small-business prime and the partner a subcontractor within statutory limits (Phase I ≤1/3, Phase II ≤1/2 to subs/consultants); shared technical data is subject to ITAR/EAR export control; foreign nationals cannot access US classified/CUI — so on clearance/IL5 work keep the partner on unclassified, exportable hardware and structure Jesse's US-cleared side accordingly. Surface these as structuring steps, not blockers, and prefer AUKUS-authorized arrangements where relevant.\n\n"
 
 func assistModel() string {
 	if m := strings.TrimSpace(os.Getenv("ASSIST_MODEL")); m != "" {
@@ -281,13 +284,16 @@ func (s *server) assistSystem(o *Opportunity, detail string, p Pursuit, sponsors
 	b.WriteString("Your job is PROFIT REALIZATION across the whole lifecycle — bid → award → pilot → transition → POM → program of record → revenue — not just winning the bid. Be concrete, specific to THIS opportunity and his matched asset, and blunt. No padding.\n\n")
 	b.WriteString(builderProfile)
 	if o.HardwareExcluded {
-		b.WriteString("NOTE: this topic is flagged as a HARDWARE-BUILD opportunity outside Jesse's software-only profile (and not a USV). Default to PASS unless there is a genuine software-only role; if asked, frame the only viable path as software/autonomy teaming under a hardware prime.\n\n")
+		b.WriteString("NOTE: this topic looks like exotic materials/foundry/device-physics fabrication (focal planes, nanocrystals, semiconductors, accelerators) — outside both Jesse's software/design scope and his Australian partner's build scope. Default to PASS unless there's a genuine software/design role you can surface.\n\n")
 	}
 	if o.TeamingOnly {
-		b.WriteString("NOTE: this is a TEAMING play — the deliverable involves hardware Jesse won't build (a payload, or an autonomous vehicle/platform like a UUV/UAV/UGV), but his software is the brain (perception/autonomy/governance). Do NOT frame a solo bid. Frame it as Jesse supplying the software/autonomy to a hardware prime or integrator: name the likely primes/integrators, the teaming/consortium channel, and the clean software-defined interface he owns (with GPR scoping). The action is 'find the prime', not 'write the volume solo'.\n\n")
+		b.WriteString("NOTE: this is a TEAMING play — it needs hardware Jesse won't fabricate himself, but he has a real software/design role (perception/autonomy/governance) and an Australian partner that can BUILD and FUND the hardware. Frame it as a team: Jesse leads software + design as the US prime; the partner builds+funds the hardware as subcontractor. Mind the foreign-sub compliance (SBIR sub limits, ITAR/EAR on shared data, no foreign access to classified). Name the clean software-defined interface he owns (with GPR scoping). The action is 'lock the teaming + structure it compliantly', not 'write a solo hardware volume'.\n\n")
 	}
 	if o.USVPrime {
-		b.WriteString("NOTE: this is a USV / unmanned-surface-vessel topic — Jesse HAS a build path for the vessel, so he can prime this (vessel + his autonomy/perception/governance software), not just sub. Treat it as a priority lane: lead with the integrated USV+software offering.\n\n")
+		b.WriteString("NOTE: PRIORITY USV / unmanned-surface-vessel topic — Jesse's Australian partner builds and FUNDS the vessel and Jesse leads autonomy/perception/software + design, so he can prime an integrated offering, not just sub. AUKUS Pillar II maritime autonomy is a tailwind. Lead with the integrated USV + software offering and the partner's build+fund commitment.\n\n")
+	}
+	if o.AlliedEdge {
+		b.WriteString("ADVANTAGE: this is an AUKUS/allied/coalition topic — Jesse's Australian build+fund partner is a genuine asset here (US–AUS interoperability, AUKUS Pillar II). Lean into the allied teaming as a discriminator, structured for export-control compliance.\n\n")
 	}
 	if o.ClearanceEdge || anyContains(" "+strings.ToLower(detail)+" ", clearanceSignals) {
 		b.WriteString("ADVANTAGE: this topic involves clearance/classified/IL5 work — Jesse's moat (active TS/SCI + IL5-built products: rigrun classification-gating, auspex/signet IL5 audit). Most small-business competitors can't operate here. Lean into it as a discriminator and a barrier to competition.\n\n")

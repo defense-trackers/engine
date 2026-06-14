@@ -66,23 +66,41 @@ func classifyOne(text string) Opportunity {
 	return opps[0]
 }
 
-func TestPureHardwareExcluded(t *testing.T) {
-	// Pure component/material/device fabrication — no software role → excluded.
+func TestExoticFabExcluded(t *testing.T) {
+	// Exotic materials/foundry/device-physics fabrication — out of scope for both
+	// Jesse and his Australian build partner → excluded.
 	for _, text := range []string{
 		"resonant cavity infrared detector incorporating an avalanche photodiode active region",
-		"multifrequency position navigation and timing pnt antenna solution",
-		"compact high-pressure co2 compressor for aviation thermal management systems",
-		"next-generation non-lithium battery technology for resilient military logistics",
 		"creating a mobile l-band linear accelerator linac",
 		"colloidal nanocrystals for improved mid-wave infrared imaging thermal detection",
-		"high frequency omni-directional acoustic sensor with open architecture telemetry",
 		"innovative camera technology for simultaneous imaging in the extended short wave bands",
-		"temperature-hardened electronics for reliable mission-critical applications",
+		"spreaders for microsystems with advanced thermal resilience heat spreader",
 	} {
 		o := classifyOne(text)
 		if !o.HardwareExcluded || o.TeamingOnly || o.ActNow || o.Capability != 0 {
-			t.Errorf("should be hardware-excluded: %q (excl=%v team=%v cap=%d)", text, o.HardwareExcluded, o.TeamingOnly, o.Capability)
+			t.Errorf("exotic fab should be excluded: %q (excl=%v team=%v cap=%d)", text, o.HardwareExcluded, o.TeamingOnly, o.Capability)
 		}
+	}
+}
+
+func TestBuildableHardwareTeaming(t *testing.T) {
+	// Buildable hardware where a software/design asset matches → partner-teaming
+	// (Jesse software+design, AUS partner builds+funds), not excluded.
+	caps := &Capabilities{Assets: []Asset{
+		{Name: "thermalhawk", Terms: []string{"thermal", "infrared", "detection", "eo/ir", "acoustic"}, TRL: "TRL 4"},
+	}}
+	o := opp("t", "high frequency omni-directional acoustic sensor with onboard detection processing", "SBIR", "SBIR small business", "2026-06-30")
+	opps := []Opportunity{o}
+	Score(opps, caps, time.Date(2026, 6, 12, 0, 0, 0, 0, time.UTC))
+	if opps[0].HardwareExcluded || !opps[0].TeamingOnly {
+		t.Fatalf("buildable hardware with a software angle should be teaming (excl=%v team=%v)", opps[0].HardwareExcluded, opps[0].TeamingOnly)
+	}
+}
+
+func TestAlliedEdge(t *testing.T) {
+	o := classifyOne("aukus maritime autonomous surface vessel for allied interoperability")
+	if !o.AlliedEdge {
+		t.Fatal("AUKUS/allied topic should flag AlliedEdge")
 	}
 }
 
