@@ -317,8 +317,14 @@
   .warp::before{background-image:radial-gradient(1.4px 1.4px at 24px 40px,rgba(190,210,225,.9),transparent),radial-gradient(1.2px 1.2px at 130px 90px,rgba(190,210,225,.6),transparent),radial-gradient(1px 1px at 70px 160px,rgba(190,210,225,.7),transparent),radial-gradient(1.6px 1.6px at 180px 210px,rgba(190,210,225,.55),transparent),radial-gradient(1px 1px at 40px 250px,rgba(190,210,225,.65),transparent);background-size:220px 300px;animation:starDrift 26s linear infinite}
   .warp::after{background-image:radial-gradient(1px 1px at 90px 60px,rgba(190,210,225,.5),transparent),radial-gradient(1.2px 1.2px at 200px 140px,rgba(190,210,225,.4),transparent),radial-gradient(1px 1px at 150px 230px,rgba(190,210,225,.45),transparent);background-size:300px 380px;animation:starDrift 52s linear infinite reverse;opacity:.32}
   @keyframes starDrift{to{transform:translateY(-50%)}}
-  #assist.thinking .warp::before{animation-duration:7s}
-  #assist.thinking .warp::after{animation-duration:14s}
+  #assist.thinking .warp::before{animation-duration:1.6s}
+  #assist.thinking .warp::after{animation-duration:3.5s}
+  /* lightspeed warp streaks when Claude engages */
+  .lstreak{position:absolute;left:0;right:0;top:-100%;height:300%;opacity:0;transition:opacity .5s;pointer-events:none;
+    background-image:repeating-linear-gradient(90deg,transparent 0 16px,rgba(190,210,225,.11) 16px 17px,transparent 17px 58px);
+    -webkit-mask:radial-gradient(120% 55% at 50% 38%,#000,transparent 78%);mask:radial-gradient(120% 55% at 50% 38%,#000,transparent 78%)}
+  #assist.thinking .lstreak{opacity:1;animation:warpRush .45s linear infinite}
+  @keyframes warpRush{to{transform:translateY(33.34%)}}
   .ah{padding:18px 20px 16px;border-bottom:1px solid var(--line);background:radial-gradient(440px 150px at 80% -50%,rgba(143,179,196,.16),transparent 70%)}
   .ah .x{position:absolute;right:16px;top:14px;background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer;line-height:1;transition:.2s;z-index:2}.ah .x:hover{color:var(--bad)}
   .ahd{display:flex;align-items:center;gap:14px}
@@ -341,7 +347,12 @@
   .qa button:hover{border-color:var(--brand);box-shadow:0 0 16px -6px var(--brand)}
   .qa .mv{color:var(--ok);border-color:rgba(111,191,155,.3)}
   #thread{flex:1;overflow:auto;padding:16px 18px;display:flex;flex-direction:column;gap:13px}
-  .msg{font-size:14px;line-height:1.6;white-space:pre-wrap;word-wrap:break-word}
+  .msg{font-size:14px;line-height:1.6;white-space:pre-wrap;word-wrap:break-word;animation:msgIn .34s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes msgIn{from{opacity:0;transform:translateY(10px)}}
+  .msg.a{position:relative;overflow:hidden}
+  .msg.a::before{content:"";position:absolute;top:0;left:0;height:100%;width:60%;pointer-events:none;
+    background:linear-gradient(100deg,transparent,rgba(190,210,225,.16),transparent);transform:translateX(-180%);animation:msgSheen .9s ease .04s}
+  @keyframes msgSheen{to{transform:translateX(280%)}}
   .msg.u{color:var(--brand);font-family:var(--mono);font-size:12px}
   .msg.a{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:13px;padding:13px 15px}
   .msg.a p{margin:0 0 8px}.msg.a p:last-child{margin-bottom:0}
@@ -355,7 +366,9 @@
   .dirchip{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(143,179,196,.2),rgba(110,150,168,.16));border:1px solid rgba(143,179,196,.45);color:var(--ink);font:600 12.5px var(--sans);padding:8px 12px;border-radius:9px;cursor:pointer;text-align:left;transition:.2s}
   .dirchip:hover{box-shadow:0 0 20px -6px var(--brand);transform:translateY(-1px)}
   .dirchip.done{opacity:.6;cursor:default;background:rgba(111,191,155,.12);border-color:rgba(111,191,155,.4);color:var(--ok)}
-  .ask{display:flex;gap:9px;padding:14px 18px;border-top:1px solid var(--line)}
+  .ask{position:relative;display:flex;gap:9px;padding:14px 18px;border-top:1px solid var(--line)}
+  .ask::before{content:"";position:absolute;top:-1px;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(143,179,196,.45),transparent)}
+  .ask button svg{vertical-align:-3px;margin-right:4px;width:14px;height:14px}
   .ask textarea{flex:1;min-height:40px;max-height:150px}
   .ask button{background:linear-gradient(135deg,var(--brand),var(--brand2));border:none;color:#04101e;font:700 14px var(--sans);border-radius:11px;padding:0 18px;cursor:pointer;transition:.2s}
   .ask button:hover{box-shadow:0 0 24px -6px var(--brand)}
@@ -550,7 +563,7 @@
 </main>
 <div id="overlay"></div>
 <aside id="assist" aria-label="Claude bid assistant">
-  <div class="warp"></div>
+  <div class="warp"><span class="lstreak"></span></div>
   <div class="ah">
     <button class="x" id="assist-close" title="close">×</button>
     <div class="ahd"><span class="ccore"><i></i></span><div class="ahtxt"><div class="who">CLAUDE · BID STRATEGIST</div><div class="ot" id="assist-title">—</div></div></div>
@@ -561,7 +574,7 @@
   <div id="thread"></div>
   <div class="ask">
     <textarea id="assist-input" placeholder="Ask Claude about this bid…" rows="1"></textarea>
-    <button id="assist-send" class="magnetic">Ask</button>
+    <button id="assist-send" class="magnetic"><svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 3.5L10 14"/><path d="M20.5 3.5l-6.5 17-3.5-6.5L4 10.5z"/></svg> Engage</button>
   </div>
 </aside>
 <div id="toasts"></div>

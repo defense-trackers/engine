@@ -36,6 +36,7 @@ const snd = {
   tab: () => { blip(520, .05, 'triangle', .045); setTimeout(() => blip(820, .06, 'triangle', .035), 45); },
   enter: () => { blip(330, .12, 'sine', .06, 660); setTimeout(() => blip(660, .2, 'sine', .05, 990), 120); },
   lock: () => blip(1300, .012, 'sine', .01),
+  send: () => { blip(440, .06, 'triangle', .05, 880); setTimeout(() => blip(880, .1, 'sine', .04, 1320), 55); },
 };
 
 // --- idle attract mode ---
@@ -517,7 +518,7 @@ async function sendAssist(action) {
   renderThread();
 
   const ans = el('div', 'msg a streaming'); ans.textContent = '…'; $('#thread').append(ans); $('#thread').scrollTop = 1e9;
-  $('#assist').classList.add('thinking');
+  snd.send(); $('#assist').classList.add('thinking');
   let acc = '';
   try {
     const resp = await fetch('/api/assist', {
