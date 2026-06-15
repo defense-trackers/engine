@@ -27,7 +27,7 @@ type BriefItem struct {
 	Title   string `json:"title"`
 	Detail  string `json:"detail,omitempty"`
 	URL     string `json:"url,omitempty"`
-	Days    int    `json:"days,omitempty"`    // days-left (deadline/qa); -1 = n/a
+	Days    int    `json:"days"`              // days-left (deadline/qa); -1 = n/a, 0 = today
 	Score   int    `json:"score,omitempty"`   // fit score (new/deadline)
 	Asset   string `json:"asset,omitempty"`   // matched asset
 	Urgent  bool   `json:"urgent,omitempty"`  // closing this week

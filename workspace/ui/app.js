@@ -516,7 +516,8 @@ async function sendAssist(action) {
   input.value = '';
   renderThread();
 
-  const ans = el('div', 'msg a'); ans.textContent = '…'; $('#thread').append(ans); $('#thread').scrollTop = 1e9;
+  const ans = el('div', 'msg a streaming'); ans.textContent = '…'; $('#thread').append(ans); $('#thread').scrollTop = 1e9;
+  $('#assist').classList.add('thinking');
   let acc = '';
   try {
     const resp = await fetch('/api/assist', {
@@ -541,6 +542,7 @@ async function sendAssist(action) {
       }
     }
   } catch (e) { ans.className = 'msg err'; ans.textContent = 'stream failed: ' + e.message; }
+  ans.classList.remove('streaming'); $('#assist').classList.remove('thinking');
   if (acc) { const h = convo(id); h.push({ role: 'assistant', content: acc }); saveConvo(id, h); }
   const dirs = [...acc.matchAll(/\[\[do:([^\]]+)\]\]/g)].map((m) => m[1]);
   if (dirs.length && CUR_OPP) renderDirectives(CUR_OPP, dirs);
@@ -953,10 +955,11 @@ async function renderToday() {
   // hero — one-line "what to do today"
   const hero = el('div', 'hero');
   const urgent = b.deadlines.find((d) => d.urgent);
+  const dleft = (n) => n === 0 ? 'closes today' : n === 1 ? 'closes in 1 day' : `closes in ${n} days`;
   const lead = urgent
-    ? `${urgent.title} closes in ${urgent.days} day${urgent.days === 1 ? '' : 's'} — make the call today.`
+    ? `${urgent.title} ${dleft(urgent.days)} — make the call today.`
     : b.deadlines.length
-      ? `Nearest deadline: ${b.deadlines[0].title} in ${b.deadlines[0].days} days.`
+      ? `Nearest deadline: ${b.deadlines[0].title} — ${dleft(b.deadlines[0].days)}.`
       : b.new_count
         ? `${b.new_count} new high-fit opportunit${b.new_count === 1 ? 'y' : 'ies'} surfaced. Triage them.`
         : 'No deadlines this month — push a pursuit one wall forward.';
