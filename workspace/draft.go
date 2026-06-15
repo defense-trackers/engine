@@ -112,10 +112,14 @@ func planFor(o *Opportunity) draftPlan {
 	return draftPlan{Pathway: "SBIR/STTR Phase I technical volume — 12 prescribed sections", Sections: sbirSections}
 }
 
-// draftContext builds the shared grounding every section prompt carries.
-func (s *server) draftContext(o *Opportunity, detail string) string {
+// draftContext builds the shared grounding every section prompt carries. research,
+// when present, is the deep-research brief from the agentic chain.
+func (s *server) draftContext(o *Opportunity, detail, research string) string {
 	var b strings.Builder
 	b.WriteString(builderProfile)
+	if strings.TrimSpace(research) != "" {
+		b.WriteString("DEEP-RESEARCH BRIEF (use this competitive intel — incumbents, white space, your wedge, proof points — to shape every section):\n" + research + "\n\n")
+	}
 	b.Write(playbookMD)
 	b.WriteString("\n\nPHASE GUARDRAILS: Phase I is feasibility/architecture; a stand-alone lab and full integration are Phase II/III. ")
 	b.WriteString("Cite the matched asset's REAL grounded metrics — never invent numbers, identifiers, or past performance. No placeholders.\n\n")
@@ -145,15 +149,18 @@ func (s *server) draftContext(o *Opportunity, detail string) string {
 
 // Draft generates the full volume to workspace/drafts/<oppId>/. progress, when
 // non-nil, receives a line per section (for the SSE UI). Returns the output dir.
-func (s *server) Draft(o *Opportunity, detail string, progress func(string)) (string, error) {
+func (s *server) Draft(o *Opportunity, detail, research string, progress func(string)) (string, error) {
 	if assistBackend() == "" {
 		return "", fmt.Errorf("Claude isn't connected (install/login Claude Code, or set ANTHROPIC_API_KEY)")
 	}
 	plan := planFor(o)
-	ctx := s.draftContext(o, detail)
+	ctx := s.draftContext(o, detail, research)
 	outDir := filepath.Join(s.opts.Dir, "drafts", slugify(o.ID))
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return "", err
+	}
+	if strings.TrimSpace(research) != "" {
+		os.WriteFile(filepath.Join(outDir, "00-research.md"), []byte("# Deep-research brief\n\n"+strings.TrimSpace(research)+"\n"), 0o644)
 	}
 	log := func(m string) {
 		if progress != nil {
@@ -245,7 +252,57 @@ func (s *server) hDraft(w http.ResponseWriter, r *http.Request) {
 	if subj.DetailRef != "" {
 		detail = detailCached(s.opts.Dir, subj.DetailRef)
 	}
-	dir, err := s.Draft(subj, detail, func(line string) { emit(map[string]string{"t": line}) })
+	dir, err := s.Draft(subj, detail, "", func(line string) { emit(map[string]string{"t": line}) })
+	if err != nil {
+		emit(map[string]string{"error": err.Error()})
+		return
+	}
+	emit(map[string]string{"dir": dir})
+	emit(map[string]string{"done": "1"})
+}
+
+// hWorkup runs the full agentic chain: deep research → grounded draft → red-team
+// critique, streamed as one flow.
+func (s *server) hWorkup(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	flush, _ := w.(http.Flusher)
+	emit := func(obj any) { b, _ := json.Marshal(obj); fmt.Fprintf(w, "data: %s\n\n", b); if flush != nil { flush.Flush() } }
+	var in struct {
+		OppID string `json:"opp_id"`
+	}
+	if json.NewDecoder(r.Body).Decode(&in) != nil || in.OppID == "" {
+		emit(map[string]string{"error": "bad request"})
+		return
+	}
+	if assistBackend() == "" {
+		emit(map[string]string{"error": "Claude isn't connected."})
+		return
+	}
+	s.mu.Lock()
+	subj := s.subjectFor(in.OppID)
+	pursuit := s.state[in.OppID]
+	sponsors := s.sponsors.Match(subj, 6)
+	s.mu.Unlock()
+	if subj == nil {
+		emit(map[string]string{"error": "opportunity not found — refresh"})
+		return
+	}
+	detail := ""
+	if subj.DetailRef != "" {
+		detail = detailCached(s.opts.Dir, subj.DetailRef)
+	}
+	// Phase 1 — deep research (full grounding: dossier, company kit, competitive field).
+	emit(map[string]string{"t": "Phase 1/3 · deep research — competitive landscape, white space, your wedge…"})
+	research, err := claudeOnce(s.assistSystem(subj, detail, pursuit, sponsors), assistActions["deepresearch"])
+	if err != nil {
+		emit(map[string]string{"error": "research: " + err.Error()})
+		return
+	}
+	emit(map[string]string{"t": "Phase 1 complete · research brief saved (00-research.md)."})
+	// Phase 2 + 3 — draft grounded in the research, then red-team critique (inside Draft).
+	emit(map[string]string{"t": "Phase 2/3 · drafting the volume, grounded in the research…"})
+	dir, err := s.Draft(subj, detail, research, func(line string) { emit(map[string]string{"t": line}) })
 	if err != nil {
 		emit(map[string]string{"error": err.Error()})
 		return
@@ -309,7 +366,7 @@ func RunDraft(o Options, oppID string) error {
 	if subj.DetailRef != "" {
 		detail = detailCached(s.opts.Dir, subj.DetailRef)
 	}
-	dir, err := s.Draft(subj, detail, func(m string) { fmt.Println(m) })
+	dir, err := s.Draft(subj, detail, "", func(m string) { fmt.Println(m) })
 	if err != nil {
 		return err
 	}

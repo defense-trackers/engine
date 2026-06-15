@@ -410,6 +410,10 @@ function openAssist(o) {
     detBtn.title = 'Full topic readout (objective, description, Phase I, keywords, ITAR)';
     detBtn.addEventListener('click', () => topicDetail(o));
     bidRow.append(detBtn);
+    const workupBtn = el('button', 'mv'); workupBtn.innerHTML = svg('target') + 'Full workup';
+    workupBtn.title = 'Agentic chain: deep research → grounded draft → red-team critique';
+    workupBtn.addEventListener('click', () => fullWorkup(o));
+    bidRow.append(workupBtn);
     qa.append(rowLabel('Bid'), bidRow);
     const trow = el('div', 'qarow');
     TQUICK.forEach((q) => { const b = el('button', null, q.label); b.addEventListener('click', () => sendAssist(q.a)); trow.append(b); });
@@ -601,6 +605,29 @@ async function draftVolume(o) {
       }
     }
   } catch (e) { prog.className = 'msg err'; prog.textContent = 'draft failed: ' + e.message; }
+}
+
+// Agentic chain: deep research → grounded draft → red-team critique, streamed.
+async function fullWorkup(o) {
+  const t = $('#thread');
+  const head = el('div', 'msg u'); head.textContent = '› Full workup (research → draft → critique)'; t.append(head);
+  const prog = el('div', 'msg a'); prog.textContent = 'Starting agentic workup…'; t.append(prog); t.scrollTop = 1e9;
+  const lines = [];
+  try {
+    const resp = await fetch('/api/workup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ opp_id: o.id }) });
+    const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true }); const parts = buf.split('\n\n'); buf = parts.pop();
+      for (const p of parts) {
+        const line = p.replace(/^data:\s*/, '').trim(); if (!line) continue;
+        let ev; try { ev = JSON.parse(line); } catch { continue; }
+        if (ev.error) { prog.className = 'msg err'; prog.textContent = ev.error; }
+        else if (ev.t) { lines.push(ev.t); prog.textContent = lines.slice(-16).join('\n'); t.scrollTop = 1e9; }
+        else if (ev.dir) { const d = el('div', 'msg a'); d.innerHTML = `<b>Workup complete.</b> Research + volume + reviewer notes in:<br><code>${ev.dir}</code><br>Open <code>00-research.md</code>, <code>volume.md</code>, and <code>00-reviewer-notes.md</code>.`; t.append(d); t.scrollTop = 1e9; toast('Full workup complete → files'); }
+      }
+    }
+  } catch (e) { prog.className = 'msg err'; prog.textContent = 'workup failed: ' + e.message; }
 }
 
 // Full topic readout (objective/description/Phase I/keywords/ITAR), cached.

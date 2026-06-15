@@ -103,6 +103,7 @@ func Run(o Options) error {
 	})
 	mux.HandleFunc("/api/profit", s.hProfit)
 	mux.HandleFunc("/api/draft", s.hDraft)
+	mux.HandleFunc("/api/workup", s.hWorkup)
 	mux.HandleFunc("/api/company-kit", s.hCompanyKit)
 	mux.HandleFunc("/api/awards", s.hAwards)
 	mux.HandleFunc("/api/detail", s.hDetail)
