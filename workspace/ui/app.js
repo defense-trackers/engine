@@ -43,6 +43,16 @@ const snd = {
 let idleTimer;
 function resetIdle() { document.body.classList.remove('idle'); clearTimeout(idleTimer); idleTimer = setTimeout(() => document.body.classList.add('idle'), 35000); }
 
+// token-reactive Claude core — flares with each streamed token (throttled; glow only,
+// so it doesn't fight the spin transform)
+let _coreT = 0;
+function corePulse() {
+  const c = document.querySelector('.ccore'); if (!c) return;
+  const now = performance.now(); if (now - _coreT < 55) return; _coreT = now;
+  c.style.boxShadow = '0 0 54px 6px rgba(143,179,196,.95)'; c.style.filter = 'brightness(1.45)';
+  clearTimeout(c._decay); c._decay = setTimeout(() => { c.style.boxShadow = ''; c.style.filter = ''; }, 130);
+}
+
 // chromatic-aberration glitch burst (on enter + view change)
 function glitchBurst() {
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -517,7 +527,7 @@ async function sendAssist(action) {
   input.value = '';
   renderThread();
 
-  const ans = el('div', 'msg a streaming'); ans.textContent = '…'; $('#thread').append(ans); $('#thread').scrollTop = 1e9;
+  const ans = el('div', 'msg a streaming'); ans.textContent = '◢ incoming transmission — decrypting…'; $('#thread').append(ans); $('#thread').scrollTop = 1e9;
   snd.send(); $('#assist').classList.add('thinking');
   let acc = '';
   try {
@@ -539,7 +549,7 @@ async function sendAssist(action) {
         if (!line) continue;
         let ev; try { ev = JSON.parse(line); } catch { continue; }
         if (ev.error) { ans.className = 'msg err'; ans.textContent = ev.error; }
-        else if (ev.t) { acc += ev.t; ans.innerHTML = mdChat(acc); $('#thread').scrollTop = 1e9; }
+        else if (ev.t) { acc += ev.t; ans.innerHTML = mdChat(acc); ans.classList.add('streaming'); corePulse(); $('#thread').scrollTop = 1e9; }
       }
     }
   } catch (e) { ans.className = 'msg err'; ans.textContent = 'stream failed: ' + e.message; }

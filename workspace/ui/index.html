@@ -325,6 +325,13 @@
     -webkit-mask:radial-gradient(120% 55% at 50% 38%,#000,transparent 78%);mask:radial-gradient(120% 55% at 50% 38%,#000,transparent 78%)}
   #assist.thinking .lstreak{opacity:1;animation:warpRush .45s linear infinite}
   @keyframes warpRush{to{transform:translateY(33.34%)}}
+  /* radial warp tunnel emanating from the Claude core */
+  .tunnel{position:absolute;inset:0;opacity:0;transition:opacity .6s;pointer-events:none;transform-origin:50% 14%;
+    background:repeating-radial-gradient(circle at 50% 14%,transparent 0 22px,rgba(143,179,196,.07) 22px 23px,transparent 23px 48px)}
+  #assist.thinking .tunnel{opacity:1;animation:tunnelZoom 1.8s linear infinite}
+  @keyframes tunnelZoom{from{transform:scale(.6);opacity:.2}60%{opacity:.9}to{transform:scale(1.8);opacity:0}}
+  /* token-reactive Claude core (glow/brightness eases back between tokens) */
+  .ccore{transition:box-shadow .22s ease,filter .22s ease}
   .ah{padding:18px 20px 16px;border-bottom:1px solid var(--line);background:radial-gradient(440px 150px at 80% -50%,rgba(143,179,196,.16),transparent 70%)}
   .ah .x{position:absolute;right:16px;top:14px;background:none;border:none;color:var(--dim);font-size:22px;cursor:pointer;line-height:1;transition:.2s;z-index:2}.ah .x:hover{color:var(--bad)}
   .ahd{display:flex;align-items:center;gap:14px}
@@ -563,7 +570,7 @@
 </main>
 <div id="overlay"></div>
 <aside id="assist" aria-label="Claude bid assistant">
-  <div class="warp"><span class="lstreak"></span></div>
+  <div class="warp"><span class="tunnel"></span><span class="lstreak"></span></div>
   <div class="ah">
     <button class="x" id="assist-close" title="close">×</button>
     <div class="ahd"><span class="ccore"><i></i></span><div class="ahtxt"><div class="who">CLAUDE · BID STRATEGIST</div><div class="ot" id="assist-title">—</div></div></div>
