@@ -107,6 +107,7 @@ func Run(o Options) error {
 	mux.HandleFunc("/api/company-kit", s.hCompanyKit)
 	mux.HandleFunc("/api/awards", s.hAwards)
 	mux.HandleFunc("/api/detail", s.hDetail)
+	mux.HandleFunc("/api/strategize", s.hStrategize)
 	mux.HandleFunc("/", s.hStatic)
 
 	addr := fmt.Sprintf("127.0.0.1:%d", o.Port)

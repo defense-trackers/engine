@@ -520,8 +520,10 @@ async function boot() {
       grid.style.transform = `translate(${x}px,${y}px)`;
     }, { passive: true });
   }
-  await load();
+  // resolve Claude backend BEFORE first paint so the status bar shows the real
+  // state (load() renders the status bar, which reads ASSIST.backend).
   ASSIST = await fetch('/api/assist-status').then((r) => r.json()).catch(() => ({ enabled: false }));
+  await load();
   document.querySelectorAll('.tab').forEach((t) =>
     t.addEventListener('click', () => switchView(t.dataset.view)));
   initPalette();
@@ -563,6 +565,7 @@ function saveConvo(id, h) { localStorage.setItem('assist:' + id, JSON.stringify(
 
 const TQUICK = [
   { a: 'deepresearch', label: 'Deep research' },
+  { a: 'teaming', label: 'Find a prime / team' },
   { a: 'transition', label: 'Structure for transition' },
   { a: 'sponsor', label: 'Who owns the money' },
   { a: 'outreach', label: 'Outreach + draft message' },
@@ -1212,7 +1215,12 @@ async function renderToday() {
     const cta = el('button', 'drcta'); cta.innerHTML = svg('spark') + "Claude’s read on today";
     const body = el('div', 'drbody'); body.hidden = true;
     cta.addEventListener('click', () => dayRead(cta, body));
-    dr.append(cta, body); v.append(dr);
+    // portfolio-level strategist: reason across the whole pipeline (which to pursue)
+    const sca = el('button', 'drcta strat'); sca.innerHTML = svg('target') + 'Strategize pipeline';
+    const sbody = el('div', 'drbody'); sbody.hidden = true;
+    sca.addEventListener('click', () => strategize(sca, sbody));
+    const row = el('div', 'drrow'); row.append(cta, sca);
+    dr.append(row, body, sbody); v.append(dr);
   }
   v.append(el('p', 'sub', 'Expected value = each pursuit’s program-of-record ceiling × its cumulative probability of actually reaching a funded program (the SBIR→PoR funnel is brutal — early stages are <2%). Ceilings are editable best-case estimates; set them per pursuit in its Claude panel.'));
 
@@ -1272,6 +1280,51 @@ async function dayRead(cta, body) {
     }
   } catch (e) { body.innerHTML = `<span class="drwait">read failed: ${escapeHtml(e.message)}</span>`; }
   cta.disabled = false; cta.innerHTML = svg('spark') + 'Refresh read';
+}
+
+// Portfolio strategist: the ranked pipeline (win-prob meters) + Claude's
+// cross-pipeline call streamed below it.
+async function strategize(cta, body) {
+  cta.disabled = true; cta.innerHTML = svg('radar') + 'Reasoning across the pipeline…';
+  body.hidden = false; body.innerHTML = '<div class="stratrows"></div><div class="stratread"><span class="drwait">weighing win-probability × value across every pursuit…</span></div>';
+  const rowsEl = body.querySelector('.stratrows'), readEl = body.querySelector('.stratread');
+  let acc = '', narrating = false;
+  try {
+    const resp = await fetch('/api/strategize', { method: 'POST' });
+    const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true }); const parts = buf.split('\n\n'); buf = parts.pop();
+      for (const p of parts) {
+        const line = p.replace(/^data:\s*/, '').trim(); if (!line) continue;
+        let ev; try { ev = JSON.parse(line); } catch { continue; }
+        if (ev.rows) { rowsEl.innerHTML = stratTable(ev.rows); snd.recv && snd.recv(); }
+        else if (ev.error) { readEl.innerHTML = `<span class="drwait">${escapeHtml(ev.error)}</span>`; }
+        else if (ev.t) { if (!narrating) { narrating = true; readEl.innerHTML = ''; } acc += ev.t; readEl.innerHTML = mdChat(acc); corePulse(); }
+      }
+    }
+  } catch (e) { readEl.innerHTML = `<span class="drwait">strategize failed: ${escapeHtml(e.message)}</span>`; }
+  cta.disabled = false; cta.innerHTML = svg('target') + 'Re-strategize';
+}
+
+// Ranked pipeline table with win-probability bars.
+function stratTable(rows) {
+  if (!rows || !rows.length) return '<p class="empty">No active pursuits yet — open Claude on an opportunity and move it into the pipeline.</p>';
+  const head = '<div class="strow sthead"><span>Pursuit</span><span>Win</span><span>EV</span><span>Closes</span></div>';
+  const body = rows.map((r) => {
+    const wp = Math.max(0, Math.min(100, r.win_prob || 0));
+    const tone = wp >= 60 ? 'ok' : wp >= 25 ? 'warn' : 'bad';
+    const dl = r.days_left >= 0 ? (r.days_left === 0 ? 'today' : r.days_left + 'd') : '—';
+    const ev = r.ev > 0 ? '$' + r.ev + 'K' : '—';
+    const asset = r.asset ? `<span class="stasset">${escapeHtml(r.asset)}</span>` : '';
+    return `<div class="strow">
+      <span class="sttitle"><b>${escapeHtml(r.title)}</b><small>${escapeHtml(r.stage)} · weakest: ${escapeHtml(r.weakest || '—')} ${asset}</small></span>
+      <span class="stwin ${tone}"><i style="width:${wp}%"></i><em>${wp}%</em></span>
+      <span class="stev">${ev}</span>
+      <span class="stdl ${r.days_left >= 0 && r.days_left <= 7 ? 'urgent' : ''}">${dl}</span>
+    </div>`;
+  }).join('');
+  return head + body;
 }
 
 function renderTeaming() {

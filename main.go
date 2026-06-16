@@ -58,6 +58,19 @@ func cmdWorkspace(args []string) int {
 		}
 		return 0
 	}
+	// `workspace autopilot [--push]` — headless triage: rank the pipeline by
+	// expected award value + the daily brief; optionally push to ntfy. Schedulable.
+	if len(args) > 0 && args[0] == "autopilot" {
+		af := flag.NewFlagSet("workspace autopilot", flag.ExitOnError)
+		dir := af.String("dir", `C:\trackers\workspace`, "private workspace dir")
+		data := af.String("data", "https://defense-trackers.github.io", "trackers source")
+		push := af.Bool("push", false, "also push the brief to ntfy (NTFY_URL or NTFY_TOPIC)")
+		_ = af.Parse(args[1:])
+		if err := workspace.RunAutopilot(workspace.Options{Dir: *dir, DataBase: *data}, *push); err != nil {
+			return 1
+		}
+		return 0
+	}
 	// `workspace draft <oppId>` — generate the submittable volume to files.
 	if len(args) > 0 && args[0] == "draft" {
 		df := flag.NewFlagSet("workspace draft", flag.ExitOnError)
