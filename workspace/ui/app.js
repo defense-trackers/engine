@@ -529,6 +529,7 @@ async function boot() {
     e.target.textContent = '…'; await fetch('/api/refresh', { method: 'POST' }); await load(); render(); e.target.textContent = '↻ Refresh';
   });
   $('#assist-close').addEventListener('click', closeAssist);
+  $('#log-export')?.addEventListener('click', exportLog);
   $('#overlay').addEventListener('click', closeAssist);
   $('#assist-send').addEventListener('click', () => sendAssist());
   $('#assist-input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAssist(); } });
@@ -673,6 +674,30 @@ function readiness(w) {
   return { score: Math.round(sum / 4), weakest: weak };
 }
 function closeAssist() { if (VOICE.listening) micStop(false); ttsCancel(); WAVE.mode = 'idle'; $('#assist').classList.remove('open'); $('#overlay').style.display = 'none'; CUR_OPP = null; }
+
+// Export the current pursuit's Claude conversation as a timestamped markdown log.
+function exportLog() {
+  if (!CUR_OPP) return;
+  const o = CUR_OPP, h = convo(o.id);
+  if (!h.length) { toast('No conversation to export yet'); return; }
+  const st = STATE[o.id] || {};
+  const lines = [
+    `# Mission log — ${o.title}`, '',
+    `- **Agency:** ${o.agency || '—'}`,
+    `- **Stage:** ${st.stage || 'watch'}`,
+    o.url ? `- **Source:** ${o.url}` : '',
+    o.matched_asset ? `- **Matched capability:** ${o.matched_asset}` : '',
+    `- **Exported:** ${new Date().toISOString()}`, '', '---', '',
+  ].filter(Boolean);
+  h.forEach((m) => { lines.push(m.role === 'user' ? `**You:** ${m.content}` : `**Claude:**\n\n${m.content}`, ''); });
+  const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  const slug = (o.title || 'pursuit').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48);
+  a.href = URL.createObjectURL(blob); a.download = `realizer-log-${slug}.md`;
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  snd.apply(); toast('Mission log exported → ' + a.download);
+}
 
 function renderThread() {
   const t = $('#thread'); t.textContent = '';
