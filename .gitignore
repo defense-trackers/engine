@@ -29,3 +29,5 @@
 
 # serena MCP local project state
 /.serena/
+/engine.exe
+/workspace/server.log

@@ -39,11 +39,12 @@ func LoadCapabilities(path string) (*Capabilities, error) {
 // capability fit (40) · eligibility (20) · runway (20) · value (20).
 func Score(opps []Opportunity, cap *Capabilities, now time.Time) {
 	today := now.UTC().Truncate(24 * time.Hour)
+	df := termDF(cap) // down-weight terms common across many assets (IDF-style)
 	for i := range opps {
 		o := &opps[i]
 		// Always compute the best software-asset match (readiness-weighted: a more
 		// bid-ready asset wins ties).
-		capScore, asset, trl := capabilityFit(o.Text, cap)
+		capScore, asset, trl := capabilityFit(o.Text, cap, df)
 		t := " " + strings.ToLower(o.Text) + " "
 		o.USVPrime = anyContains(t, usvSignals)
 		switch {
@@ -222,24 +223,94 @@ var vehiclePlatformSignals = []string{
 	"remotely operated", "ground vehicle", "underwater vehicle",
 }
 
+// matchStop are generic procurement/dev boilerplate terms that grounding emits for
+// almost every asset — they don't discriminate, so they never count toward a match.
+var matchStop = map[string]bool{
+	"sbir": true, "sttr": true, "trl": true, "technology readiness level": true,
+	"ato": true, "dod": true, "dow": true, "department of war": true, "department of defense": true,
+	"unclassified": true, "classified": true, "go": true, "ai": true, "ml": true, "ai/ml": true,
+	"react": true, "next.js": true, "node.js": true, "python": true, "sqlite": true, "docker": true,
+	"software": true, "platform": true, "system": true, "systems": true, "application": true,
+	"rag": true, "llm": true, "decision support": true, "audit trail": true, "training": true,
+	"curriculum": true, "defense": true, "defense technology": true, "innovation": true,
+	"on-device": true, "offline": true, "s&t": true, "der": true, "wer": true, "crm": true,
+	"machine learning": true, "artificial intelligence": true,
+}
+
+// termDF counts, per term/domain (lowercased), how many assets list it. Terms common
+// across many assets are non-discriminating and get ignored at match time (IDF-style).
+func termDF(cap *Capabilities) map[string]int {
+	df := map[string]int{}
+	if cap == nil {
+		return df
+	}
+	for _, a := range cap.Assets {
+		seen := map[string]bool{}
+		for _, t := range append(append([]string{}, a.Terms...), a.Domains...) {
+			k := strings.ToLower(strings.TrimSpace(t))
+			if k != "" && !seen[k] {
+				seen[k] = true
+				df[k]++
+			}
+		}
+	}
+	return df
+}
+
+const dfMax = 6 // a term in >6 of the assets is treated as generic (ignored)
+
+// biddable reports whether an asset is a real technical capability to bid behind —
+// not a marketing site, utility, game, fork, or empty repo the portfolio grounding
+// swept in. Non-biddable assets never become a matched_asset.
+func biddable(a Asset) bool {
+	n := strings.ToLower(a.Name)
+	if strings.HasSuffix(n, "-site") || strings.HasSuffix(n, "-smoketest") {
+		return false
+	}
+	switch n {
+	case "mli-weekly-hours", "vocabularians", "sport-alert", "upstream", "tanaghum":
+		return false
+	}
+	s := strings.ToLower(a.Summary)
+	for _, bad := range []string{"empty repository", "marketing", "portfolio website", "static website", "working tree of", "idle/army-builder", "marketing/portfolio"} {
+		if strings.Contains(s, bad) {
+			return false
+		}
+	}
+	return true
+}
+
+// usefulTerm reports whether a term should count toward a capability match.
+func usefulTerm(t string, df map[string]int) bool {
+	k := strings.ToLower(strings.TrimSpace(t))
+	if k == "" || matchStop[k] || len(k) < 3 {
+		return false
+	}
+	return df[k] <= dfMax
+}
+
 // capabilityFit returns 0–40 from the best-matching asset, plus that asset's name
 // and TRL. Readiness-weighted: on equal keyword hits the more bid-ready asset wins
 // (so a TRL-6 proven product leads over an early-stage idea), and a bid-ready match
-// gets a small bump — Jesse should bid his strongest horse.
-func capabilityFit(text string, cap *Capabilities) (int, string, string) {
+// gets a small bump — Jesse should bid his strongest horse. Generic/common terms
+// (matchStop or high document-frequency) are ignored so broad assets don't over-match.
+func capabilityFit(text string, cap *Capabilities, df map[string]int) (int, string, string) {
 	if cap == nil || text == "" {
 		return 0, "", ""
 	}
 	best, bestName, bestTRL, bestTRLn := 0, "", "", -1
 	for _, a := range cap.Assets {
+		if !biddable(a) {
+			continue
+		}
 		hits := 0
 		for _, t := range a.Terms {
-			if t != "" && strings.Contains(text, strings.ToLower(t)) {
+			if usefulTerm(t, df) && strings.Contains(text, strings.ToLower(t)) {
 				hits++
 			}
 		}
 		for _, d := range a.Domains {
-			if d != "" && strings.Contains(text, strings.ToLower(d)) {
+			if usefulTerm(d, df) && strings.Contains(text, strings.ToLower(d)) {
 				hits++
 			}
 		}
