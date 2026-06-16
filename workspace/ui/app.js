@@ -1431,13 +1431,26 @@ async function strategize(cta, body) {
       for (const p of parts) {
         const line = p.replace(/^data:\s*/, '').trim(); if (!line) continue;
         let ev; try { ev = JSON.parse(line); } catch { continue; }
-        if (ev.rows) { rowsEl.innerHTML = stratTable(ev.rows); snd.recv && snd.recv(); }
+        if (ev.rows) { rowsEl.innerHTML = stratTable(ev.rows); wireStratRows(rowsEl); snd.recv && snd.recv(); }
         else if (ev.error) { readEl.innerHTML = `<span class="drwait">${escapeHtml(ev.error)}</span>`; }
         else if (ev.t) { if (!narrating) { narrating = true; readEl.innerHTML = ''; } acc += ev.t; readEl.innerHTML = mdChat(acc); corePulse(); }
       }
     }
   } catch (e) { readEl.innerHTML = `<span class="drwait">strategize failed: ${escapeHtml(e.message)}</span>`; }
   cta.disabled = false; cta.innerHTML = svg('target') + 'Re-strategize';
+}
+
+// Make ranked rows clickable — drill straight from the portfolio call into the
+// pursuit's cockpit (see → act). Falls back to a hint when no live opp is matched.
+function wireStratRows(container) {
+  container.querySelectorAll('.strow.act').forEach((row) => {
+    row.addEventListener('click', () => {
+      const id = row.dataset.oppid; if (!id) return;
+      const o = OPPS.find((x) => x.id === id);
+      if (o) { snd.lock(); openAssist(o); }
+      else { toast('No live topic matched yet — verify the solicitation is open'); }
+    });
+  });
 }
 
 // Ranked pipeline table with win-probability bars.
@@ -1452,7 +1465,8 @@ function stratTable(rows) {
     const asset = r.asset ? `<span class="stasset">${escapeHtml(r.asset)}</span>` : '';
     const lk = r.linked ? `<span class="stlink" title="scored against a live topic auto-matched to this volume">↪ live</span>` : '';
     const rdy = r.ready && r.ready !== '—' ? `<span class="rdy ${r.ready === 'GO' ? 'go' : r.ready === 'FIX' ? 'fix' : 'nogo'}" title="${escapeHtml(r.ready_why || '')}">${r.ready}</span> ` : '';
-    return `<div class="strow">
+    const oid = (r.opp_id || r.id || '').replace(/"/g, '&quot;');
+    return `<div class="strow act" data-oppid="${escapeHtml(oid)}" title="Open Claude on this pursuit">
       <span class="sttitle"><b>${rdy}${escapeHtml(r.title)}</b><small>${escapeHtml(r.stage)} · weakest: ${escapeHtml(r.weakest || '—')} ${asset}${lk}</small></span>
       <span class="stwin ${tone}"><i style="width:${wp}%"></i><em>${wp}%</em></span>
       <span class="stev">${ev}</span>

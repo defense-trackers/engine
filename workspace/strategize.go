@@ -138,6 +138,7 @@ func winProbability(o *Opportunity, p Pursuit) (int, []string) {
 // stratRow is one pursuit, fully scored for portfolio reasoning.
 type stratRow struct {
 	ID       string  `json:"id"`
+	OppID    string  `json:"opp_id,omitempty"` // resolved live opp ID to open the cockpit on (else the pursuit ID)
 	Title    string  `json:"title"`
 	Agency   string  `json:"agency,omitempty"`
 	Stage    string  `json:"stage"`
@@ -250,8 +251,12 @@ func (s *server) strategizeRows() []stratRow {
 		priority := p.Value * wp / 100
 		hasDraft := s.hasDraft(id) || (o != nil && s.hasDraft(o.ID))
 		ready, readyWhy := submissionState(o, p, wp, hasDraft)
+		oppID := id
+		if o != nil {
+			oppID = o.ID
+		}
 		rows = append(rows, stratRow{
-			ID: id, Title: title, Agency: agency, Stage: stage, Fit: fit,
+			ID: id, OppID: oppID, Title: title, Agency: agency, Stage: stage, Fit: fit,
 			Value: p.Value, EV: ev, WinProb: wp, Priority: priority,
 			Weakest: weakest, DaysLeft: days, Closes: closes, Asset: asset,
 			Ready: ready, ReadyWhy: readyWhy, Linked: linked, Reasons: reasons,
