@@ -310,6 +310,20 @@
   .sttitle small{color:var(--dim);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .stasset{color:var(--brand);font-family:var(--mono);font-size:10px}
   .stlink{color:var(--ok);font-family:var(--mono);font-size:10px;margin-left:6px}
+  .stowner{color:var(--brand);font-size:10px;margin-left:6px;padding:1px 6px;border:1px solid var(--line2);border-radius:6px}
+  /* Crew view */
+  .crewgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+  .crewcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;backdrop-filter:blur(12px)}
+  .crewhd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;border-bottom:1px solid var(--line);padding-bottom:9px}
+  .crewhd b{font-family:var(--disp);font-size:16px;color:var(--ink)}.crewhd span{font-family:var(--mono);font-size:11px;color:var(--dim)}
+  .crewstat{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--dim);margin:4px 0}
+  .crewstat b{color:var(--ink);font-family:var(--mono);font-size:12px}
+  .crewstat .rdy{margin-left:3px}
+  .crewlist{margin-top:11px;display:flex;flex-direction:column;gap:5px}
+  .crewitem{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:8px;padding:7px 10px;cursor:pointer;text-align:left;transition:.15s;width:100%}
+  .crewitem:hover{border-color:var(--brand);background:rgba(143,179,196,.07)}
+  .crewitem .ci-t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink);font-size:12.5px}
+  .crewitem .ci-w{font-family:var(--mono);font-size:11px;color:var(--dim)}
   .rdy{font-family:var(--mono);font-size:9px;letter-spacing:.06em;padding:1px 5px;border-radius:5px;vertical-align:1px}
   .rdy.go{color:var(--ok);background:rgba(111,191,155,.14);border:1px solid rgba(111,191,155,.4)}
   .rdy.fix{color:var(--warn);background:rgba(216,184,126,.14);border:1px solid rgba(216,184,126,.4)}
@@ -630,6 +644,7 @@
   <nav>
     <button class="tab active" data-view="today">Today</button>
     <button class="tab" data-view="warroom">War room</button>
+    <button class="tab" data-view="crew">Crew</button>
     <button class="tab" data-view="now">Act now</button>
     <button class="tab" data-view="teaming">Teaming</button>
     <button class="tab" data-view="pipeline">Pipeline</button>
@@ -645,6 +660,7 @@
 <main>
   <section id="view-today" class="view"></section>
   <section id="view-warroom" class="view" hidden></section>
+  <section id="view-crew" class="view" hidden></section>
   <section id="view-now" class="view" hidden></section>
   <section id="view-teaming" class="view" hidden></section>
   <section id="view-pipeline" class="view" hidden></section>

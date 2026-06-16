@@ -708,6 +708,13 @@ function scorecard(o) {
   const vi = el('input'); vi.type = 'number'; vi.placeholder = 'e.g. 1800'; vi.value = p.value || '';
   let t; vi.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => saveState(k, { value: parseInt(vi.value) || 0 }, { title: o.title, agency: o.agency, url: o.url }), 600); });
   val.append(vi); box.append(val);
+  // owner — who on the team carries this pursuit
+  const own = el('div', 'wall');
+  own.append(el('span', 'wname', 'Owner'));
+  const oi = el('input'); oi.type = 'text'; oi.placeholder = 'assign…'; oi.value = p.owner || ''; oi.setAttribute('list', 'owners-dl');
+  const dl = el('datalist'); dl.id = 'owners-dl'; teamOwners().forEach((n) => dl.appendChild(new Option(n)));
+  let ot; oi.addEventListener('input', () => { clearTimeout(ot); ot = setTimeout(() => saveState(k, { owner: oi.value.trim() }, { title: o.title, agency: o.agency, url: o.url }), 600); });
+  own.append(oi, dl); box.append(own);
   if (ASSIST.enabled) {
     const aa = el('button', 'aabtn'); aa.innerHTML = svg('spark') + 'Auto-assess — Claude fills value + the four walls';
     aa.addEventListener('click', async () => {
@@ -1117,7 +1124,7 @@ async function load() {
   }
 }
 
-const VIEWS = [['today', 'Today'], ['warroom', 'War room'], ['now', 'Act now'], ['teaming', 'Teaming'], ['pipeline', 'Pipeline'], ['profit', 'Profit'], ['all', 'All'], ['playbook', 'Playbook']];
+const VIEWS = [['today', 'Today'], ['warroom', 'War room'], ['crew', 'Crew'], ['now', 'Act now'], ['teaming', 'Teaming'], ['pipeline', 'Pipeline'], ['profit', 'Profit'], ['all', 'All'], ['playbook', 'Playbook']];
 function switchView(v) {
   if (v === VIEW) return;
   VIEW = v; snd.tab(); glitchBurst();
@@ -1274,6 +1281,7 @@ function render() {
   document.querySelectorAll('.view').forEach((v) => v.hidden = true);
   if (VIEW === 'today') renderToday();
   else if (VIEW === 'warroom') renderWarRoom();
+  else if (VIEW === 'crew') renderCrew();
   else if (VIEW === 'now') renderNow();
   else if (VIEW === 'teaming') renderTeaming();
   else if (VIEW === 'pipeline') renderPipeline();
@@ -1548,6 +1556,48 @@ async function autoAssessAll(btn, progressEl) {
   return summary;
 }
 
+// teamOwners returns the distinct owners assigned across the pipeline.
+function teamOwners() {
+  return [...new Set(Object.values(STATE).map((p) => (p.owner || '').trim()).filter(Boolean))].sort();
+}
+
+// Crew — the team command view: each owner's load (pursuits, value, EV, readiness
+// mix, nearest deadline) so you can balance the work and see who carries what.
+async function renderCrew() {
+  const v = $('#view-crew'); v.hidden = false; v.textContent = '';
+  v.append(el('h2', null, 'Crew — who carries what'));
+  v.append(el('p', 'sub', 'Each teammate’s load across the pipeline. Assign an owner in any pursuit’s cockpit (the Owner field). Balance by value at stake and deadline pressure, not headcount.'));
+  const rows = await fetch('/api/strategize-data').then((r) => r.json()).catch(() => null);
+  const list = (rows && rows.rows) || [];
+  if (!list.length) { v.append(el('p', 'empty', 'No pursuits yet.')); return; }
+  const groups = {};
+  list.forEach((r) => { const o = (r.owner || '').trim() || '— unassigned'; (groups[o] ||= []).push(r); });
+  const names = Object.keys(groups).sort((a, b) => (a === '— unassigned') - (b === '— unassigned') || a.localeCompare(b));
+  const grid = el('div', 'crewgrid');
+  names.forEach((name) => {
+    const rs = groups[name];
+    const val = rs.reduce((a, r) => a + (r.value || 0), 0);
+    const ev = rs.reduce((a, r) => a + (r.ev || 0), 0);
+    const go = rs.filter((r) => r.ready === 'GO').length, fix = rs.filter((r) => r.ready === 'FIX').length, no = rs.filter((r) => r.ready === 'NO-GO').length;
+    const near = rs.filter((r) => r.days_left >= 0).map((r) => r.days_left).sort((a, b) => a - b)[0];
+    const card = el('div', 'crewcard');
+    card.innerHTML = `<div class="crewhd"><b>${escapeHtml(name)}</b><span>${rs.length} pursuit${rs.length === 1 ? '' : 's'}</span></div>
+      <div class="crewstat"><span>value</span><b>$${val.toLocaleString()}K</b></div>
+      <div class="crewstat"><span>expected</span><b>$${ev.toLocaleString()}K</b></div>
+      <div class="crewstat"><span>readiness</span><b>${go ? `<i class="rdy go">${go} GO</i> ` : ''}${fix ? `<i class="rdy fix">${fix} FIX</i> ` : ''}${no ? `<i class="rdy nogo">${no} NO-GO</i>` : ''}</b></div>
+      <div class="crewstat"><span>nearest close</span><b class="${near >= 0 && near <= 7 ? 'pf-bad' : ''}">${near === undefined ? '—' : near === 0 ? 'today' : near + 'd'}</b></div>`;
+    const ul = el('div', 'crewlist');
+    rs.sort((a, b) => (b.priority || 0) - (a.priority || 0)).forEach((r) => {
+      const it = el('button', 'crewitem'); it.dataset.oppid = r.opp_id || r.id;
+      it.innerHTML = `<span class="rdy ${r.ready === 'GO' ? 'go' : r.ready === 'NO-GO' ? 'nogo' : 'fix'}">${r.ready}</span> <span class="ci-t">${escapeHtml(r.title)}</span> <span class="ci-w">${r.win_prob}%</span>`;
+      it.addEventListener('click', () => { const o = OPPS.find((x) => x.id === it.dataset.oppid); if (o) { snd.lock(); openAssist(o); } else toast('No live topic matched yet'); });
+      ul.append(it);
+    });
+    card.append(ul); grid.append(card);
+  });
+  v.append(grid);
+}
+
 // War Room — the portfolio command center as its own view.
 function renderWarRoom() {
   const v = $('#view-warroom'); v.hidden = false; v.textContent = '';
@@ -1601,10 +1651,11 @@ function stratTable(rows) {
     const ev = r.ev > 0 ? '$' + r.ev + 'K' : '—';
     const asset = r.asset ? `<span class="stasset">${escapeHtml(r.asset)}</span>` : '';
     const lk = r.linked ? `<span class="stlink" title="scored against a live topic auto-matched to this volume">↪ live</span>` : '';
+    const ow = r.owner ? `<span class="stowner" title="owner">${escapeHtml(r.owner)}</span>` : '';
     const rdy = r.ready && r.ready !== '—' ? `<span class="rdy ${r.ready === 'GO' ? 'go' : r.ready === 'FIX' ? 'fix' : 'nogo'}" title="${escapeHtml(r.ready_why || '')}">${r.ready}</span> ` : '';
     const oid = (r.opp_id || r.id || '').replace(/"/g, '&quot;');
     return `<div class="strow act" data-oppid="${escapeHtml(oid)}" title="Open Claude on this pursuit">
-      <span class="sttitle"><b>${rdy}${escapeHtml(r.title)}</b><small>${escapeHtml(r.stage)} · weakest: ${escapeHtml(r.weakest || '—')} ${asset}${lk}</small></span>
+      <span class="sttitle"><b>${rdy}${escapeHtml(r.title)}</b><small>${escapeHtml(r.stage)} · weakest: ${escapeHtml(r.weakest || '—')} ${asset}${lk}${ow}</small></span>
       <span class="stwin ${tone}"><i style="width:${wp}%"></i><em>${wp}%</em></span>
       <span class="stev">${ev}</span>
       <span class="stdl ${r.days_left >= 0 && r.days_left <= 7 ? 'urgent' : ''}">${dl}</span>

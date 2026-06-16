@@ -44,6 +44,7 @@ type Pursuit struct {
 	Value    int    `json:"value,omitempty"` // estimated lifetime value, $K (Phase I→II→bridge→PoR)
 	Walls    Walls  `json:"walls,omitempty"` // four-walls transition-readiness scorecard
 	Link     string `json:"link,omitempty"`  // live opp ID this tracked volume maps to (manual override; else auto-matched by code)
+	Owner    string `json:"owner,omitempty"` // team member responsible for this pursuit
 	Updated  string `json:"updated,omitempty"`
 }
 
@@ -109,6 +110,7 @@ func Run(o Options) error {
 	mux.HandleFunc("/api/awards", s.hAwards)
 	mux.HandleFunc("/api/detail", s.hDetail)
 	mux.HandleFunc("/api/strategize", s.hStrategize)
+	mux.HandleFunc("/api/strategize-data", s.hStrategizeData)
 	mux.HandleFunc("/api/ingest", s.hIngest)
 	mux.HandleFunc("/api/calendar.ics", s.hCalendar)
 	mux.HandleFunc("/api/export", s.hExport)
@@ -292,7 +294,7 @@ func (s *server) hState(w http.ResponseWriter, r *http.Request) {
 		p := in.Pursuit
 		p.Updated = time.Now().UTC().Format(time.RFC3339)
 		empty := p.Stage == "" && p.Decision == "" && p.Notes == "" && p.Value == 0 &&
-			p.Walls == (Walls{})
+			p.Walls == (Walls{}) && p.Owner == "" && p.Link == ""
 		if empty {
 			delete(s.state, in.ID) // clearing a pursuit removes it
 		} else {

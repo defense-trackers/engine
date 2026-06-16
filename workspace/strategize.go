@@ -154,6 +154,7 @@ type stratRow struct {
 	Ready    string  `json:"ready"`     // GO | FIX | NO-GO | — (submission readiness)
 	ReadyWhy string  `json:"ready_why,omitempty"`
 	Linked   bool    `json:"linked,omitempty"` // scored via a live topic auto-matched to this seeded volume
+	Owner    string  `json:"owner,omitempty"`  // team member responsible
 	Reasons  []string `json:"reasons,omitempty"`
 }
 
@@ -259,7 +260,7 @@ func (s *server) strategizeRows() []stratRow {
 			ID: id, OppID: oppID, Title: title, Agency: agency, Stage: stage, Fit: fit,
 			Value: p.Value, EV: ev, WinProb: wp, Priority: priority,
 			Weakest: weakest, DaysLeft: days, Closes: closes, Asset: asset,
-			Ready: ready, ReadyWhy: readyWhy, Linked: linked, Reasons: reasons,
+			Ready: ready, ReadyWhy: readyWhy, Linked: linked, Owner: p.Owner, Reasons: reasons,
 		})
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
@@ -269,6 +270,12 @@ func (s *server) strategizeRows() []stratRow {
 		return rows[i].WinProb > rows[j].WinProb
 	})
 	return rows
+}
+
+// hStrategizeData returns just the ranked rows as JSON (no Claude call) — for the
+// Crew view and any consumer that wants the scored pipeline without the narrative.
+func (s *server) hStrategizeData(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, map[string]any{"rows": s.strategizeRows()})
 }
 
 // hStrategize streams a portfolio-level strategic read: it emits the ranked
