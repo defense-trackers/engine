@@ -6,9 +6,55 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 )
+
+// solicitation codes like DON26BZ01-NV010, DLA26BZ02-NV007, DPA26BZ02-DV010.
+var solCodeRe = regexp.MustCompile(`[A-Z]{2,4}\d{2}[A-Z]{1,3}\d{2}-[A-Z]{1,2}\d{2,4}`)
+
+// extractCodes pulls solicitation/topic codes out of a pursuit's title so a seeded
+// in-flight volume can be matched to its live topic. Falls back to a bare topic
+// suffix (NV013, DV010) when no full code is present.
+func extractCodes(title string) []string {
+	up := strings.ToUpper(title)
+	codes := solCodeRe.FindAllString(up, -1)
+	if len(codes) == 0 {
+		for _, m := range regexp.MustCompile(`\b[A-Z]{2}\d{3}\b`).FindAllString(up, -1) {
+			codes = append(codes, m)
+		}
+	}
+	return codes
+}
+
+// resolveOpp finds the live opportunity behind a pursuit: a direct ID match, then a
+// manual Link, then an auto-match by solicitation code in the title. This is what
+// makes win-probability / readiness / EV real for seeded volumes whose tracked ID
+// isn't itself a live opp ID.
+func resolveOpp(id string, p Pursuit, byID map[string]*Opportunity, opps []Opportunity) (*Opportunity, bool) {
+	if o := byID[id]; o != nil {
+		return o, false
+	}
+	if p.Link != "" {
+		if o := byID[p.Link]; o != nil {
+			return o, true
+		}
+	}
+	codes := extractCodes(p.Title)
+	if len(codes) == 0 {
+		return nil, false
+	}
+	for i := range opps {
+		hay := strings.ToUpper(opps[i].ID + " " + opps[i].Title)
+		for _, c := range codes {
+			if strings.Contains(hay, c) {
+				return &opps[i], true
+			}
+		}
+	}
+	return nil, false
+}
 
 // Phase 2 — the strategic brain. Three capabilities share one analytical backbone
 // (winProbability) so the numbers Jesse sees, the numbers Claude reasons over, and
@@ -106,6 +152,7 @@ type stratRow struct {
 	Asset    string  `json:"asset,omitempty"`
 	Ready    string  `json:"ready"`     // GO | FIX | NO-GO | — (submission readiness)
 	ReadyWhy string  `json:"ready_why,omitempty"`
+	Linked   bool    `json:"linked,omitempty"` // scored via a live topic auto-matched to this seeded volume
 	Reasons  []string `json:"reasons,omitempty"`
 }
 
@@ -163,9 +210,11 @@ func submissionState(o *Opportunity, p Pursuit, winProb int, hasDraft bool) (str
 // hours" ordering.
 func (s *server) strategizeRows() []stratRow {
 	s.mu.Lock()
+	opps := make([]Opportunity, len(s.opps))
+	copy(opps, s.opps)
 	byID := map[string]*Opportunity{}
-	for i := range s.opps {
-		byID[s.opps[i].ID] = &s.opps[i]
+	for i := range opps {
+		byID[opps[i].ID] = &opps[i]
 	}
 	state := make(map[string]Pursuit, len(s.state))
 	for k, v := range s.state {
@@ -175,7 +224,7 @@ func (s *server) strategizeRows() []stratRow {
 
 	var rows []stratRow
 	for id, p := range state {
-		o := byID[id]
+		o, linked := resolveOpp(id, p, byID, opps)
 		stage := p.Stage
 		if stage == "" {
 			stage = "watching"
@@ -199,12 +248,13 @@ func (s *server) strategizeRows() []stratRow {
 		_, weakest := p.Walls.Readiness()
 		ev := int(float64(p.Value) * stageProb[stage])
 		priority := p.Value * wp / 100
-		ready, readyWhy := submissionState(o, p, wp, s.hasDraft(id))
+		hasDraft := s.hasDraft(id) || (o != nil && s.hasDraft(o.ID))
+		ready, readyWhy := submissionState(o, p, wp, hasDraft)
 		rows = append(rows, stratRow{
 			ID: id, Title: title, Agency: agency, Stage: stage, Fit: fit,
 			Value: p.Value, EV: ev, WinProb: wp, Priority: priority,
 			Weakest: weakest, DaysLeft: days, Closes: closes, Asset: asset,
-			Ready: ready, ReadyWhy: readyWhy, Reasons: reasons,
+			Ready: ready, ReadyWhy: readyWhy, Linked: linked, Reasons: reasons,
 		})
 	}
 	sort.SliceStable(rows, func(i, j int) bool {

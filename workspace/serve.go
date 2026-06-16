@@ -43,6 +43,7 @@ type Pursuit struct {
 	URL      string `json:"url,omitempty"`
 	Value    int    `json:"value,omitempty"` // estimated lifetime value, $K (Phase I→II→bridge→PoR)
 	Walls    Walls  `json:"walls,omitempty"` // four-walls transition-readiness scorecard
+	Link     string `json:"link,omitempty"`  // live opp ID this tracked volume maps to (manual override; else auto-matched by code)
 	Updated  string `json:"updated,omitempty"`
 }
 

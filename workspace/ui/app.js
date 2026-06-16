@@ -1450,9 +1450,10 @@ function stratTable(rows) {
     const dl = r.days_left >= 0 ? (r.days_left === 0 ? 'today' : r.days_left + 'd') : '—';
     const ev = r.ev > 0 ? '$' + r.ev + 'K' : '—';
     const asset = r.asset ? `<span class="stasset">${escapeHtml(r.asset)}</span>` : '';
+    const lk = r.linked ? `<span class="stlink" title="scored against a live topic auto-matched to this volume">↪ live</span>` : '';
     const rdy = r.ready && r.ready !== '—' ? `<span class="rdy ${r.ready === 'GO' ? 'go' : r.ready === 'FIX' ? 'fix' : 'nogo'}" title="${escapeHtml(r.ready_why || '')}">${r.ready}</span> ` : '';
     return `<div class="strow">
-      <span class="sttitle"><b>${rdy}${escapeHtml(r.title)}</b><small>${escapeHtml(r.stage)} · weakest: ${escapeHtml(r.weakest || '—')} ${asset}</small></span>
+      <span class="sttitle"><b>${rdy}${escapeHtml(r.title)}</b><small>${escapeHtml(r.stage)} · weakest: ${escapeHtml(r.weakest || '—')} ${asset}${lk}</small></span>
       <span class="stwin ${tone}"><i style="width:${wp}%"></i><em>${wp}%</em></span>
       <span class="stev">${ev}</span>
       <span class="stdl ${r.days_left >= 0 && r.days_left <= 7 ? 'urgent' : ''}">${dl}</span>
