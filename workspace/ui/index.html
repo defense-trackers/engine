@@ -404,6 +404,14 @@
   .qa button{background:rgba(255,255,255,.05);border:1px solid var(--line2);color:var(--ink);font:500 12px var(--sans);padding:6px 11px;border-radius:9px;cursor:pointer;transition:.2s}
   .qa button:hover{border-color:var(--brand);box-shadow:0 0 16px -6px var(--brand)}
   .qa .mv{color:var(--ok);border-color:rgba(111,191,155,.3)}
+  /* segmented action panel — tabs over a single swapping button row (declutter) */
+  .actions{margin-top:12px}
+  .atabs{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:11px;border-bottom:1px solid var(--line);padding-bottom:9px}
+  .atab{background:none;border:1px solid transparent;color:var(--dim);font:600 12px var(--sans);padding:6px 12px;border-radius:8px;cursor:pointer;transition:.15s}
+  .atab:hover{color:var(--ink);background:rgba(255,255,255,.04)}
+  .atab.on{color:var(--ink);background:rgba(143,179,196,.16);border-color:rgba(143,179,196,.38);box-shadow:0 0 16px -8px var(--brand)}
+  .abody{display:flex;flex-wrap:wrap;gap:7px;animation:abIn .26s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes abIn{from{opacity:0;transform:translateY(4px)}}
   #thread{flex:1;overflow:auto;padding:16px 18px;display:flex;flex-direction:column;gap:13px}
   .msg{font-size:14px;line-height:1.6;white-space:pre-wrap;word-wrap:break-word;animation:msgIn .34s cubic-bezier(.2,.8,.2,1) both}
   @keyframes msgIn{from{opacity:0;transform:translateY(10px)}}

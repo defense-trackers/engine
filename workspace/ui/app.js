@@ -552,27 +552,89 @@ async function boot() {
 }
 
 // ---- Claude bid assistant ----
-const QUICK = [
-  { a: 'bidpass', label: 'Bid or pass?' },
-  { a: 'wintheme', label: 'Win theme' },
-  { a: 'outline', label: 'Outline volume' },
-  { a: 'draft', label: 'Draft tech approach' },
-  { a: 'gaps', label: 'Gaps' },
+// Cockpit actions, grouped into a segmented panel so the deck reads as a few tabs
+// instead of ~30 buttons. `a` = a Claude quick-action (sendAssist); `fn` = a local
+// handler; `primary` = filled accent button; the `move` group is the stage picker.
+const ACTION_GROUPS = [
+  { key: 'assess', label: 'Assess', items: [
+    { a: 'bidpass', label: 'Bid or pass?' },
+    { a: 'wintheme', label: 'Win theme' },
+    { a: 'gaps', label: 'Gaps' },
+    { a: 'nextstep', label: 'Next best action' },
+  ] },
+  { key: 'intel', label: 'Intel', items: [
+    { fn: 'competitiveIntel', icon: 'radar', label: 'Competitive field' },
+    { fn: 'topicDetail', icon: 'doc', label: 'Topic detail' },
+    { a: 'deepresearch', label: 'Deep research' },
+    { a: 'teaming', label: 'Find a prime / team' },
+    { fn: 'ingestRFP', icon: 'doc', label: 'Ingest RFP' },
+  ] },
+  { key: 'draft', label: 'Draft', items: [
+    { a: 'outline', label: 'Outline volume' },
+    { a: 'draft', label: 'Draft tech approach' },
+    { fn: 'draftVolume', icon: 'doc', label: 'Draft volume → files', primary: true },
+    { fn: 'fullWorkup', icon: 'target', label: 'Full workup', primary: true },
+    { fn: 'exportDocx', icon: 'doc', label: 'Export .docx' },
+  ] },
+  { key: 'win', label: 'Win', items: [
+    { fn: 'winPlan', icon: 'target', label: 'Win plan', primary: true },
+    { fn: 'verifyCompliance', icon: 'shield', label: 'Verify compliance', primary: true },
+    { fn: 'remediate', icon: 'spark', label: 'Close the gaps' },
+    { fn: 'complianceMatrix', icon: 'shield', label: 'Compliance matrix' },
+  ] },
+  { key: 'transition', label: 'Transition', items: [
+    { a: 'transition', label: 'Structure for transition' },
+    { a: 'sponsor', label: 'Who owns the money' },
+    { a: 'pom', label: 'POM readiness' },
+    { a: 'pmadopt', label: 'PM adoption pitch' },
+    { a: 'outreach', label: 'Outreach + draft message' },
+  ] },
+  { key: 'move', label: 'Move', stages: true },
 ];
+const ACTION_LABEL = {};
+ACTION_GROUPS.forEach((g) => (g.items || []).forEach((it) => { if (it.a) ACTION_LABEL[it.a] = it.label; }));
+let ASSIST_TAB = 'assess';
 
 function convo(id) { try { return JSON.parse(localStorage.getItem('assist:' + id) || '[]'); } catch { return []; } }
 function saveConvo(id, h) { localStorage.setItem('assist:' + id, JSON.stringify(h.slice(-20))); }
 
-const TQUICK = [
-  { a: 'deepresearch', label: 'Deep research' },
-  { a: 'teaming', label: 'Find a prime / team' },
-  { a: 'transition', label: 'Structure for transition' },
-  { a: 'sponsor', label: 'Who owns the money' },
-  { a: 'outreach', label: 'Outreach + draft message' },
-  { a: 'pom', label: 'POM readiness' },
-  { a: 'pmadopt', label: 'PM adoption pitch' },
-  { a: 'nextstep', label: 'Next best action' },
-];
+// buildActions renders the segmented action panel for an opportunity: a tab bar
+// (Assess · Intel · Draft · Win · Transition · Move) over a single button row that
+// swaps with the active tab. The active tab persists across opens.
+function buildActions(o) {
+  const fns = { competitiveIntel, topicDetail, ingestRFP, draftVolume, fullWorkup, exportDocx, winPlan, verifyCompliance, remediate, complianceMatrix };
+  const wrap = el('div', 'actions');
+  const tabs = el('div', 'atabs');
+  const body = el('div', 'abody');
+  const renderBody = (g) => {
+    body.textContent = '';
+    if (g.stages) {
+      ['drafting', 'submitted', 'won', 'pilot', 'transition', 'pom', 'program', 'lost', 'pass'].forEach((st) => {
+        const b = el('button', 'mv', '→ ' + st); b.addEventListener('click', () => moveStage(o, st)); body.append(b);
+      });
+      return;
+    }
+    g.items.forEach((it) => {
+      const b = el('button', it.primary ? 'mv' : null);
+      b.innerHTML = (it.icon ? svg(it.icon) : '') + it.label;
+      b.addEventListener('click', () => { snd.tick(); if (it.a) sendAssist(it.a); else fns[it.fn](o); });
+      body.append(b);
+    });
+  };
+  ACTION_GROUPS.forEach((g) => {
+    const t = el('button', 'atab', g.label); t.dataset.k = g.key;
+    if (g.key === ASSIST_TAB) t.classList.add('on');
+    t.addEventListener('click', () => {
+      ASSIST_TAB = g.key; snd.tab();
+      [...tabs.children].forEach((x) => x.classList.toggle('on', x.dataset.k === g.key));
+      renderBody(g);
+    });
+    tabs.append(t);
+  });
+  wrap.append(tabs, body);
+  renderBody(ACTION_GROUPS.find((g) => g.key === ASSIST_TAB) || ACTION_GROUPS[0]);
+  return wrap;
+}
 
 function openAssist(o) {
   CUR_OPP = o;
@@ -591,68 +653,12 @@ function openAssist(o) {
   }
   const qa = $('#assist-qa'); qa.textContent = '';
   qa.append(scorecard(o)); // four-walls readiness works with or without Claude
-  if (ASSIST.enabled) {
-    const bidRow = el('div', 'qarow');
-    QUICK.forEach((q) => { const b = el('button', null, q.label); b.addEventListener('click', () => sendAssist(q.a)); bidRow.append(b); });
-    const draftBtn = el('button', 'mv'); draftBtn.innerHTML = svg('doc') + 'Draft volume → files';
-    draftBtn.title = 'Claude writes the full submittable volume to editable files (runs on your subscription)';
-    draftBtn.addEventListener('click', () => draftVolume(o));
-    bidRow.append(draftBtn);
-    const intelBtn = el('button', null); intelBtn.innerHTML = svg('radar') + 'Competitive field';
-    intelBtn.title = 'Who has won DoD SBIR/STTR awards in this space (SBIR.gov)';
-    intelBtn.addEventListener('click', () => competitiveIntel(o));
-    bidRow.append(intelBtn);
-    const detBtn = el('button', null); detBtn.innerHTML = svg('doc') + 'Topic detail';
-    detBtn.title = 'Full topic readout (objective, description, Phase I, keywords, ITAR)';
-    detBtn.addEventListener('click', () => topicDetail(o));
-    bidRow.append(detBtn);
-    const ingBtn = el('button', null); ingBtn.innerHTML = svg('doc') + 'Ingest RFP';
-    ingBtn.title = 'Paste/drop the real solicitation text — grounds every AI feature on the actual requirement';
-    ingBtn.addEventListener('click', () => ingestRFP(o));
-    bidRow.append(ingBtn);
-    const workupBtn = el('button', 'mv'); workupBtn.innerHTML = svg('target') + 'Full workup';
-    workupBtn.title = 'Agentic chain: deep research → grounded draft → red-team critique';
-    workupBtn.addEventListener('click', () => fullWorkup(o));
-    bidRow.append(workupBtn);
-    const docxBtn = el('button', null); docxBtn.innerHTML = svg('doc') + 'Export .docx';
-    docxBtn.title = 'Download the drafted volume as a Word document (with a compliance matrix) — run a draft first';
-    docxBtn.addEventListener('click', () => exportDocx(o));
-    bidRow.append(docxBtn);
-    const compBtn = el('button', null); compBtn.innerHTML = svg('shield') + 'Compliance matrix';
-    compBtn.title = 'Extract every shall/must/required statement from the solicitation';
-    compBtn.addEventListener('click', () => complianceMatrix(o));
-    bidRow.append(compBtn);
-    qa.append(rowLabel('Bid'), bidRow);
-    const trow = el('div', 'qarow');
-    TQUICK.forEach((q) => { const b = el('button', null, q.label); b.addEventListener('click', () => sendAssist(q.a)); trow.append(b); });
-    qa.append(rowLabel('Cross the valley'), trow);
-    // Conversion engine: turn "has capability" into "wins the contract".
-    const winRow = el('div', 'qarow');
-    const wpBtn = el('button', 'mv'); wpBtn.innerHTML = svg('target') + 'Win plan';
-    wpBtn.title = 'A dated capture-to-award plan: Q&A window, sponsor engagement, proof points, teaming, submit — grounded in the doctrine + your weakest wall';
-    wpBtn.addEventListener('click', () => winPlan(o));
-    winRow.append(wpBtn);
-    const vcBtn = el('button', 'mv'); vcBtn.innerHTML = svg('shield') + 'Verify compliance';
-    vcBtn.title = 'Closed-loop gate: maps every shall/must to the drafted section that answers it, flags the gaps that get a proposal eliminated';
-    vcBtn.addEventListener('click', () => verifyCompliance(o));
-    winRow.append(vcBtn);
-    const rmBtn = el('button', null); rmBtn.innerHTML = svg('spark') + 'Close the gaps';
-    rmBtn.title = 'Regenerate ready-to-paste content for every uncovered requirement so the volume becomes submittable';
-    rmBtn.addEventListener('click', () => remediate(o));
-    winRow.append(rmBtn);
-    qa.append(rowLabel('Win & submit'), winRow);
-    const mv = el('div', 'qarow');
-    ['drafting', 'submitted', 'won', 'pilot', 'transition', 'pom', 'program'].forEach((st) => {
-      const b = el('button', 'mv', '→ ' + st); b.addEventListener('click', () => moveStage(o, st)); mv.append(b);
-    });
-    qa.append(rowLabel('Move stage'), mv);
-  }
+  if (ASSIST.enabled) qa.append(buildActions(o));
   renderThread();
   $('#overlay').style.display = 'block';
   $('#assist').classList.add('open');
 }
 
-function rowLabel(t) { return el('div', 'qalabel', t); }
 
 // the four-walls transition-readiness scorecard + lifetime value, edited inline.
 function scorecard(o) {
@@ -757,7 +763,7 @@ async function sendAssist(action) {
   if (!action && !message) return;
   const id = CUR_OPP.id;
   const hist = convo(id);
-  const userLabel = action ? ([...QUICK, ...TQUICK].find((q) => q.a === action)?.label || action) : message;
+  const userLabel = action ? (ACTION_LABEL[action] || action) : message;
   hist.push({ role: 'user', content: userLabel });
   saveConvo(id, hist);
   input.value = '';
