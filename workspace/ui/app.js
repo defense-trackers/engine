@@ -574,6 +574,7 @@ const ACTION_GROUPS = [
     { a: 'draft', label: 'Draft tech approach' },
     { fn: 'draftVolume', icon: 'doc', label: 'Draft volume → files', primary: true },
     { fn: 'fullWorkup', icon: 'target', label: 'Full workup', primary: true },
+    { fn: 'editVolume', icon: 'doc', label: 'Edit volume' },
     { fn: 'exportDocx', icon: 'doc', label: 'Export .docx' },
   ] },
   { key: 'win', label: 'Win', items: [
@@ -603,7 +604,7 @@ function saveConvo(id, h) { localStorage.setItem('assist:' + id, JSON.stringify(
 // (Assess · Intel · Draft · Win · Transition · Move) over a single button row that
 // swaps with the active tab. The active tab persists across opens.
 function buildActions(o) {
-  const fns = { competitiveIntel, topicDetail, ingestRFP, draftVolume, fullWorkup, exportDocx, winPlan, verifyCompliance, remediate, complianceMatrix, preflight };
+  const fns = { competitiveIntel, topicDetail, ingestRFP, draftVolume, fullWorkup, exportDocx, winPlan, verifyCompliance, remediate, complianceMatrix, preflight, editVolume };
   const wrap = el('div', 'actions');
   const tabs = el('div', 'atabs');
   const body = el('div', 'abody');
@@ -1002,6 +1003,33 @@ function verifyCompliance(o) { streamInto('/api/verify-compliance', o, 'Complian
 
 // Close the gaps: regenerate ready-to-paste content for every uncovered requirement.
 function remediate(o) { streamInto('/api/remediate', o, 'Close the gaps (make it submittable)', 'Writing drop-in content for every uncovered requirement…', 'Compliance fixes ready →'); }
+
+// Edit the generated volume inline; save writes it back, "Save & re-verify" runs the
+// compliance gate so you watch coverage climb to 100% without leaving the cockpit.
+async function editVolume(o) {
+  const t = $('#thread');
+  let cur = { exists: false, content: '' };
+  try { cur = await fetch('/api/draft-doc?id=' + encodeURIComponent(o.id)).then((x) => x.json()); } catch { }
+  if (!cur.exists) { const m = el('div', 'msg a'); m.innerHTML = '<b>No draft to edit yet.</b> Run “Draft volume → files” or “Full workup” first.'; t.append(m); t.scrollTop = 1e9; return; }
+  const head = el('div', 'msg u'); head.textContent = '› Edit volume'; t.append(head);
+  const wrap = el('div', 'ingest');
+  wrap.innerHTML = `<div class="inglbl">${svg('doc')} Edit the volume (markdown)</div>
+    <div class="inghint">Edits save to <code>volume.md</code> and flow into the .docx export and the submission bundle. “Save &amp; re-verify” re-runs the compliance gate.</div>
+    <textarea class="ingta" style="min-height:280px"></textarea>
+    <div class="ingbtns"><button class="ingsave">Save</button><button class="ingsave vr">Save &amp; re-verify</button><button class="ingclear">Cancel</button><span class="ingstat"></span></div>`;
+  t.append(wrap); t.scrollTop = 1e9;
+  const ta = wrap.querySelector('.ingta'), stat = wrap.querySelector('.ingstat');
+  ta.value = cur.content;
+  const save = async () => {
+    stat.textContent = 'saving…';
+    const r = await fetch('/api/draft-doc', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ opp_id: o.id, content: ta.value }) }).then((x) => x.json()).catch(() => ({}));
+    stat.textContent = r.ok ? `saved · ${Number(r.chars).toLocaleString()} chars` : 'save failed';
+    snd.apply(); return r.ok;
+  };
+  wrap.querySelector('.ingsave:not(.vr)').addEventListener('click', () => { save().then((ok) => ok && toast('Volume saved')); });
+  wrap.querySelector('.ingsave.vr').addEventListener('click', async () => { if (await save()) { toast('Saved — re-verifying'); verifyCompliance(o); } });
+  wrap.querySelector('.ingclear').addEventListener('click', () => wrap.remove());
+}
 
 // Pre-flight checklist + one-click upload-ready bundle (cover + volume + matrix + docs).
 async function preflight(o) {
