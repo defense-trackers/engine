@@ -580,6 +580,7 @@ const ACTION_GROUPS = [
     { fn: 'winPlan', icon: 'target', label: 'Win plan', primary: true },
     { fn: 'verifyCompliance', icon: 'shield', label: 'Verify compliance', primary: true },
     { fn: 'remediate', icon: 'spark', label: 'Close the gaps' },
+    { fn: 'preflight', icon: 'shield', label: 'Pre-flight + package', primary: true },
     { fn: 'complianceMatrix', icon: 'shield', label: 'Compliance matrix' },
   ] },
   { key: 'transition', label: 'Transition', items: [
@@ -602,7 +603,7 @@ function saveConvo(id, h) { localStorage.setItem('assist:' + id, JSON.stringify(
 // (Assess · Intel · Draft · Win · Transition · Move) over a single button row that
 // swaps with the active tab. The active tab persists across opens.
 function buildActions(o) {
-  const fns = { competitiveIntel, topicDetail, ingestRFP, draftVolume, fullWorkup, exportDocx, winPlan, verifyCompliance, remediate, complianceMatrix };
+  const fns = { competitiveIntel, topicDetail, ingestRFP, draftVolume, fullWorkup, exportDocx, winPlan, verifyCompliance, remediate, complianceMatrix, preflight };
   const wrap = el('div', 'actions');
   const tabs = el('div', 'atabs');
   const body = el('div', 'abody');
@@ -1001,6 +1002,28 @@ function verifyCompliance(o) { streamInto('/api/verify-compliance', o, 'Complian
 
 // Close the gaps: regenerate ready-to-paste content for every uncovered requirement.
 function remediate(o) { streamInto('/api/remediate', o, 'Close the gaps (make it submittable)', 'Writing drop-in content for every uncovered requirement…', 'Compliance fixes ready →'); }
+
+// Pre-flight checklist + one-click upload-ready bundle (cover + volume + matrix + docs).
+async function preflight(o) {
+  const t = $('#thread');
+  const head = el('div', 'msg u'); head.textContent = '› Submission pre-flight'; t.append(head);
+  const out = el('div', 'msg a'); out.textContent = 'Running pre-flight checks…'; t.append(out); t.scrollTop = 1e9;
+  try {
+    const r = await fetch('/api/preflight?id=' + encodeURIComponent(o.id)).then((x) => x.json());
+    const icon = { ok: '✓', warn: '!', blocker: '✕' };
+    const items = r.checks.map((c) => `<li class="pf ${c.status}"><b>${icon[c.status]}</b> <span>${escapeHtml(c.label)}</span><small>${escapeHtml(c.detail || '')}</small></li>`).join('');
+    const verdict = r.blockers ? `<span class="pf-bad">${r.blockers} blocker${r.blockers === 1 ? '' : 's'} — clear before upload</span>` : r.warnings ? `<span class="pf-warn">ready · ${r.warnings} to verify</span>` : `<span class="pf-ok">all clear — ready to submit</span>`;
+    out.innerHTML = `<h4>Pre-flight — ${verdict}</h4><ul class="pflist">${items}</ul>`;
+    const pkg = el('button', 'dirchip'); pkg.innerHTML = svg('doc') + 'Download submission bundle (.zip)';
+    pkg.addEventListener('click', () => {
+      const a = document.createElement('a'); a.href = '/api/package?id=' + encodeURIComponent(o.id); a.download = '';
+      document.body.append(a); a.click(); a.remove(); snd.apply(); toast('Assembling submission bundle…');
+    });
+    out.append(pkg);
+    snd.recv && snd.recv();
+  } catch (e) { out.className = 'msg err'; out.textContent = 'pre-flight failed: ' + e.message; }
+  t.scrollTop = 1e9;
+}
 
 // Full topic readout (objective/description/Phase I/keywords/ITAR), cached.
 async function topicDetail(o) {
