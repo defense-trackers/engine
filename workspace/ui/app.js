@@ -614,6 +614,14 @@ function openAssist(o) {
     workupBtn.title = 'Agentic chain: deep research → grounded draft → red-team critique';
     workupBtn.addEventListener('click', () => fullWorkup(o));
     bidRow.append(workupBtn);
+    const docxBtn = el('button', null); docxBtn.innerHTML = svg('doc') + 'Export .docx';
+    docxBtn.title = 'Download the drafted volume as a Word document (with a compliance matrix) — run a draft first';
+    docxBtn.addEventListener('click', () => exportDocx(o));
+    bidRow.append(docxBtn);
+    const compBtn = el('button', null); compBtn.innerHTML = svg('shield') + 'Compliance matrix';
+    compBtn.title = 'Extract every shall/must/required statement from the solicitation';
+    compBtn.addEventListener('click', () => complianceMatrix(o));
+    bidRow.append(compBtn);
     qa.append(rowLabel('Bid'), bidRow);
     const trow = el('div', 'qarow');
     TQUICK.forEach((q) => { const b = el('button', null, q.label); b.addEventListener('click', () => sendAssist(q.a)); trow.append(b); });
@@ -834,6 +842,36 @@ async function ingestRFP(o) {
   wrap.querySelector('.ingclear').addEventListener('click', () => { ta.value = ''; save(''); });
 }
 
+// exportDocx downloads the drafted volume as a Word document (+ compliance matrix).
+async function exportDocx(o) {
+  // probe first so a missing draft gives a clean message instead of a broken download
+  try {
+    const head = await fetch('/api/export?id=' + encodeURIComponent(o.id), { method: 'HEAD' });
+    if (head.status === 404) { toast('No draft yet — run “Draft volume → files” or “Full workup” first'); snd.err && snd.err(); return; }
+  } catch { }
+  const a = document.createElement('a');
+  a.href = '/api/export?id=' + encodeURIComponent(o.id) + '&compliance=1';
+  a.download = ''; document.body.append(a); a.click(); a.remove();
+  snd.apply(); toast('Exporting .docx (with compliance matrix)…');
+}
+
+// complianceMatrix extracts every binding requirement from the solicitation and
+// renders it in the thread (grounds on the ingested RFP if present).
+async function complianceMatrix(o) {
+  const t = $('#thread');
+  const head = el('div', 'msg u'); head.textContent = '› Compliance matrix'; t.append(head);
+  const out = el('div', 'msg a'); out.textContent = 'Extracting shall/must/required statements…'; t.append(out); t.scrollTop = 1e9;
+  try {
+    const r = await fetch('/api/compliance?id=' + encodeURIComponent(o.id)).then((x) => x.json());
+    if (!r.has_detail) { out.innerHTML = '<b>No solicitation text to scan.</b> Use <b>Ingest RFP</b> to paste the real solicitation, or <b>Topic detail</b> to fetch it, then re-run.'; return; }
+    if (!r.count) { out.innerHTML = '<b>No binding requirements found</b> in the available text (no shall/must/required statements).'; return; }
+    const items = r.requirements.map((rq, i) => `<li><b>REQ-${String(i + 1).padStart(2, '0')}</b> — ${escapeHtml(rq)}</li>`).join('');
+    out.innerHTML = `<h4>${r.count} binding requirement${r.count === 1 ? '' : 's'} extracted</h4><p>Map each to the section that answers it; the .docx export appends this as a fillable matrix.</p><ul class="complist">${items}</ul>`;
+    snd.recv && snd.recv();
+  } catch (e) { out.className = 'msg err'; out.textContent = 'compliance scan failed: ' + e.message; }
+  t.scrollTop = 1e9;
+}
+
 // draftVolume streams a full submittable volume to files, showing per-section
 // progress in the thread, then the output folder.
 async function draftVolume(o) {
@@ -860,7 +898,7 @@ async function draftVolume(o) {
         let ev; try { ev = JSON.parse(line); } catch { continue; }
         if (ev.error) { prog.className = 'msg err'; prog.textContent = ev.error; }
         else if (ev.t) { lines.push(ev.t); prog.textContent = lines.slice(-14).join('\n'); t.scrollTop = 1e9; }
-        else if (ev.dir) { const d = el('div', 'msg a'); d.innerHTML = `<b>Volume written.</b> Files are in:<br><code>${ev.dir}</code><br>Open <code>volume.md</code> for the combined draft, or the numbered section files to edit.`; t.append(d); t.scrollTop = 1e9; toast('Volume drafted → files'); }
+        else if (ev.dir) { const d = el('div', 'msg a'); d.innerHTML = `<b>Volume written.</b> Files are in:<br><code>${ev.dir}</code><br>Open <code>volume.md</code> for the combined draft, or the numbered section files to edit.`; const xb = el('button', 'dirchip'); xb.innerHTML = svg('doc') + 'Export .docx'; xb.addEventListener('click', () => exportDocx(o)); d.append(document.createElement('br'), xb); t.append(d); t.scrollTop = 1e9; toast('Volume drafted → files'); }
       }
     }
   } catch (e) { prog.className = 'msg err'; prog.textContent = 'draft failed: ' + e.message; }
