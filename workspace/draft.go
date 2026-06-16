@@ -248,10 +248,7 @@ func (s *server) hDraft(w http.ResponseWriter, r *http.Request) {
 		emit(map[string]string{"error": "opportunity not found — refresh"})
 		return
 	}
-	detail := ""
-	if subj.DetailRef != "" {
-		detail = detailCached(s.opts.Dir, subj.DetailRef)
-	}
+	detail := s.detailFor(subj)
 	dir, err := s.Draft(subj, detail, "", func(line string) { emit(map[string]string{"t": line}) })
 	if err != nil {
 		emit(map[string]string{"error": err.Error()})
@@ -288,10 +285,7 @@ func (s *server) hWorkup(w http.ResponseWriter, r *http.Request) {
 		emit(map[string]string{"error": "opportunity not found — refresh"})
 		return
 	}
-	detail := ""
-	if subj.DetailRef != "" {
-		detail = detailCached(s.opts.Dir, subj.DetailRef)
-	}
+	detail := s.detailFor(subj)
 	// Phase 1 — deep research (full grounding: dossier, company kit, competitive field).
 	emit(map[string]string{"t": "Phase 1/3 · deep research — competitive landscape, white space, your wedge…"})
 	research, err := claudeOnce(s.assistSystem(subj, detail, pursuit, sponsors), assistActions["deepresearch"])

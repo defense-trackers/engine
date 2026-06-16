@@ -134,10 +134,7 @@ func (s *server) hAssist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	detail := ""
-	if opp.DetailRef != "" {
-		detail = detailCached(s.opts.Dir, opp.DetailRef)
-	}
+	detail := s.detailFor(opp) // ingested RFP wins; else cached DSIP detail
 	userText := strings.TrimSpace(in.Message)
 	if a, ok := assistActions[in.Action]; ok {
 		userText = a

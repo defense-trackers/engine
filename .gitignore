@@ -32,3 +32,5 @@
 /engine.exe
 /workspace/server.log
 /engine.exe~
+/workspace/ingest.json
+/workspace/grants-cache.json

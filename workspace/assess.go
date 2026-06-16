@@ -219,10 +219,7 @@ func (s *server) hAssess(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", 404)
 		return
 	}
-	detail := ""
-	if subj.DetailRef != "" {
-		detail = detailCached(s.opts.Dir, subj.DetailRef)
-	}
+	detail := s.detailFor(subj)
 	a, err := s.assess(subj, detail)
 	if err != nil {
 		writeJSON(w, map[string]string{"error": err.Error()})
@@ -253,10 +250,7 @@ func (s *server) hAssessAll(w http.ResponseWriter, _ *http.Request) {
 		if subj == nil {
 			continue
 		}
-		detail := ""
-		if subj.DetailRef != "" {
-			detail = detailCached(s.opts.Dir, subj.DetailRef)
-		}
+		detail := s.detailFor(subj)
 		a, err := s.assess(subj, detail)
 		if err != nil {
 			failed++

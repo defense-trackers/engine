@@ -206,14 +206,13 @@ func (s *server) hDetail(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", 404)
 		return
 	}
-	txt := ""
-	if subj.DetailRef != "" {
-		txt = detailCached(s.opts.Dir, subj.DetailRef)
-	}
+	txt := s.detailFor(subj) // ingested RFP wins; else cached DSIP detail
+	ing := s.ingestText(subj.ID)
 	writeJSON(w, map[string]any{
 		"title": subj.Title, "agency": subj.Agency, "type": subj.Type,
 		"setaside": subj.Setaside, "closes": subj.Closes, "url": subj.URL,
 		"detail": txt, "award_text": subj.AwardText,
+		"ingested_chars": ing.Chars, "ingested_name": ing.Name,
 	})
 }
 

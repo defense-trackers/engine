@@ -606,6 +606,10 @@ function openAssist(o) {
     detBtn.title = 'Full topic readout (objective, description, Phase I, keywords, ITAR)';
     detBtn.addEventListener('click', () => topicDetail(o));
     bidRow.append(detBtn);
+    const ingBtn = el('button', null); ingBtn.innerHTML = svg('doc') + 'Ingest RFP';
+    ingBtn.title = 'Paste/drop the real solicitation text — grounds every AI feature on the actual requirement';
+    ingBtn.addEventListener('click', () => ingestRFP(o));
+    bidRow.append(ingBtn);
     const workupBtn = el('button', 'mv'); workupBtn.innerHTML = svg('target') + 'Full workup';
     workupBtn.title = 'Agentic chain: deep research → grounded draft → red-team critique';
     workupBtn.addEventListener('click', () => fullWorkup(o));
@@ -797,6 +801,37 @@ function renderDirectives(o, dirs) {
     wrap.append(chip);
   });
   t.append(wrap); t.scrollTop = 1e9;
+}
+
+// ingestRFP lets Jesse paste/drop the real solicitation text for a pursuit; it's
+// stored locally and grounds every AI feature (assist/draft/assess/day-read).
+async function ingestRFP(o) {
+  const t = $('#thread');
+  let cur = { chars: 0, name: '' };
+  try { cur = await fetch('/api/ingest?id=' + encodeURIComponent(o.id)).then((r) => r.json()); } catch { }
+  const wrap = el('div', 'ingest');
+  const have = cur.chars ? ` <b>Ingested: ${cur.chars.toLocaleString()} chars${cur.name ? ' (' + escapeHtml(cur.name) + ')' : ''}</b>` : '';
+  wrap.innerHTML = `<div class="inglbl">${svg('doc')} Ground Claude on the real solicitation</div>
+    <div class="inghint">Paste the RFP / sources-sought / topic text, or drop a .txt file. Stored locally; grounds assist, draft, assessment, and day-read for this pursuit.${have}</div>
+    <textarea class="ingta" placeholder="Paste solicitation text here…"></textarea>
+    <div class="ingbtns"><button class="ingsave">Save &amp; ground</button><button class="ingclear">Clear</button><span class="ingstat"></span></div>`;
+  t.append(wrap); t.scrollTop = 1e9;
+  const ta = wrap.querySelector('.ingta'), stat = wrap.querySelector('.ingstat');
+  wrap.addEventListener('dragover', (e) => { e.preventDefault(); wrap.classList.add('drop'); });
+  wrap.addEventListener('dragleave', () => wrap.classList.remove('drop'));
+  wrap.addEventListener('drop', async (e) => {
+    e.preventDefault(); wrap.classList.remove('drop');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) { try { ta.value = await f.text(); ta.dataset.name = f.name; stat.textContent = 'loaded ' + f.name; } catch { stat.textContent = 'could not read file'; } }
+  });
+  const save = async (text) => {
+    stat.textContent = 'saving…';
+    const r = await fetch('/api/ingest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ opp_id: o.id, text, name: ta.dataset.name || '' }) }).then((x) => x.json()).catch(() => ({}));
+    stat.textContent = r.chars ? `grounded · ${Number(r.chars).toLocaleString()} chars` : 'cleared';
+    snd.apply(); toast(r.chars ? 'RFP ingested — Claude now grounds on it' : 'RFP cleared');
+  };
+  wrap.querySelector('.ingsave').addEventListener('click', () => save(ta.value.trim()));
+  wrap.querySelector('.ingclear').addEventListener('click', () => { ta.value = ''; save(''); });
 }
 
 // draftVolume streams a full submittable volume to files, showing per-section
@@ -1230,16 +1265,20 @@ async function renderToday() {
   tsection(v, 'team', 'link', 'Teaming plays — you provide the software brain', b.teaming || [], 'No teaming plays surfaced yet (autonomous vehicles / payloads where you sub to a prime).');
   tsection(v, 'move', 'arrow', 'Next move on each pursuit', b.moves, 'No live pursuits — add one from Act now.');
 
-  // push hint
+  // push hint + calendar subscribe
   const pr = el('div', 'pushrow');
-  pr.innerHTML = `<span class="hint">Get this pushed to your phone each morning: <code>engine workspace brief --push</code> (set <code>NTFY_TOPIC</code>), scheduled daily via Task Scheduler.</span>`;
+  pr.innerHTML = `<span class="hint">Get this pushed to your phone each morning: <code>engine workspace brief --push</code> (set <code>NTFY_TOPIC</code>), scheduled daily via Task Scheduler. Or run the strategist headless: <code>engine workspace autopilot --push</code>.</span>`;
+  const cal = el('a', 'calsub'); cal.href = '/api/calendar.ics'; cal.setAttribute('download', 'realizer-deadlines.ics');
+  cal.innerHTML = svg('clock') + 'Subscribe to deadlines (.ics)';
+  cal.title = 'Download/subscribe — every pursuit + act-now + strong-fit close date, with a 7-day reminder, in your calendar app';
+  pr.append(cal);
   v.append(pr);
 }
 
 function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 // colored source tag so SBIR vs contract/OTA vs program reads at a glance
-const SRC_LABEL = { dsip: 'SBIR', sam: 'CONTRACT', pipeline: 'PIPELINE', programs: 'PROGRAM' };
+const SRC_LABEL = { dsip: 'SBIR', sam: 'CONTRACT', grants: 'GRANT/BAA', pipeline: 'PIPELINE', programs: 'PROGRAM' };
 function srcChip(src) { return `<span class="src ${src || ''}">${SRC_LABEL[src] || (src || '').toUpperCase()}</span>`; }
 
 // lightweight markdown for streamed Claude replies (headings, bold, italic, code, lists)

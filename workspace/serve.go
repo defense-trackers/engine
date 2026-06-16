@@ -108,6 +108,8 @@ func Run(o Options) error {
 	mux.HandleFunc("/api/awards", s.hAwards)
 	mux.HandleFunc("/api/detail", s.hDetail)
 	mux.HandleFunc("/api/strategize", s.hStrategize)
+	mux.HandleFunc("/api/ingest", s.hIngest)
+	mux.HandleFunc("/api/calendar.ics", s.hCalendar)
 	mux.HandleFunc("/", s.hStatic)
 
 	addr := fmt.Sprintf("127.0.0.1:%d", o.Port)
@@ -170,6 +172,11 @@ func (s *server) ingest() {
 			}
 		}
 		fmt.Println("note: DSIP live fetch unavailable; using cached topics if present")
+	}
+	// Wider radar, part 2: grants.gov DoD research BAAs (ARO/ONR/AFOSR/DARPA/DTRA),
+	// keyless public API, deduped by URL. Best-effort — never blocks startup.
+	if g, err := FetchGrants(s.opts.Dir); err == nil && len(g) > 0 {
+		all = appendDedupURL(all, g)
 	}
 	// Wider radar: workspace-local SAM.gov sweep (USV/autonomous-vehicle/DIU/IARPA),
 	// deduped against what we already have by URL. Cached for offline reuse.
