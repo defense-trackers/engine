@@ -660,9 +660,28 @@ function openAssist(o) {
 }
 
 
+// pkey resolves the pursuit-state key behind an opportunity. A seeded in-flight
+// volume is tracked under a seed: ID, but its live topic (opened from the War Room
+// or a card) has a different ID — so map back to the tracked pursuit by matching a
+// solicitation code in the title. Keeps the cockpit operating on ONE record.
+function pkey(o) {
+  if (!o) return '';
+  if (STATE[o.id]) return o.id;
+  const hay = ((o.id || '') + ' ' + (o.title || '')).toUpperCase();
+  const codes = hay.match(/[A-Z]{2,4}\d{2}[A-Z]{1,3}\d{2}-[A-Z]{1,2}\d{2,4}|\b[A-Z]{2}\d{3}\b/g) || [];
+  if (codes.length) {
+    for (const pid of Object.keys(STATE)) {
+      const pt = (STATE[pid].title || '').toUpperCase();
+      if (codes.some((c) => pt.includes(c))) return pid;
+    }
+  }
+  return o.id;
+}
+
 // the four-walls transition-readiness scorecard + lifetime value, edited inline.
 function scorecard(o) {
-  const p = STATE[o.id] || {};
+  const k = pkey(o);
+  const p = STATE[k] || {};
   const walls = p.walls || {};
   const box = el('div', 'scorecard');
   const r = readiness(walls);
@@ -677,21 +696,21 @@ function scorecard(o) {
     ['', 'gap', 'partial', 'ready'].forEach((s) => sel.appendChild(new Option(s || '—', s)));
     sel.value = walls[wkey] || '';
     sel.addEventListener('change', () => {
-      const nw = { ...(STATE[o.id]?.walls || {}) }; nw[wkey] = sel.value;
-      saveState(o.id, { walls: nw }, { title: o.title, agency: o.agency, url: o.url });
+      const nw = { ...(STATE[k]?.walls || {}) }; nw[wkey] = sel.value;
+      saveState(k, { walls: nw }, { title: o.title, agency: o.agency, url: o.url });
     });
     w.append(sel); box.append(w);
   });
   const val = el('div', 'wall');
   val.append(el('span', 'wname', 'Value $K'));
   const vi = el('input'); vi.type = 'number'; vi.placeholder = 'e.g. 1800'; vi.value = p.value || '';
-  let t; vi.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => saveState(o.id, { value: parseInt(vi.value) || 0 }, { title: o.title, agency: o.agency, url: o.url }), 600); });
+  let t; vi.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => saveState(k, { value: parseInt(vi.value) || 0 }, { title: o.title, agency: o.agency, url: o.url }), 600); });
   val.append(vi); box.append(val);
   if (ASSIST.enabled) {
     const aa = el('button', 'aabtn'); aa.innerHTML = svg('spark') + 'Auto-assess — Claude fills value + the four walls';
     aa.addEventListener('click', async () => {
       aa.textContent = 'assessing… (runs on your subscription)'; aa.disabled = true;
-      const r = await fetch('/api/assess', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: o.id }) }).then((x) => x.json()).catch(() => ({ error: 'failed' }));
+      const r = await fetch('/api/assess', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: k }) }).then((x) => x.json()).catch(() => ({ error: 'failed' }));
       await reloadState();
       openAssist(o);
       if (r && r.error) { const d = el('div', 'msg err'); d.textContent = r.error; $('#thread').append(d); }
@@ -751,7 +770,7 @@ function renderThread() {
 }
 
 async function moveStage(o, stage) {
-  await saveState(o.id, { stage }, { title: o.title, agency: o.agency, url: o.url });
+  await saveState(pkey(o), { stage }, { title: o.title, agency: o.agency, url: o.url });
   const d = el('div', 'msg a'); d.textContent = `Moved to ${stage}.`; $('#thread').append(d);
   $('#thread').scrollTop = $('#thread').scrollHeight;
 }
@@ -814,11 +833,11 @@ function dirLabel(d) {
   return d;
 }
 function applyDirective(o, d) {
-  const p = d.split(':'), ex = { title: o.title, agency: o.agency, url: o.url };
-  if (p[0] === 'stage') { saveState(o.id, { stage: p[1] }, ex); toast('Stage → ' + p[1]); }
-  else if (p[0] === 'wall') { const w = { ...(STATE[o.id]?.walls || {}) }; w[p[1]] = p[2]; saveState(o.id, { walls: w }, ex); toast(p[1] + ' → ' + p[2]); }
-  else if (p[0] === 'value') { saveState(o.id, { value: parseInt(p[1]) || 0 }, ex); toast('Value → $' + p[1] + 'K'); }
-  else if (p[0] === 'decision') { saveState(o.id, { decision: p[1] }, ex); toast('Decision: ' + p[1]); }
+  const p = d.split(':'), ex = { title: o.title, agency: o.agency, url: o.url }, k = pkey(o);
+  if (p[0] === 'stage') { saveState(k, { stage: p[1] }, ex); toast('Stage → ' + p[1]); }
+  else if (p[0] === 'wall') { const w = { ...(STATE[k]?.walls || {}) }; w[p[1]] = p[2]; saveState(k, { walls: w }, ex); toast(p[1] + ' → ' + p[2]); }
+  else if (p[0] === 'value') { saveState(k, { value: parseInt(p[1]) || 0 }, ex); toast('Value → $' + p[1] + 'K'); }
+  else if (p[0] === 'decision') { saveState(k, { decision: p[1] }, ex); toast('Decision: ' + p[1]); }
   else if (p[0] === 'draft') { draftVolume(o); }
 }
 function renderDirectives(o, dirs) {
@@ -1450,15 +1469,50 @@ async function strategize(cta, body) {
   await runStrategize(body.querySelector('.stratrows'), body.querySelector('.stratread'), cta);
 }
 
+// autoAssessAll streams the whole-pipeline assessment (value + four walls per
+// pursuit) so the readiness board fills with real numbers. Shows live progress,
+// reloads state, returns the summary.
+async function autoAssessAll(btn, progressEl) {
+  if (btn) { btn.disabled = true; btn.innerHTML = svg('radar') + 'Assessing the pipeline…'; }
+  let summary = null; const lines = [];
+  const log = (t) => { if (progressEl) { lines.push(t); progressEl.textContent = lines.slice(-12).join('\n'); progressEl.scrollTop = 1e9; } };
+  try {
+    const resp = await fetch('/api/assess-all', { method: 'POST' });
+    const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true }); const parts = buf.split('\n\n'); buf = parts.pop();
+      for (const p of parts) {
+        const line = p.replace(/^data:\s*/, '').trim(); if (!line) continue;
+        let ev; try { ev = JSON.parse(line); } catch { continue; }
+        if (ev.error) { log('error: ' + ev.error); }
+        else if (ev.t) { log(ev.t); waveKick(); }
+        else if (ev.summary) { summary = ev.summary; }
+      }
+    }
+  } catch (e) { log('failed: ' + e.message); }
+  await load(); // refresh STATE so the board reflects the new walls/values
+  if (btn) { btn.disabled = false; btn.innerHTML = svg('spark') + 'Re-assess all'; }
+  if (summary) { snd.apply(); toast(`Assessed ${summary.assessed}/${summary.total}` + (summary.failed ? ` · ${summary.failed} skipped` : '')); }
+  return summary;
+}
+
 // War Room — the portfolio command center as its own view.
 function renderWarRoom() {
   const v = $('#view-warroom'); v.hidden = false; v.textContent = '';
   v.append(el('h2', null, 'War room — where the hours convert'));
   v.append(el('p', 'sub', 'Every active pursuit ranked by expected award value (win-probability × lifetime value), with a submission GO / FIX / NO-GO call. Click any row to open its cockpit. Claude’s cross-pipeline recommendation streams below.'));
-  const bar = el('div', 'dayread');
+  const bar = el('div', 'dayread drrow');
   const btn = el('button', 'drcta strat'); btn.innerHTML = svg('target') + 'Strategize pipeline';
-  bar.append(btn); v.append(bar);
+  const aaprog = el('pre', 'aaprog'); aaprog.hidden = true;
   const panel = el('div', 'drbody'); const rowsEl = el('div', 'stratrows'); const readEl = el('div', 'stratread');
+  if (ASSIST.enabled) {
+    const aa = el('button', 'drcta'); aa.innerHTML = svg('spark') + 'Auto-assess all';
+    aa.title = 'Fill value + the four walls for every pursuit so the board ranks on real numbers';
+    aa.addEventListener('click', async () => { aaprog.hidden = false; aaprog.textContent = 'Starting…'; await autoAssessAll(aa, aaprog); await runStrategize(rowsEl, readEl, btn); });
+    bar.append(btn, aa);
+  } else { bar.append(btn); }
+  v.append(bar, aaprog);
   panel.append(rowsEl, readEl); v.append(panel);
   btn.addEventListener('click', () => runStrategize(rowsEl, readEl, btn));
   if (WARROOM_CACHE) { // restore the last run without re-spending a Claude call
@@ -1540,13 +1594,13 @@ function renderPipeline() {
   if (ASSIST.enabled) {
     const aa = el('button', 'act'); aa.innerHTML = svg('spark') + 'Auto-assess all pursuits';
     aa.title = 'Claude fills $ value + the four transition walls for every pursuit (runs on your subscription)';
+    const prog = el('pre', 'aaprog'); prog.hidden = true;
     aa.addEventListener('click', async () => {
-      aa.textContent = 'assessing all… (~30–60s, on your subscription)'; aa.disabled = true;
-      const r = await fetch('/api/assess-all', { method: 'POST' }).then((x) => x.json()).catch(() => null);
-      await load(); render();
-      if (r) { const n = $('#stat'); if (n) n.textContent = `auto-assessed ${r.assessed}/${r.total}` + (r.failed ? ` (${r.failed} failed)` : ''); }
+      prog.hidden = false; prog.textContent = 'Starting…';
+      await autoAssessAll(aa, prog);
+      render();
     });
-    head.append(aa);
+    head.append(aa, prog);
   }
   v.append(head);
   const board = el('div', 'kanban');

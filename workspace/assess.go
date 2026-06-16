@@ -27,6 +27,11 @@ type Assessment struct {
 	Rationale    string `json:"rationale"`
 }
 
+// walls maps an assessment's four-wall calls into a Walls scorecard.
+func (a *Assessment) walls() Walls {
+	return Walls{Money: a.Money, Requirements: a.Requirements, Contracts: a.Contracts, Incentives: a.Incentives}
+}
+
 // claudeOnce runs a single non-streaming completion through the active backend.
 func claudeOnce(system, prompt string) (string, error) {
 	switch assistBackend() {
@@ -213,7 +218,18 @@ func (s *server) hAssess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.mu.Lock()
-	subj := s.subjectFor(in.ID)
+	// Resolve to the live topic for rich grounding (a seeded volume's tracked ID
+	// isn't a live opp), but write the result back to the tracked pursuit ID.
+	opps := make([]Opportunity, len(s.opps))
+	copy(opps, s.opps)
+	byID := map[string]*Opportunity{}
+	for i := range opps {
+		byID[opps[i].ID] = &opps[i]
+	}
+	subj, _ := resolveOpp(in.ID, s.state[in.ID], byID, opps)
+	if subj == nil {
+		subj = s.subjectFor(in.ID)
+	}
 	s.mu.Unlock()
 	if subj == nil {
 		http.Error(w, "not found", 404)
@@ -233,34 +249,62 @@ func (s *server) hAssess(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"ok": true, "pursuit": out, "rationale": a.Rationale})
 }
 
-// hAssessAll runs the starting assessment over every current pursuit (the
-// auto-populate pass). Sequential to be gentle on the backend.
+// hAssessAll assesses every pursuit in one pass and STREAMS progress (one event
+// per pursuit) so the whole readiness board fills with real value + four-walls
+// instead of zeros. Seeds resolve to their live topic (richer grounding) via the
+// same auto-matcher the War Room uses; sequential to be gentle on the backend.
 func (s *server) hAssessAll(w http.ResponseWriter, _ *http.Request) {
+	emit, _ := sseStart(w)
+	if assistBackend() == "" {
+		emit(map[string]string{"error": "Claude isn't connected."})
+		return
+	}
 	s.mu.Lock()
-	ids := make([]string, 0, len(s.state))
-	for id := range s.state {
-		ids = append(ids, id)
+	opps := make([]Opportunity, len(s.opps))
+	copy(opps, s.opps)
+	byID := map[string]*Opportunity{}
+	for i := range opps {
+		byID[opps[i].ID] = &opps[i]
+	}
+	type job struct {
+		id string
+		p  Pursuit
+	}
+	jobs := make([]job, 0, len(s.state))
+	for id, p := range s.state {
+		jobs = append(jobs, job{id, p})
 	}
 	s.mu.Unlock()
+
 	done, failed := 0, 0
-	for _, id := range ids {
-		s.mu.Lock()
-		subj := s.subjectFor(id)
-		s.mu.Unlock()
+	for i, jb := range jobs {
+		subj, _ := resolveOpp(jb.id, jb.p, byID, opps)
 		if subj == nil {
-			continue
+			subj = &Opportunity{ID: jb.id, Title: jb.p.Title, Agency: jb.p.Agency, URL: jb.p.URL, AwardText: jb.p.Notes}
 		}
+		title := subj.Title
+		if title == "" {
+			title = jb.id
+		}
+		emit(map[string]string{"t": fmt.Sprintf("[%d/%d] %s …", i+1, len(jobs), short(title, 54))})
 		detail := s.detailFor(subj)
 		a, err := s.assess(subj, detail)
 		if err != nil {
 			failed++
+			emit(map[string]string{"t": "   ! skipped (" + err.Error() + ")"})
 			continue
 		}
 		s.mu.Lock()
-		s.state[id] = applyAssessment(s.state[id], a, subj)
+		s.state[jb.id] = applyAssessment(s.state[jb.id], a, subj)
 		s.saveState()
 		s.mu.Unlock()
 		done++
+		rd, weak := a.walls().Readiness()
+		emit(map[string]any{"assessed": map[string]any{
+			"id": jb.id, "value_k": a.ValueK, "readiness": rd, "weakest": weak, "stage": a.Stage,
+		}})
+		emit(map[string]string{"t": fmt.Sprintf("   ✓ $%dK lifetime · readiness %d/100 · weakest %s", a.ValueK, rd, weak)})
 	}
-	writeJSON(w, map[string]int{"assessed": done, "failed": failed, "total": len(ids)})
+	emit(map[string]any{"summary": map[string]int{"assessed": done, "failed": failed, "total": len(jobs)}})
+	emit(map[string]string{"done": "1"})
 }
