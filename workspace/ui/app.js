@@ -37,6 +37,11 @@ const snd = {
   enter: () => { blip(330, .12, 'sine', .06, 660); setTimeout(() => blip(660, .2, 'sine', .05, 990), 120); },
   lock: () => blip(1300, .012, 'sine', .01),
   send: () => { blip(440, .06, 'triangle', .05, 880); setTimeout(() => blip(880, .1, 'sine', .04, 1320), 55); },
+  recv: () => { blip(990, .07, 'sine', .035, 660); setTimeout(() => blip(1320, .12, 'sine', .03, 880), 60); },
+  apply: () => { blip(660, .05, 'triangle', .05, 990); setTimeout(() => blip(1320, .14, 'sine', .045, 1760), 50); },
+  err: () => { blip(220, .14, 'sawtooth', .045, 140); setTimeout(() => blip(160, .18, 'sawtooth', .04, 100), 90); },
+  mic: () => { blip(740, .05, 'sine', .04, 1180); },
+  micoff: () => { blip(1180, .06, 'sine', .03, 560); },
 };
 
 // --- idle attract mode ---
@@ -51,6 +56,162 @@ function corePulse() {
   const now = performance.now(); if (now - _coreT < 55) return; _coreT = now;
   c.style.boxShadow = '0 0 54px 6px rgba(143,179,196,.95)'; c.style.filter = 'brightness(1.45)';
   clearTimeout(c._decay); c._decay = setTimeout(() => { c.style.boxShadow = ''; c.style.filter = ''; }, 130);
+}
+
+// ============================================================
+// VOICE — on-device, private (Phase 1)
+//   STT: native SpeechRecognition (Chrome on-device when available); the
+//        transcript routes through the existing sendAssist() — same grounding,
+//        same [[do:]] tool-use + confirm chips. Audio never leaves the machine.
+//   TTS: SpeechSynthesis reads streamed replies sentence-by-sentence,
+//        interruptible on the next send / mic / Esc.
+// ============================================================
+const VOICE = {
+  rec: null, listening: false, supported: false, base: '', autosend: false,
+  speak: localStorage.getItem('rz-speak') === '1',
+  voice: null, ttsSpoken: 0,
+};
+
+function voiceInit() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  VOICE.supported = !!SR;
+  if (SR) {
+    const r = new SR();
+    r.lang = 'en-US'; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
+    try { r.processLocally = true; } catch { }
+    r.onresult = (e) => {
+      let interim = '', fin = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) fin += t; else interim += t;
+      }
+      const inp = $('#assist-input');
+      if (inp) inp.value = (VOICE.base + ' ' + (fin || interim)).replace(/\s+/g, ' ').trim();
+      if (fin) VOICE.base = (VOICE.base + ' ' + fin).replace(/\s+/g, ' ').trim();
+    };
+    r.onend = () => {
+      const wasAuto = VOICE.autosend; VOICE.autosend = false; micStop(false);
+      const inp = $('#assist-input');
+      if (wasAuto && inp && inp.value.trim()) sendAssist();
+    };
+    r.onerror = (e) => { micStop(false); if (e.error !== 'no-speech' && e.error !== 'aborted') { toast('voice: ' + e.error); snd.err(); } };
+    VOICE.rec = r;
+  }
+  const pick = () => {
+    if (!('speechSynthesis' in window)) return;
+    const vs = speechSynthesis.getVoices();
+    VOICE.voice = vs.find((v) => /en-US/i.test(v.lang) && /Google|Natural|Neural|Samantha|Aria|Jenny|Zira/i.test(v.name))
+      || vs.find((v) => /en[-_]/i.test(v.lang)) || vs[0] || null;
+  };
+  if ('speechSynthesis' in window) { pick(); speechSynthesis.onvoiceschanged = pick; }
+}
+
+function micStart() {
+  if (!VOICE.rec || VOICE.listening) return;
+  ttsCancel();
+  VOICE.base = ($('#assist-input')?.value || '').trim();
+  try { VOICE.rec.start(); } catch { return; }
+  VOICE.listening = true; actx(); snd.mic();
+  document.getElementById('mic-btn')?.classList.add('on');
+  document.getElementById('assist')?.classList.add('listening');
+  micMeterStart();
+}
+function micStop(userToggled) {
+  if (VOICE.listening) { try { VOICE.rec.stop(); } catch { } }
+  VOICE.listening = false;
+  document.getElementById('mic-btn')?.classList.remove('on');
+  document.getElementById('assist')?.classList.remove('listening');
+  micMeterStop();
+  if (userToggled) snd.micoff();
+}
+function micToggle(autosend) {
+  if (!VOICE.supported) { toast('Voice input needs Chrome (on-device speech)'); return; }
+  if (VOICE.listening) micStop(true);
+  else { VOICE.autosend = !!autosend; micStart(); }
+}
+
+// ---- TTS feeder: speak complete sentences as they stream in ----
+function ttsStrip(s) {
+  return s.replace(/\[\[do:[^\]]+\]\]/g, '').replace(/```[\s\S]*?```/g, ' code block ')
+    .replace(/[`*#_>|~]/g, '').replace(/\s+/g, ' ').trim();
+}
+function ttsCancel() {
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  VOICE.ttsSpoken = 0;
+  document.getElementById('assist')?.classList.remove('speaking');
+}
+function ttsSay(text) {
+  if (!VOICE.speak || !('speechSynthesis' in window)) return;
+  const clean = ttsStrip(text); if (!clean) return;
+  const u = new SpeechSynthesisUtterance(clean);
+  if (VOICE.voice) u.voice = VOICE.voice;
+  u.rate = 1.05; u.pitch = 1; u.lang = 'en-US';
+  u.onstart = () => document.getElementById('assist')?.classList.add('speaking');
+  u.onend = () => { if (!speechSynthesis.pending && !speechSynthesis.speaking) document.getElementById('assist')?.classList.remove('speaking'); };
+  speechSynthesis.speak(u);
+}
+function ttsFeed(acc) {
+  if (!VOICE.speak) return;
+  const pending = acc.slice(VOICE.ttsSpoken);
+  let idx = -1; const re = /[.!?](\s|$)/g; let m;
+  while ((m = re.exec(pending))) idx = m.index + 1;
+  if (idx > 0) { ttsSay(pending.slice(0, idx)); VOICE.ttsSpoken += idx; }
+}
+function ttsFlush(acc) {
+  if (!VOICE.speak) return;
+  const rest = acc.slice(VOICE.ttsSpoken);
+  if (rest.trim()) { ttsSay(rest); VOICE.ttsSpoken = acc.length; }
+}
+
+// ---- waveform: idle breathing / listening (live mic) / streaming (token kicks) ----
+const WAVE = { cv: null, ctx: null, raf: 0, bars: 44, kick: 0, an: null, data: null, stream: null, mode: 'idle' };
+function waveInit() {
+  const cv = document.getElementById('wave'); if (!cv) return;
+  WAVE.cv = cv; WAVE.ctx = cv.getContext('2d');
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const resize = () => { const r = cv.getBoundingClientRect(); cv.width = Math.max(1, r.width * dpr); cv.height = Math.max(1, r.height * dpr); WAVE.ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
+  resize(); try { new ResizeObserver(resize).observe(cv); } catch { }
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) waveLoop();
+}
+function waveKick() { WAVE.kick = Math.min(1, WAVE.kick + .5); }
+let _wt = 0;
+function waveLoop() {
+  WAVE.raf = requestAnimationFrame(waveLoop);
+  const ctx = WAVE.ctx, cv = WAVE.cv; if (!ctx) return;
+  const w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
+  ctx.clearRect(0, 0, w, h); _wt += .05; WAVE.kick *= .92;
+  if (WAVE.an && WAVE.mode === 'listening') WAVE.an.getByteFrequencyData(WAVE.data);
+  const n = WAVE.bars, mid = h / 2, bw = w / n, cap = h * .46;
+  for (let i = 0; i < n; i++) {
+    const x = i * bw + bw / 2; let amp;
+    if (WAVE.mode === 'listening') {
+      const f = WAVE.an ? (WAVE.data[Math.floor(i / n * WAVE.data.length)] / 255) : (.35 + .55 * Math.abs(Math.sin(_wt * 3 + i * .5)));
+      amp = (.12 + f * .88) * cap;
+    } else if (WAVE.mode === 'streaming') {
+      amp = (.1 + (.22 + WAVE.kick * .72) * Math.abs(Math.sin(_wt * 4 + i * .55))) * cap;
+    } else {
+      amp = (.06 + .06 * Math.abs(Math.sin(_wt * .8 + i * .28))) * cap;
+    }
+    const g = ctx.createLinearGradient(0, mid - amp, 0, mid + amp);
+    g.addColorStop(0, 'rgba(143,179,196,.9)'); g.addColorStop(.5, 'rgba(110,150,168,.45)'); g.addColorStop(1, 'rgba(143,179,196,.9)');
+    ctx.fillStyle = g; ctx.fillRect(x - bw * .26, mid - amp, bw * .52, amp * 2);
+  }
+}
+async function micMeterStart() {
+  WAVE.mode = 'listening';
+  try {
+    const ac = actx(); if (!ac) return;
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    WAVE.stream = stream;
+    const src = ac.createMediaStreamSource(stream);
+    const an = ac.createAnalyser(); an.fftSize = 128; an.smoothingTimeConstant = .7; src.connect(an);
+    WAVE.an = an; WAVE.data = new Uint8Array(an.frequencyBinCount);
+  } catch { WAVE.an = null; } // synthetic fallback — still animates
+}
+function micMeterStop() {
+  if (WAVE.mode === 'listening') WAVE.mode = 'idle';
+  if (WAVE.stream) { try { WAVE.stream.getTracks().forEach((t) => t.stop()); } catch { } WAVE.stream = null; }
+  WAVE.an = null; WAVE.data = null;
 }
 
 // chromatic-aberration glitch burst (on enter + view change)
@@ -332,12 +493,21 @@ async function boot() {
   initMagnetic();
   initCardFX();
   addEventListener('resize', moveIndicator);
-  // sound toggle (delegated, since the status bar re-renders)
+  voiceInit();
+  waveInit();
+  // status-bar toggles (delegated, since the status bar re-renders)
   $('#statusbar').addEventListener('click', (e) => {
-    if (!(e.target.closest && e.target.closest('#sndtoggle'))) return;
-    SOUND_ON = !SOUND_ON; localStorage.setItem('snd', SOUND_ON ? '1' : '0');
-    const b = document.querySelector('#sndtoggle b'); if (b) b.textContent = SOUND_ON ? 'ON' : 'OFF';
-    if (SOUND_ON) { actx(); snd.tick(); }
+    if (e.target.closest && e.target.closest('#sndtoggle')) {
+      SOUND_ON = !SOUND_ON; localStorage.setItem('snd', SOUND_ON ? '1' : '0');
+      const b = document.querySelector('#sndtoggle b'); if (b) b.textContent = SOUND_ON ? 'ON' : 'OFF';
+      if (SOUND_ON) { actx(); snd.tick(); }
+      return;
+    }
+    if (e.target.closest && e.target.closest('#spktoggle')) {
+      VOICE.speak = !VOICE.speak; localStorage.setItem('rz-speak', VOICE.speak ? '1' : '0');
+      const b = document.querySelector('#spktoggle b'); if (b) b.textContent = VOICE.speak ? 'ON' : 'OFF';
+      if (!VOICE.speak) ttsCancel(); else { actx(); snd.recv(); }
+    }
   });
   // idle attract mode
   ['pointermove', 'pointerdown', 'keydown', 'wheel'].forEach((ev) => addEventListener(ev, resetIdle, { passive: true }));
@@ -362,6 +532,17 @@ async function boot() {
   $('#overlay').addEventListener('click', closeAssist);
   $('#assist-send').addEventListener('click', () => sendAssist());
   $('#assist-input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAssist(); } });
+  const mic = $('#mic-btn');
+  if (mic) {
+    if (!VOICE.supported) mic.classList.add('off');
+    mic.addEventListener('click', (e) => micToggle(e.shiftKey)); // shift-click = speak & auto-send
+    mic.title = 'Speak (on-device) · shift-click = auto-send';
+  }
+  addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { if (VOICE.listening) micStop(true); ttsCancel(); }
+    // Ctrl+M (or ⌘M): toggle mic from anywhere the assist is open
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'm' || e.key === 'M') && ASSIST.enabled && CUR_OPP) { e.preventDefault(); micToggle(false); }
+  });
   render();
   requestAnimationFrame(moveIndicator);
   setTimeout(moveIndicator, 500); // after web fonts settle
@@ -491,7 +672,7 @@ function readiness(w) {
   WALLS.forEach((k) => { const s = v(w[k]); sum += s; if (s < low) { low = s; weak = WALL_LABEL[k]; } });
   return { score: Math.round(sum / 4), weakest: weak };
 }
-function closeAssist() { $('#assist').classList.remove('open'); $('#overlay').style.display = 'none'; CUR_OPP = null; }
+function closeAssist() { if (VOICE.listening) micStop(false); ttsCancel(); WAVE.mode = 'idle'; $('#assist').classList.remove('open'); $('#overlay').style.display = 'none'; CUR_OPP = null; }
 
 function renderThread() {
   const t = $('#thread'); t.textContent = '';
@@ -529,6 +710,7 @@ async function sendAssist(action) {
 
   const ans = el('div', 'msg a streaming'); ans.textContent = '◢ incoming transmission — decrypting…'; $('#thread').append(ans); $('#thread').scrollTop = 1e9;
   snd.send(); $('#assist').classList.add('thinking');
+  ttsCancel(); WAVE.mode = 'streaming';
   let acc = '';
   try {
     const resp = await fetch('/api/assist', {
@@ -548,13 +730,14 @@ async function sendAssist(action) {
         const line = p.replace(/^data:\s*/, '').trim();
         if (!line) continue;
         let ev; try { ev = JSON.parse(line); } catch { continue; }
-        if (ev.error) { ans.className = 'msg err'; ans.textContent = ev.error; }
-        else if (ev.t) { acc += ev.t; ans.innerHTML = mdChat(acc); ans.classList.add('streaming'); corePulse(); $('#thread').scrollTop = 1e9; }
+        if (ev.error) { ans.className = 'msg err'; ans.textContent = ev.error; snd.err(); }
+        else if (ev.t) { acc += ev.t; ans.innerHTML = mdChat(acc); ans.classList.add('streaming'); corePulse(); waveKick(); ttsFeed(acc); $('#thread').scrollTop = 1e9; }
       }
     }
-  } catch (e) { ans.className = 'msg err'; ans.textContent = 'stream failed: ' + e.message; }
+  } catch (e) { ans.className = 'msg err'; ans.textContent = 'stream failed: ' + e.message; snd.err(); }
   ans.classList.remove('streaming'); $('#assist').classList.remove('thinking');
-  if (acc) { const h = convo(id); h.push({ role: 'assistant', content: acc }); saveConvo(id, h); }
+  WAVE.mode = 'idle';
+  if (acc) { snd.recv(); ttsFlush(acc); const h = convo(id); h.push({ role: 'assistant', content: acc }); saveConvo(id, h); }
   const dirs = [...acc.matchAll(/\[\[do:([^\]]+)\]\]/g)].map((m) => m[1]);
   if (dirs.length && CUR_OPP) renderDirectives(CUR_OPP, dirs);
 }
@@ -582,7 +765,7 @@ function renderDirectives(o, dirs) {
   const lbl = el('div', 'dirlbl'); lbl.textContent = 'Claude proposes:'; wrap.append(lbl);
   dirs.forEach((d) => {
     const chip = el('button', 'dirchip'); chip.innerHTML = svg('spark') + dirLabel(d);
-    chip.addEventListener('click', () => { applyDirective(o, d); chip.disabled = true; chip.classList.add('done'); chip.innerHTML = svg('shield') + 'Applied'; });
+    chip.addEventListener('click', () => { applyDirective(o, d); snd.apply(); chip.disabled = true; chip.classList.add('done'); chip.innerHTML = svg('shield') + 'Applied'; });
     wrap.append(chip);
   });
   t.append(wrap); t.scrollTop = 1e9;
@@ -699,10 +882,11 @@ async function load() {
       `<span class="ss">PURSUITS <b>${Object.keys(STATE).length}</b></span>` +
       `<span class="grow"></span>` +
       `<span class="ss snd" id="sndtoggle" title="toggle UI sound">SND <b>${SOUND_ON ? 'ON' : 'OFF'}</b></span>` +
+      `<span class="ss snd" id="spktoggle" title="Claude speaks replies aloud (on-device)">SPEAK <b>${VOICE.speak ? 'ON' : 'OFF'}</b></span>` +
       `<span class="ss" id="clock"></span>` +
       `<span class="ss">CLAUDE <b>${be}</b></span>`;
     tickClock();
-    sb.querySelectorAll('span:not(#clock):not(#sndtoggle) b').forEach((b) => scrambleText(b, b.textContent, 520));
+    sb.querySelectorAll('span:not(#clock):not(#sndtoggle):not(#spktoggle) b').forEach((b) => scrambleText(b, b.textContent, 520));
   }
 }
 
