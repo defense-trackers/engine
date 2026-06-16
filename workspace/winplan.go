@@ -163,6 +163,64 @@ func (s *server) hVerifyCompliance(w http.ResponseWriter, r *http.Request) {
 	s.runAndSave(emit, sys, p.String(), opp.ID, "compliance-report.md", "# Compliance gate — "+opp.Title)
 }
 
+// hRemediate closes the loop: it regenerates ready-to-paste content for every
+// binding requirement the draft doesn't fully cover, so the volume becomes
+// submittable instead of merely diagnosed.
+func (s *server) hRemediate(w http.ResponseWriter, r *http.Request) {
+	emit, ok := sseStart(w)
+	if !ok {
+		return
+	}
+	var in struct {
+		OppID string `json:"opp_id"`
+	}
+	if json.NewDecoder(r.Body).Decode(&in) != nil || in.OppID == "" {
+		emit(map[string]string{"error": "bad request"})
+		return
+	}
+	if assistBackend() == "" {
+		emit(map[string]string{"error": "Claude isn't connected."})
+		return
+	}
+	s.mu.Lock()
+	opp := s.subjectFor(in.OppID)
+	pursuit := s.state[in.OppID]
+	sponsors := s.sponsors.Match(opp, 6)
+	s.mu.Unlock()
+	if opp == nil {
+		emit(map[string]string{"error": "opportunity not found — refresh"})
+		return
+	}
+	detail := s.detailFor(opp)
+	reqs := complianceRequirements(detail)
+	if len(reqs) == 0 {
+		emit(map[string]string{"error": "No binding requirements to remediate against. Ingest the real solicitation text first."})
+		return
+	}
+	volume, err := os.ReadFile(filepath.Join(s.opts.Dir, "drafts", slugify(opp.ID), "volume.md"))
+	if err != nil {
+		emit(map[string]string{"error": "No draft to remediate. Run a draft first, then close the gaps."})
+		return
+	}
+	var rb strings.Builder
+	for i, rq := range reqs {
+		rb.WriteString(fmt.Sprintf("REQ-%02d: %s\n", i+1, rq))
+	}
+	// Full grounding (dossier, company kit, doctrine) so the new content is real, not filler.
+	sys := s.assistSystem(opp, detail, pursuit, sponsors)
+	sys += "\n\nYOU ARE NOW CLOSING COMPLIANCE GAPS. For each binding requirement the draft does NOT fully and specifically cover, write the exact, ready-to-paste content that makes it compliant — grounded in Jesse's real assets, no placeholders, no filler. Requirements the draft already covers well: skip them. This text will be pasted straight into the volume."
+	var p strings.Builder
+	p.WriteString("BINDING REQUIREMENTS:\n")
+	p.WriteString(rb.String())
+	p.WriteString("\nCURRENT DRAFT VOLUME:\n")
+	p.WriteString(string(volume))
+	p.WriteString("\n\nFor each requirement that is MISSING or only PARTIAL in the draft, output a block:\n")
+	p.WriteString("### REQ-NN — <short label> · add to: <section name>\n<the exact paragraph(s) to insert — concrete, grounded, submission-grade>\n\n")
+	p.WriteString("Cover every gap so all " + fmt.Sprint(len(reqs)) + " requirements would pass a strict compliance screen. If a fact must come from Jesse, write the sentence and mark only the specific unknown in [brackets]. Skip requirements already well covered (say so in one line at the top).")
+
+	s.runAndSave(emit, sys, p.String(), opp.ID, "compliance-fixes.md", "# Compliance fixes (drop-in) — "+opp.Title)
+}
+
 // sseStart writes SSE headers and returns an emit func + ok flag.
 func sseStart(w http.ResponseWriter) (func(any), bool) {
 	w.Header().Set("Content-Type", "text/event-stream")

@@ -42,6 +42,30 @@ func TestWinProbabilityFitDominates(t *testing.T) {
 	}
 }
 
+func TestSubmissionState(t *testing.T) {
+	strong := &Opportunity{Capability: 38, Eligibility: 18, Runway: 18, DaysLeft: 20}
+	// draft in hand, viable win-prob, runway OK → GO
+	if st, _ := submissionState(strong, Pursuit{Stage: "drafting"}, 60, true); st != "GO" {
+		t.Errorf("strong+draft: want GO, got %s", st)
+	}
+	// no draft → FIX
+	if st, _ := submissionState(strong, Pursuit{Stage: "drafting"}, 60, false); st != "FIX" {
+		t.Errorf("no draft: want FIX, got %s", st)
+	}
+	// closes today → NO-GO
+	if st, _ := submissionState(&Opportunity{Capability: 38, Eligibility: 18, Runway: 2, DaysLeft: 0}, Pursuit{Stage: "drafting"}, 60, true); st != "NO-GO" {
+		t.Errorf("closes today: want NO-GO, got %s", st)
+	}
+	// already won → not actionable
+	if st, _ := submissionState(strong, Pursuit{Stage: "won"}, 100, true); st != "—" {
+		t.Errorf("won: want —, got %s", st)
+	}
+	// excluded → NO-GO
+	if st, _ := submissionState(&Opportunity{HardwareExcluded: true}, Pursuit{Stage: "watching"}, 5, false); st != "NO-GO" {
+		t.Errorf("excluded: want NO-GO")
+	}
+}
+
 func TestWinProbabilityTeamingHaircut(t *testing.T) {
 	base := &Opportunity{Capability: 30, Eligibility: 16, Runway: 16}
 	team := &Opportunity{Capability: 30, Eligibility: 16, Runway: 16, TeamingOnly: true}

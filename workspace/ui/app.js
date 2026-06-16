@@ -636,6 +636,10 @@ function openAssist(o) {
     vcBtn.title = 'Closed-loop gate: maps every shall/must to the drafted section that answers it, flags the gaps that get a proposal eliminated';
     vcBtn.addEventListener('click', () => verifyCompliance(o));
     winRow.append(vcBtn);
+    const rmBtn = el('button', null); rmBtn.innerHTML = svg('spark') + 'Close the gaps';
+    rmBtn.title = 'Regenerate ready-to-paste content for every uncovered requirement so the volume becomes submittable';
+    rmBtn.addEventListener('click', () => remediate(o));
+    winRow.append(rmBtn);
     qa.append(rowLabel('Win & submit'), winRow);
     const mv = el('div', 'qarow');
     ['drafting', 'submitted', 'won', 'pilot', 'transition', 'pom', 'program'].forEach((st) => {
@@ -969,6 +973,9 @@ function winPlan(o) { streamInto('/api/winplan', o, 'Win plan (capture → award
 
 // Closed-loop compliance gate: maps every shall/must to the drafted section.
 function verifyCompliance(o) { streamInto('/api/verify-compliance', o, 'Compliance gate (draft vs. solicitation)', 'Checking the draft against every binding requirement…', 'Compliance report ready →'); }
+
+// Close the gaps: regenerate ready-to-paste content for every uncovered requirement.
+function remediate(o) { streamInto('/api/remediate', o, 'Close the gaps (make it submittable)', 'Writing drop-in content for every uncovered requirement…', 'Compliance fixes ready →'); }
 
 // Full topic readout (objective/description/Phase I/keywords/ITAR), cached.
 async function topicDetail(o) {
@@ -1437,8 +1444,9 @@ function stratTable(rows) {
     const dl = r.days_left >= 0 ? (r.days_left === 0 ? 'today' : r.days_left + 'd') : '—';
     const ev = r.ev > 0 ? '$' + r.ev + 'K' : '—';
     const asset = r.asset ? `<span class="stasset">${escapeHtml(r.asset)}</span>` : '';
+    const rdy = r.ready && r.ready !== '—' ? `<span class="rdy ${r.ready === 'GO' ? 'go' : r.ready === 'FIX' ? 'fix' : 'nogo'}" title="${escapeHtml(r.ready_why || '')}">${r.ready}</span> ` : '';
     return `<div class="strow">
-      <span class="sttitle"><b>${escapeHtml(r.title)}</b><small>${escapeHtml(r.stage)} · weakest: ${escapeHtml(r.weakest || '—')} ${asset}</small></span>
+      <span class="sttitle"><b>${rdy}${escapeHtml(r.title)}</b><small>${escapeHtml(r.stage)} · weakest: ${escapeHtml(r.weakest || '—')} ${asset}</small></span>
       <span class="stwin ${tone}"><i style="width:${wp}%"></i><em>${wp}%</em></span>
       <span class="stev">${ev}</span>
       <span class="stdl ${r.days_left >= 0 && r.days_left <= 7 ? 'urgent' : ''}">${dl}</span>

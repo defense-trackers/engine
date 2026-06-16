@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -103,7 +104,58 @@ type stratRow struct {
 	DaysLeft int     `json:"days_left"` // -1 = n/a
 	Closes   string  `json:"closes,omitempty"`
 	Asset    string  `json:"asset,omitempty"`
+	Ready    string  `json:"ready"`     // GO | FIX | NO-GO | — (submission readiness)
+	ReadyWhy string  `json:"ready_why,omitempty"`
 	Reasons  []string `json:"reasons,omitempty"`
+}
+
+// hasDraft reports whether a submittable volume has been generated for a pursuit.
+func (s *server) hasDraft(oppID string) bool {
+	_, err := os.Stat(filepath.Join(s.opts.Dir, "drafts", slugify(oppID), "volume.md"))
+	return err == nil
+}
+
+// submissionState is a deterministic GO / FIX / NO-GO call on whether a pursuit is
+// ready to submit and worth submitting — the executive "where do my hours convert"
+// signal. It combines fit/win-probability, whether a draft exists, and the clock.
+func submissionState(o *Opportunity, p Pursuit, winProb int, hasDraft bool) (string, string) {
+	switch p.Stage {
+	case "won", "pilot", "transition", "pom", "program":
+		return "—", "already won"
+	case "lost", "pass":
+		return "—", "closed (" + p.Stage + ")"
+	}
+	if o == nil {
+		// A tracked volume with no live scored opp behind it (e.g. a seeded
+		// in-flight draft). Can't score the bid — the next move is to confirm the
+		// topic is open and link it, not to write it off.
+		if hasDraft {
+			return "FIX", "draft exists but no live topic matched — verify it's open, then compliance-check"
+		}
+		return "FIX", "no live topic matched — verify the solicitation is open"
+	}
+	if o.HardwareExcluded {
+		return "NO-GO", "out of scope (exotic fabrication)"
+	}
+	if o.DaysLeft == 0 {
+		return "NO-GO", "closes today — no runway to finish a strong volume"
+	}
+	if winProb < 12 {
+		return "NO-GO", "win-probability too low to spend the hours"
+	}
+	tight := o != nil && o.DaysLeft >= 0 && o.DaysLeft <= 3
+	if hasDraft && winProb >= 25 && !tight {
+		return "GO", "draft in hand, win-prob viable, runway OK — verify compliance and submit"
+	}
+	// Actionable but not ready: say the single biggest blocker.
+	switch {
+	case !hasDraft:
+		return "FIX", "no draft yet — run a full workup"
+	case tight:
+		return "FIX", fmt.Sprintf("only %dd left — finish + compliance-check now", o.DaysLeft)
+	default:
+		return "FIX", "raise win-probability / readiness before committing"
+	}
 }
 
 // strategizeRows scores every pursuit and ranks them by expected award value
@@ -147,10 +199,12 @@ func (s *server) strategizeRows() []stratRow {
 		_, weakest := p.Walls.Readiness()
 		ev := int(float64(p.Value) * stageProb[stage])
 		priority := p.Value * wp / 100
+		ready, readyWhy := submissionState(o, p, wp, s.hasDraft(id))
 		rows = append(rows, stratRow{
 			ID: id, Title: title, Agency: agency, Stage: stage, Fit: fit,
 			Value: p.Value, EV: ev, WinProb: wp, Priority: priority,
-			Weakest: weakest, DaysLeft: days, Closes: closes, Asset: asset, Reasons: reasons,
+			Weakest: weakest, DaysLeft: days, Closes: closes, Asset: asset,
+			Ready: ready, ReadyWhy: readyWhy, Reasons: reasons,
 		})
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
@@ -198,7 +252,7 @@ func (s *server) hStrategize(w http.ResponseWriter, _ *http.Request) {
 	if ck := LoadCompanyKit(s.opts.Dir); ck != nil {
 		sys.WriteString("\n" + ck.kitContext())
 	}
-	sys.WriteString("\n\nThe table is pre-scored. win_prob = probability of WINNING THE AWARD (deterministic heuristic from capability fit + eligibility + runway + stage + Jesse's edges). EV = lifetime value × cumulative probability of reaching a program of record. priority = expected award value (win_prob × value). Trust these numbers; don't recompute them.\n")
+	sys.WriteString("\n\nThe table is pre-scored. The [GO]/[FIX]/[NO-GO] tag is submission readiness: GO = a draft is in hand and it's worth submitting; FIX = actionable but blocked (usually no draft yet or clock too tight); NO-GO = don't spend the hours. win_prob = probability of WINNING THE AWARD (deterministic heuristic from capability fit + eligibility + runway + stage + Jesse's edges). EV = lifetime value × cumulative probability of reaching a program of record. priority = expected award value (win_prob × value). Trust these numbers; don't recompute them. Weight your recommendation toward GO/FIX pursuits with high priority and a near deadline.\n")
 
 	var p strings.Builder
 	p.WriteString("MY PIPELINE (ranked by expected award value):\n\n")
@@ -211,8 +265,8 @@ func (s *server) hStrategize(w http.ResponseWriter, _ *http.Request) {
 		if r.Value > 0 {
 			val = fmt.Sprintf("$%dK lifetime", r.Value)
 		}
-		p.WriteString(fmt.Sprintf("%d. %s [%s] — win %d%%, fit %d/100, %s, EV $%dK, weakest wall: %s%s",
-			i+1, r.Title, r.Stage, r.WinProb, r.Fit, val, r.EV, r.Weakest, dl))
+		p.WriteString(fmt.Sprintf("%d. [%s] %s [%s] — win %d%%, fit %d/100, %s, EV $%dK, weakest wall: %s%s",
+			i+1, r.Ready, r.Title, r.Stage, r.WinProb, r.Fit, val, r.EV, r.Weakest, dl))
 		if r.Asset != "" {
 			p.WriteString(", asset: " + r.Asset)
 		}
@@ -270,8 +324,8 @@ func autopilotText(rows []stratRow, br *Brief) string {
 		if r.DaysLeft >= 0 {
 			dl = fmt.Sprintf(", %dd left", r.DaysLeft)
 		}
-		b.WriteString(fmt.Sprintf("  %d. %s [%s] — win %d%%, EV $%dK, weakest: %s%s\n",
-			i+1, short(r.Title, 56), r.Stage, r.WinProb, r.EV, r.Weakest, dl))
+		b.WriteString(fmt.Sprintf("  %d. [%s] %s [%s] — win %d%%, EV $%dK, weakest: %s%s\n",
+			i+1, r.Ready, short(r.Title, 52), r.Stage, r.WinProb, r.EV, r.Weakest, dl))
 	}
 	if len(br.Deadlines) > 0 {
 		b.WriteString("\nDEADLINES:\n")

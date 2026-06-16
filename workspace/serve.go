@@ -114,6 +114,7 @@ func Run(o Options) error {
 	mux.HandleFunc("/api/compliance", s.hCompliance)
 	mux.HandleFunc("/api/winplan", s.hWinPlan)
 	mux.HandleFunc("/api/verify-compliance", s.hVerifyCompliance)
+	mux.HandleFunc("/api/remediate", s.hRemediate)
 	mux.HandleFunc("/", s.hStatic)
 
 	addr := fmt.Sprintf("127.0.0.1:%d", o.Port)
