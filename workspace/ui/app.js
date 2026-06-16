@@ -1047,7 +1047,7 @@ async function load() {
   }
 }
 
-const VIEWS = [['today', 'Today'], ['now', 'Act now'], ['teaming', 'Teaming'], ['pipeline', 'Pipeline'], ['profit', 'Profit'], ['all', 'All'], ['playbook', 'Playbook']];
+const VIEWS = [['today', 'Today'], ['warroom', 'War room'], ['now', 'Act now'], ['teaming', 'Teaming'], ['pipeline', 'Pipeline'], ['profit', 'Profit'], ['all', 'All'], ['playbook', 'Playbook']];
 function switchView(v) {
   if (v === VIEW) return;
   VIEW = v; snd.tab(); glitchBurst();
@@ -1107,7 +1107,7 @@ function initPalette() {
     if (e.key === 'Escape') { if (isOpen()) { close(); return; } if (help && help.classList.contains('open')) { help.classList.remove('open'); return; } closeAssist(); return; }
     if (e.key === '?' && !typing) { e.preventDefault(); if (help) help.classList.toggle('open'); return; }
     if (typing || isOpen() || e.metaKey || e.ctrlKey || e.altKey) return;
-    if (e.key >= '1' && e.key <= '7') { switchView(VIEWS[+e.key - 1][0]); }
+    if (e.key >= '1' && e.key <= '8') { switchView(VIEWS[+e.key - 1][0]); }
     else if (e.key === 'r') { $('#refresh').click(); }
   });
   PALETTE_OPEN = open;
@@ -1203,6 +1203,7 @@ function oppCard(o, now) {
 function render() {
   document.querySelectorAll('.view').forEach((v) => v.hidden = true);
   if (VIEW === 'today') renderToday();
+  else if (VIEW === 'warroom') renderWarRoom();
   else if (VIEW === 'now') renderNow();
   else if (VIEW === 'teaming') renderTeaming();
   else if (VIEW === 'pipeline') renderPipeline();
@@ -1344,12 +1345,12 @@ async function renderToday() {
     const cta = el('button', 'drcta'); cta.innerHTML = svg('spark') + "Claude’s read on today";
     const body = el('div', 'drbody'); body.hidden = true;
     cta.addEventListener('click', () => dayRead(cta, body));
-    // portfolio-level strategist: reason across the whole pipeline (which to pursue)
-    const sca = el('button', 'drcta strat'); sca.innerHTML = svg('target') + 'Strategize pipeline';
-    const sbody = el('div', 'drbody'); sbody.hidden = true;
-    sca.addEventListener('click', () => strategize(sca, sbody));
+    // portfolio strategist now lives in its own War Room view
+    const sca = el('button', 'drcta strat'); sca.innerHTML = svg('target') + 'Open the War Room';
+    sca.title = 'The portfolio command center — every pursuit ranked by expected award value';
+    sca.addEventListener('click', () => switchView('warroom'));
     const row = el('div', 'drrow'); row.append(cta, sca);
-    dr.append(row, body, sbody); v.append(dr);
+    dr.append(row, body); v.append(dr);
   }
   v.append(el('p', 'sub', 'Expected value = each pursuit’s program-of-record ceiling × its cumulative probability of actually reaching a funded program (the SBIR→PoR funnel is brutal — early stages are <2%). Ceilings are editable best-case estimates; set them per pursuit in its Claude panel.'));
 
@@ -1415,12 +1416,14 @@ async function dayRead(cta, body) {
   cta.disabled = false; cta.innerHTML = svg('spark') + 'Refresh read';
 }
 
-// Portfolio strategist: the ranked pipeline (win-prob meters) + Claude's
-// cross-pipeline call streamed below it.
-async function strategize(cta, body) {
-  cta.disabled = true; cta.innerHTML = svg('radar') + 'Reasoning across the pipeline…';
-  body.hidden = false; body.innerHTML = '<div class="stratrows"></div><div class="stratread"><span class="drwait">weighing win-probability × value across every pursuit…</span></div>';
-  const rowsEl = body.querySelector('.stratrows'), readEl = body.querySelector('.stratread');
+// Portfolio strategist core: the ranked pipeline (win-prob meters, clickable) +
+// Claude's cross-pipeline call streamed below it. Result is cached so reopening the
+// War Room view restores it without another Claude call.
+let WARROOM_CACHE = null;
+async function runStrategize(rowsEl, readEl, btn) {
+  const setBtn = (t, d) => { if (btn) { btn.disabled = d; btn.innerHTML = svg(d ? 'radar' : 'target') + t; } };
+  setBtn('Reasoning across the pipeline…', true);
+  readEl.innerHTML = '<span class="drwait">weighing win-probability × value across every pursuit…</span>';
   let acc = '', narrating = false;
   try {
     const resp = await fetch('/api/strategize', { method: 'POST' });
@@ -1433,11 +1436,40 @@ async function strategize(cta, body) {
         let ev; try { ev = JSON.parse(line); } catch { continue; }
         if (ev.rows) { rowsEl.innerHTML = stratTable(ev.rows); wireStratRows(rowsEl); snd.recv && snd.recv(); }
         else if (ev.error) { readEl.innerHTML = `<span class="drwait">${escapeHtml(ev.error)}</span>`; }
-        else if (ev.t) { if (!narrating) { narrating = true; readEl.innerHTML = ''; } acc += ev.t; readEl.innerHTML = mdChat(acc); corePulse(); }
+        else if (ev.t) { if (!narrating) { narrating = true; readEl.innerHTML = ''; } acc += ev.t; readEl.innerHTML = mdChat(acc); corePulse(); waveKick(); }
       }
     }
   } catch (e) { readEl.innerHTML = `<span class="drwait">strategize failed: ${escapeHtml(e.message)}</span>`; }
-  cta.disabled = false; cta.innerHTML = svg('target') + 'Re-strategize';
+  setBtn('Re-strategize', false);
+  WARROOM_CACHE = { rows: rowsEl.innerHTML, read: readEl.innerHTML };
+}
+
+// Today's inline strategist button (kept for quick access).
+async function strategize(cta, body) {
+  body.hidden = false; body.innerHTML = '<div class="stratrows"></div><div class="stratread"></div>';
+  await runStrategize(body.querySelector('.stratrows'), body.querySelector('.stratread'), cta);
+}
+
+// War Room — the portfolio command center as its own view.
+function renderWarRoom() {
+  const v = $('#view-warroom'); v.hidden = false; v.textContent = '';
+  v.append(el('h2', null, 'War room — where the hours convert'));
+  v.append(el('p', 'sub', 'Every active pursuit ranked by expected award value (win-probability × lifetime value), with a submission GO / FIX / NO-GO call. Click any row to open its cockpit. Claude’s cross-pipeline recommendation streams below.'));
+  const bar = el('div', 'dayread');
+  const btn = el('button', 'drcta strat'); btn.innerHTML = svg('target') + 'Strategize pipeline';
+  bar.append(btn); v.append(bar);
+  const panel = el('div', 'drbody'); const rowsEl = el('div', 'stratrows'); const readEl = el('div', 'stratread');
+  panel.append(rowsEl, readEl); v.append(panel);
+  btn.addEventListener('click', () => runStrategize(rowsEl, readEl, btn));
+  if (WARROOM_CACHE) { // restore the last run without re-spending a Claude call
+    rowsEl.innerHTML = WARROOM_CACHE.rows; wireStratRows(rowsEl); readEl.innerHTML = WARROOM_CACHE.read;
+    btn.innerHTML = svg('target') + 'Re-strategize';
+  } else if (ASSIST.enabled) {
+    runStrategize(rowsEl, readEl, btn);
+  } else {
+    readEl.innerHTML = '<span class="drwait">Connect Claude for the portfolio call — the ranking still loads.</span>';
+    runStrategize(rowsEl, readEl, btn); // rows render even without Claude (error is graceful)
+  }
 }
 
 // Make ranked rows clickable — drill straight from the portfolio call into the
