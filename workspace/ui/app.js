@@ -626,6 +626,17 @@ function openAssist(o) {
     const trow = el('div', 'qarow');
     TQUICK.forEach((q) => { const b = el('button', null, q.label); b.addEventListener('click', () => sendAssist(q.a)); trow.append(b); });
     qa.append(rowLabel('Cross the valley'), trow);
+    // Conversion engine: turn "has capability" into "wins the contract".
+    const winRow = el('div', 'qarow');
+    const wpBtn = el('button', 'mv'); wpBtn.innerHTML = svg('target') + 'Win plan';
+    wpBtn.title = 'A dated capture-to-award plan: Q&A window, sponsor engagement, proof points, teaming, submit — grounded in the doctrine + your weakest wall';
+    wpBtn.addEventListener('click', () => winPlan(o));
+    winRow.append(wpBtn);
+    const vcBtn = el('button', 'mv'); vcBtn.innerHTML = svg('shield') + 'Verify compliance';
+    vcBtn.title = 'Closed-loop gate: maps every shall/must to the drafted section that answers it, flags the gaps that get a proposal eliminated';
+    vcBtn.addEventListener('click', () => verifyCompliance(o));
+    winRow.append(vcBtn);
+    qa.append(rowLabel('Win & submit'), winRow);
     const mv = el('div', 'qarow');
     ['drafting', 'submitted', 'won', 'pilot', 'transition', 'pom', 'program'].forEach((st) => {
       const b = el('button', 'mv', '→ ' + st); b.addEventListener('click', () => moveStage(o, st)); mv.append(b);
@@ -926,6 +937,38 @@ async function fullWorkup(o) {
     }
   } catch (e) { prog.className = 'msg err'; prog.textContent = 'workup failed: ' + e.message; }
 }
+
+// streamInto runs an SSE endpoint, rendering markdown deltas live into one bubble
+// and noting the saved file when done. Shared by the conversion-engine actions.
+async function streamInto(url, o, headLabel, waitMsg, savedLabel) {
+  const t = $('#thread');
+  const head = el('div', 'msg u'); head.textContent = '› ' + headLabel; t.append(head);
+  const out = el('div', 'msg a streaming'); out.textContent = waitMsg; t.append(out); t.scrollTop = 1e9;
+  snd.send(); WAVE.mode = 'streaming'; let acc = '', started = false;
+  try {
+    const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ opp_id: o.id }) });
+    const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf = '';
+    for (;;) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true }); const parts = buf.split('\n\n'); buf = parts.pop();
+      for (const p of parts) {
+        const line = p.replace(/^data:\s*/, '').trim(); if (!line) continue;
+        let ev; try { ev = JSON.parse(line); } catch { continue; }
+        if (ev.error) { out.className = 'msg err'; out.textContent = ev.error; snd.err(); }
+        else if (ev.t) { if (!started) { started = true; out.textContent = ''; } acc += ev.t; out.innerHTML = mdChat(acc); out.classList.add('streaming'); corePulse(); waveKick(); $('#thread').scrollTop = 1e9; }
+        else if (ev.saved) { const d = el('div', 'msg a'); d.innerHTML = `<b>${savedLabel}</b> Saved to:<br><code>${escapeHtml(ev.saved)}</code>`; t.append(d); toast(savedLabel); }
+      }
+    }
+  } catch (e) { out.className = 'msg err'; out.textContent = 'failed: ' + e.message; snd.err(); }
+  out.classList.remove('streaming'); WAVE.mode = 'idle'; if (acc) snd.recv();
+  t.scrollTop = 1e9;
+}
+
+// Win plan: a dated capture-to-award sequence (the conversion engine).
+function winPlan(o) { streamInto('/api/winplan', o, 'Win plan (capture → award)', 'Building your dated capture-to-award plan…', 'Win plan ready →'); }
+
+// Closed-loop compliance gate: maps every shall/must to the drafted section.
+function verifyCompliance(o) { streamInto('/api/verify-compliance', o, 'Compliance gate (draft vs. solicitation)', 'Checking the draft against every binding requirement…', 'Compliance report ready →'); }
 
 // Full topic readout (objective/description/Phase I/keywords/ITAR), cached.
 async function topicDetail(o) {

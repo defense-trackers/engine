@@ -112,6 +112,8 @@ func Run(o Options) error {
 	mux.HandleFunc("/api/calendar.ics", s.hCalendar)
 	mux.HandleFunc("/api/export", s.hExport)
 	mux.HandleFunc("/api/compliance", s.hCompliance)
+	mux.HandleFunc("/api/winplan", s.hWinPlan)
+	mux.HandleFunc("/api/verify-compliance", s.hVerifyCompliance)
 	mux.HandleFunc("/", s.hStatic)
 
 	addr := fmt.Sprintf("127.0.0.1:%d", o.Port)
