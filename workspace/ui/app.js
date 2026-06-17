@@ -1456,7 +1456,7 @@ function srcChip(src) { return `<span class="src ${src || ''}">${SRC_LABEL[src] 
 
 // lightweight markdown for streamed Claude replies (headings, bold, italic, code, lists)
 function mdChat(md) {
-  let s = escapeHtml(String(md).replace(/\[\[do:[^\]]+\]\]/g, '')); // hide action directives from prose
+  let s = escapeHtml(String(md).replace(/\[\[(?:do|fetch):[^\]]+\]\]/g, '')); // hide action/fetch directives from prose
   s = s.replace(/```([\s\S]*?)```/g, (_, c) => `<pre>${c.trim()}</pre>`);
   s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
   s = s.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*]+)\*/g, '$1<em>$2</em>');

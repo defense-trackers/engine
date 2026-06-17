@@ -157,10 +157,36 @@ func (s *server) hAssist(w http.ResponseWriter, r *http.Request) {
 	prompt.WriteString("Jesse: " + userText)
 
 	if backend == "subscription" {
-		runClaudeCLI(emit, system, prompt.String())
+		s.runAssistWithLiveData(emit, system, prompt.String())
 	} else {
 		runAPI(emit, system, in, userText)
 	}
+}
+
+// runAssistWithLiveData streams a reply, and if the model asked for fresh data via
+// [[fetch:...]] directives, runs those live queries (SAM / grants / awards / radar)
+// and streams a second pass grounded in the results — so the chat answers on
+// current data, not just the startup snapshot. Bounded to one fetch round.
+func (s *server) runAssistWithLiveData(emit func(any), system, prompt string) {
+	var acc strings.Builder
+	capture := func(obj any) {
+		if m, ok := obj.(map[string]string); ok {
+			if t, ok := m["t"]; ok {
+				acc.WriteString(t)
+			}
+		}
+		emit(obj)
+	}
+	runClaudeCLI(capture, system, prompt)
+	dirs := parseFetchDirectives(acc.String())
+	if len(dirs) == 0 {
+		return
+	}
+	emit(map[string]string{"t": "\n\n_◢ pinging live sources — " + strings.Join(dirs, ", ") + " …_\n\n"})
+	live := s.liveData(dirs)
+	prompt2 := prompt + "\n\n[SYSTEM: FRESH LIVE DATA you requested via fetch — answer Jesse now using ONLY real entries below; cite titles/agencies/close dates/URLs exactly, never invent]\n" + live +
+		"\n\nNow give Jesse the answer grounded in this fresh data. Do not emit another fetch directive."
+	runClaudeCLI(emit, system, prompt2)
 }
 
 // runClaudeCLI streams a response from the local Claude Code CLI on the user's
@@ -404,6 +430,12 @@ func (s *server) assistSystem(o *Opportunity, detail string, p Pursuit, sponsors
 	b.WriteString("[[do:decision:<bid|no-bid>]] — record the bid decision\n")
 	b.WriteString("[[do:draft]] — generate the submittable volume to files\n")
 	b.WriteString("Only emit a directive the action is genuinely warranted by the conversation; one per line; keep your prose explanation too.\n")
+	b.WriteString("\nLIVE DATA: your grounding above is a snapshot. When Jesse asks about CURRENT/LATEST opportunities, awards, or a topic you don't already have, you can pull fresh data. Emit a directive on its own line and STOP (don't guess) — the system runs it and immediately re-prompts you with the real results to answer from:\n")
+	b.WriteString("[[fetch:sam:<query>]] — live SAM.gov DoD contract/OTA/BAA search\n")
+	b.WriteString("[[fetch:grants:<query>]] — live grants.gov DoD research BAAs\n")
+	b.WriteString("[[fetch:awards:<keyword>]] — live SBIR.gov awards (the competitive field)\n")
+	b.WriteString("[[fetch:opps:<query>]] — search the opportunities already scored in Jesse's radar\n")
+	b.WriteString("Use fetch ONLY when fresh/external data is actually needed; for questions about THIS opportunity (already fully grounded above) just answer. When you fetch, emit a one-line 'Pulling fresh data on X…' plus the directive, nothing more.\n")
 	b.WriteString("\nOUTREACH RULES (critical): Never give vague advice like 'find a resource sponsor.' Always name the specific office(s)/POC(s) above and the exact sanctioned channel. NEVER recommend cold or mass email — prefer the official channel (SBIR topic Q&A window, industry day / APBI, SAM RFI, BAA white paper, consortium marketplace, the program-office mailbox, a warm intro). Any drafted message must be short, mission-first (their requirement, not Jesse's product), reference the specific topic, ask one real question, and read as the opposite of spam. If you don't have a named person, name the office + role and the channel to find the current incumbent — never fabricate a name or email.\n")
 	return b.String()
 }
