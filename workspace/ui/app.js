@@ -568,6 +568,7 @@ const ACTION_GROUPS = [
     { a: 'deepresearch', label: 'Deep research' },
     { a: 'teaming', label: 'Find a prime / team' },
     { fn: 'ingestRFP', icon: 'doc', label: 'Ingest RFP' },
+    { fn: 'proofLibrary', icon: 'shield', label: 'Proof library' },
   ] },
   { key: 'draft', label: 'Draft', items: [
     { a: 'outline', label: 'Outline volume' },
@@ -604,7 +605,7 @@ function saveConvo(id, h) { localStorage.setItem('assist:' + id, JSON.stringify(
 // (Assess · Intel · Draft · Win · Transition · Move) over a single button row that
 // swaps with the active tab. The active tab persists across opens.
 function buildActions(o) {
-  const fns = { competitiveIntel, topicDetail, ingestRFP, draftVolume, fullWorkup, exportDocx, winPlan, verifyCompliance, remediate, complianceMatrix, preflight, editVolume };
+  const fns = { competitiveIntel, topicDetail, ingestRFP, draftVolume, fullWorkup, exportDocx, winPlan, verifyCompliance, remediate, complianceMatrix, preflight, editVolume, proofLibrary };
   const wrap = el('div', 'actions');
   const tabs = el('div', 'atabs');
   const body = el('div', 'abody');
@@ -1010,6 +1011,34 @@ function verifyCompliance(o) { streamInto('/api/verify-compliance', o, 'Complian
 
 // Close the gaps: regenerate ready-to-paste content for every uncovered requirement.
 function remediate(o) { streamInto('/api/remediate', o, 'Close the gaps (make it submittable)', 'Writing drop-in content for every uncovered requirement…', 'Compliance fixes ready →'); }
+
+// Proof library — the firm's evidence locker (claims + metrics + sources) that
+// auto-grounds every draft. View it, and add a proof point inline (persists).
+async function proofLibrary(o) {
+  const t = $('#thread');
+  let proof = [];
+  try { proof = (await fetch('/api/proof').then((x) => x.json())).proof || []; } catch { }
+  const head = el('div', 'msg u'); head.textContent = '› Proof library'; t.append(head);
+  const box = el('div', 'msg a');
+  const render = () => {
+    const items = proof.length
+      ? '<ul class="complist">' + proof.map((p) => `<li><b>${escapeHtml(p.claim)}</b>${p.metric ? ' — ' + escapeHtml(p.metric) : ''}${p.source ? ` <i style="color:var(--dim)">[${escapeHtml(p.source)}]</i>` : ''}${(p.tags && p.tags.length) ? ` <span class="stasset">${p.tags.map(escapeHtml).join(', ')}</span>` : ''}</li>`).join('') + '</ul>'
+      : '<p style="color:var(--dim)">No proof points yet — add your hard, citable evidence so every draft cites real numbers instead of inventing them.</p>';
+    box.innerHTML = `<h4>Evidence locker — auto-grounded into every draft (${proof.length})</h4>${items}
+      <div class="ingbtns" style="margin-top:10px"><input class="pf-claim" placeholder="claim (e.g. ThermalHawk runs on the fielded EO/IR box)" style="flex:1;min-width:160px;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:8px;color:var(--ink);font:12px var(--sans);padding:7px 9px"></div>
+      <div class="ingbtns"><input class="pf-metric" placeholder="metric (1.39M params, INT8 ~1.4MB)" style="flex:1;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:8px;color:var(--ink);font:12px var(--sans);padding:7px 9px"><input class="pf-src" placeholder="source" style="width:120px;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:8px;color:var(--ink);font:12px var(--sans);padding:7px 9px"></div>
+      <div class="ingbtns"><input class="pf-tags" placeholder="tags (thermalhawk, cuas)" style="flex:1;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:8px;color:var(--ink);font:12px var(--sans);padding:7px 9px"><button class="ingsave pf-add">Add proof</button><span class="ingstat"></span></div>`;
+    box.querySelector('.pf-add').addEventListener('click', async () => {
+      const claim = box.querySelector('.pf-claim').value.trim(); if (!claim) return;
+      const body = { claim, metric: box.querySelector('.pf-metric').value.trim(), source: box.querySelector('.pf-src').value.trim(), tags: box.querySelector('.pf-tags').value.split(',').map((s) => s.trim()).filter(Boolean) };
+      box.querySelector('.ingstat').textContent = 'saving…';
+      const r = await fetch('/api/proof', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then((x) => x.json()).catch(() => ({}));
+      if (r.ok) { proof.push(body); snd.apply(); toast('Proof added — now grounds every draft'); render(); }
+      else box.querySelector('.ingstat').textContent = 'failed';
+    });
+  };
+  render(); t.append(box); t.scrollTop = 1e9;
+}
 
 // Edit the generated volume inline; save writes it back, "Save & re-verify" runs the
 // compliance gate so you watch coverage climb to 100% without leaving the cockpit.

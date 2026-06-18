@@ -3,6 +3,7 @@ package workspace
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,6 +25,16 @@ type PastPerf struct {
 	Result   string `json:"result,omitempty"`
 }
 
+// ProofPoint is a citable piece of evidence — a hard claim + its metric + source —
+// the firm's evidence locker that grounds every draft so claims are real, not
+// invented. Tags route the most relevant proofs to a given topic/asset.
+type ProofPoint struct {
+	Claim  string   `json:"claim"`
+	Metric string   `json:"metric,omitempty"`
+	Source string   `json:"source,omitempty"`
+	Tags   []string `json:"tags,omitempty"`
+}
+
 type CompanyKit struct {
 	Entity      string     `json:"entity"`                 // legal/DBA name
 	UEI         string     `json:"uei,omitempty"`          // SAM Unique Entity ID
@@ -35,6 +46,7 @@ type CompanyKit struct {
 	Team        []string   `json:"team,omitempty"`         // team/advisor bios
 	PastPerf    []PastPerf `json:"past_performance,omitempty"`
 	DataRights  string     `json:"data_rights,omitempty"`  // GPR / SBIR data rights stance
+	Proof       []ProofPoint `json:"proof,omitempty"`        // evidence locker — citable claims+metrics auto-injected into drafts
 	Differators []string   `json:"differentiators,omitempty"` // cross-cutting win themes
 	Partners    []string   `json:"partners,omitempty"`     // teaming partners (e.g. AUS hardware build+fund partner for USV)
 	Boilerplate string     `json:"boilerplate,omitempty"`  // voice/tone notes for drafting
@@ -42,6 +54,40 @@ type CompanyKit struct {
 }
 
 func companyKitPath(dir string) string { return filepath.Join(dir, "company-kit.json") }
+
+// saveCompanyKit persists the kit (used by the proof-library editor).
+func saveCompanyKit(dir string, ck *CompanyKit) error {
+	b, _ := json.MarshalIndent(ck, "", " ")
+	return os.WriteFile(companyKitPath(dir), b, 0o644)
+}
+
+// hProof lists the proof library (GET) or appends a proof point (POST). The
+// library auto-grounds every draft so claims cite real evidence, never inventions.
+func (s *server) hProof(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "POST" {
+		var in ProofPoint
+		if json.NewDecoder(r.Body).Decode(&in) != nil || strings.TrimSpace(in.Claim) == "" {
+			http.Error(w, "bad request", 400)
+			return
+		}
+		ck := LoadCompanyKit(s.opts.Dir)
+		if ck == nil {
+			ck = &CompanyKit{}
+		}
+		ck.Proof = append(ck.Proof, in)
+		if err := saveCompanyKit(s.opts.Dir, ck); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		writeJSON(w, map[string]any{"ok": true, "count": len(ck.Proof)})
+		return
+	}
+	var proof []ProofPoint
+	if ck := LoadCompanyKit(s.opts.Dir); ck != nil {
+		proof = ck.Proof
+	}
+	writeJSON(w, map[string]any{"proof": proof})
+}
 
 // LoadCompanyKit reads the local company-kit.json (nil if absent — drafting still
 // works, just with less grounding).
@@ -224,6 +270,19 @@ func (ck *CompanyKit) kitContext() string {
 	}
 	if ck.DataRights != "" {
 		b.WriteString("Data rights: " + ck.DataRights + "\n")
+	}
+	if len(ck.Proof) > 0 {
+		b.WriteString("PROOF LIBRARY (cite these verbatim as evidence; NEVER invent or round metrics):\n")
+		for _, p := range ck.Proof {
+			line := "- " + p.Claim
+			if p.Metric != "" {
+				line += " — " + p.Metric
+			}
+			if p.Source != "" {
+				line += " [" + p.Source + "]"
+			}
+			b.WriteString(line + "\n")
+		}
 	}
 	if len(ck.Differators) > 0 {
 		b.WriteString("Differentiators: " + strings.Join(ck.Differators, "; ") + "\n")
