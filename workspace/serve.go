@@ -111,6 +111,7 @@ func Run(o Options) error {
 	mux.HandleFunc("/api/detail", s.hDetail)
 	mux.HandleFunc("/api/strategize", s.hStrategize)
 	mux.HandleFunc("/api/strategize-data", s.hStrategizeData)
+	mux.HandleFunc("/api/allocate", s.hAllocate)
 	mux.HandleFunc("/api/ingest", s.hIngest)
 	mux.HandleFunc("/api/calendar.ics", s.hCalendar)
 	mux.HandleFunc("/api/export", s.hExport)

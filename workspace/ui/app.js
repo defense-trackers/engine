@@ -1614,6 +1614,20 @@ function renderWarRoom() {
     bar.append(btn, aa);
   } else { bar.append(btn); }
   v.append(bar, aaprog);
+  // Plan my week — effort-to-EV allocation
+  const alloc = el('div', 'alloc');
+  alloc.innerHTML = `<div class="alloc-hd">${svg('clock')} Plan my week — <input type="number" class="alloc-hrs" value="40" min="1" max="200"> hrs <button class="alloc-go">Allocate</button></div><div class="alloc-body"></div>`;
+  v.append(alloc);
+  const runAlloc = async () => {
+    const hrs = parseInt(alloc.querySelector('.alloc-hrs').value) || 40;
+    const body = alloc.querySelector('.alloc-body'); body.innerHTML = '<span class="drwait">allocating…</span>';
+    const d = await fetch('/api/allocate?hours=' + hrs).then((r) => r.json()).catch(() => null);
+    if (!d) { body.innerHTML = '<span class="drwait">allocation failed</span>'; return; }
+    body.innerHTML = allocTable(d); wireStratRows(body); snd.recv && snd.recv();
+  };
+  alloc.querySelector('.alloc-go').addEventListener('click', runAlloc);
+  alloc.querySelector('.alloc-hrs').addEventListener('keydown', (e) => { if (e.key === 'Enter') runAlloc(); });
+  runAlloc();
   panel.append(rowsEl, readEl); v.append(panel);
   btn.addEventListener('click', () => runStrategize(rowsEl, readEl, btn));
   if (WARROOM_CACHE) { // restore the last run without re-spending a Claude call
@@ -1638,6 +1652,32 @@ function wireStratRows(container) {
       else { toast('No live topic matched yet — verify the solicitation is open'); }
     });
   });
+}
+
+// Allocation render: where the week's hours go, grouped fund / tight / defer.
+function allocTable(d) {
+  if (!d.items || !d.items.length) return '<p class="empty">No actionable pursuits to allocate — everything is won, closed, or unscored.</p>';
+  const pct = d.ev_total ? Math.round(100 * d.ev_captured / d.ev_total) : 0;
+  const head = `<div class="alloc-sum"><b>${d.hours_used}</b>/${d.budget}h booked · captures <b>$${(d.ev_captured).toLocaleString()}K</b> of $${(d.ev_total).toLocaleString()}K expected award value (${pct}%)</div>`;
+  const groups = [['fund', 'Fund this week'], ['tight', 'Tight — triage call'], ['defer', 'Defer / next week']];
+  let html = head;
+  groups.forEach(([b, label]) => {
+    const items = d.items.filter((i) => i.bucket === b);
+    if (!items.length) return;
+    html += `<div class="alloc-grp ${b}">${label} <span>${items.length}</span></div>` + items.map(allocRowHTML).join('');
+  });
+  return html;
+}
+function allocRowHTML(i) {
+  const dl = i.days_left >= 0 ? (i.days_left === 0 ? 'today' : i.days_left + 'd') : '—';
+  const oid = (i.opp_id || i.id || '').replace(/"/g, '&quot;');
+  const tone = i.win_prob >= 60 ? 'ok' : i.win_prob >= 25 ? 'warn' : 'bad';
+  return `<div class="strow act alloc-row ${i.bucket}" data-oppid="${escapeHtml(oid)}" title="Open Claude on this pursuit">
+    <span class="sttitle"><b>${escapeHtml(i.title)}</b><small>win ${i.win_prob}% · $${(i.priority).toLocaleString()}K expected · weakest ${escapeHtml(i.weakest || '—')}</small></span>
+    <span class="stwin ${tone}"><i style="width:${Math.min(100, i.win_prob)}%"></i><em>${i.win_prob}%</em></span>
+    <span class="stev">${i.effort}h</span>
+    <span class="stdl ${i.days_left >= 0 && i.days_left <= 7 ? 'urgent' : ''}">${dl}</span>
+  </div>`;
 }
 
 // Ranked pipeline table with win-probability bars.

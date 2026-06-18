@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -270,6 +271,89 @@ func (s *server) strategizeRows() []stratRow {
 		return rows[i].WinProb > rows[j].WinProb
 	})
 	return rows
+}
+
+// effortHours estimates the work to get a pursuit to submission-ready. A draft in
+// hand is mostly polish + compliance + packaging; a fresh topic needs the volume
+// built (more if there's no solicitation text to ground it).
+func effortHours(r stratRow, hasDraft bool) int {
+	switch r.Stage {
+	case "won", "pilot", "transition", "pom", "program", "lost", "pass":
+		return 0
+	}
+	if hasDraft {
+		return 6
+	}
+	switch r.Stage {
+	case "drafting":
+		return 16
+	case "qualifying":
+		return 24
+	default:
+		return 28
+	}
+}
+
+type allocRow struct {
+	stratRow
+	Effort    int     `json:"effort"`      // hours to submission-ready
+	EVPerHour float64 `json:"ev_per_hour"` // expected award value $K per hour
+	Bucket    string  `json:"bucket"`      // fund | defer | tight
+}
+
+// allocate distributes an hours budget across actionable pursuits to maximize
+// expected award value: greedy by EV-per-hour, deadline-feasible first. Pursuits
+// that can't be finished before close at 8h/day are flagged "tight" (a triage
+// call, not auto-funded); good pursuits past the budget are "defer".
+func (s *server) allocate(budget int) map[string]any {
+	const workPerDay = 8
+	rows := s.strategizeRows()
+	var items []allocRow
+	for _, r := range rows {
+		if r.Ready == "—" { // already won or closed
+			continue
+		}
+		hd := s.hasDraft(r.ID) || (r.OppID != "" && s.hasDraft(r.OppID))
+		eff := effortHours(r, hd)
+		if eff == 0 {
+			continue
+		}
+		items = append(items, allocRow{stratRow: r, Effort: eff, EVPerHour: float64(r.Priority) / float64(eff)})
+	}
+	sort.SliceStable(items, func(i, j int) bool { return items[i].EVPerHour > items[j].EVPerHour })
+
+	used, evCaptured, evTotal := 0, 0, 0
+	for i := range items {
+		evTotal += items[i].Priority
+		// Don't pour hours into a deadline you can't make, or a low-confidence /
+		// unconfirmed pursuit — those are triage calls first, not funded work.
+		tight := (items[i].DaysLeft >= 0 && items[i].DaysLeft*workPerDay < items[i].Effort) || items[i].WinProb < 15
+		switch {
+		case tight:
+			items[i].Bucket = "tight"
+		case used+items[i].Effort <= budget:
+			items[i].Bucket = "fund"
+			used += items[i].Effort
+			evCaptured += items[i].Priority
+		default:
+			items[i].Bucket = "defer"
+		}
+	}
+	return map[string]any{
+		"budget": budget, "hours_used": used, "items": items,
+		"ev_captured": evCaptured, "ev_total": evTotal,
+	}
+}
+
+// hAllocate returns the week's effort allocation for a budget (?hours=40).
+func (s *server) hAllocate(w http.ResponseWriter, r *http.Request) {
+	budget := 40
+	if h := r.URL.Query().Get("hours"); h != "" {
+		if n, err := strconv.Atoi(h); err == nil && n > 0 && n <= 200 {
+			budget = n
+		}
+	}
+	writeJSON(w, s.allocate(budget))
 }
 
 // hStrategizeData returns just the ranked rows as JSON (no Claude call) — for the
