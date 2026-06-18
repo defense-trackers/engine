@@ -135,7 +135,7 @@ func (s *server) computeBrief(markSeen bool) *Brief {
 		}
 		br.QA = append(br.QA, BriefItem{
 			ID: o.ID, Kind: "qa", Title: o.Title,
-			Detail: "Q&A window open — ask the TPOC on the record", URL: o.URL,
+			Detail: "Q&A closes " + until.Format("Jan 2") + " — ask the TPOC on the record before it shuts", URL: o.URL,
 			Days: d, Asset: o.MatchedAsset, Urgent: d <= 7,
 		})
 	}
@@ -432,12 +432,21 @@ func pushNtfy(br *Brief) error {
 		url = strings.TrimRight(server, "/") + "/" + topic
 	}
 
-	// Headline: the most urgent thing.
+	// Headline: the most urgent thing. A Q&A window closing within 3 days is the most
+	// time-critical capture action (shape the requirement on the record), so it leads.
 	title := "Defense bids — nothing urgent today"
-	for _, it := range br.Deadlines {
-		if it.Urgent {
-			title = fmt.Sprintf("⏰ %s closes in %dd", short(it.Title, 48), it.Days)
+	for _, it := range br.QA {
+		if it.Days <= 3 {
+			title = fmt.Sprintf("Q&A for %s closes in %dd — ask now", short(it.Title, 40), it.Days)
 			break
+		}
+	}
+	if title == "Defense bids — nothing urgent today" {
+		for _, it := range br.Deadlines {
+			if it.Urgent {
+				title = fmt.Sprintf("%s closes in %dd", short(it.Title, 46), it.Days)
+				break
+			}
 		}
 	}
 	if title == "Defense bids — nothing urgent today" && br.NewCount > 0 {

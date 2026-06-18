@@ -34,12 +34,8 @@ func (s *server) hCalendar(w http.ResponseWriter, _ *http.Request) {
 	seen := map[string]bool{}
 	for i := range opps {
 		o := &opps[i]
-		day, ok := parseCloseDay(o.Closes)
-		if !ok {
-			continue
-		}
 		_, isPursuit := state[o.ID]
-		// Only surface closes that matter: a tracked pursuit, an act-now play, or a strong fit.
+		// Only surface what matters: a tracked pursuit, an act-now play, or a strong fit.
 		if !isPursuit && !o.ActNow && o.Score < 50 {
 			continue
 		}
@@ -47,10 +43,41 @@ func (s *server) hCalendar(w http.ResponseWriter, _ *http.Request) {
 			continue
 		}
 		seen[o.ID] = true
-		writeVEvent(&b, o, day, stamp)
+		// The Q&A window is the higher-leverage capture moment — shape the requirement
+		// before writing. Calendar it (tighter 3-day alarm) alongside the close.
+		if qd, ok := qaOpenUntil(o.Channel); ok {
+			writeQAEvent(&b, o, qd, stamp)
+		}
+		if day, ok := parseCloseDay(o.Closes); ok {
+			writeVEvent(&b, o, day, stamp)
+		}
 	}
 	b.WriteString("END:VCALENDAR\r\n")
 	w.Write([]byte(b.String()))
+}
+
+// writeQAEvent calendars a topic's Q&A-window close — the sanctioned, time-boxed
+// window to shape the requirement on the record, with a tighter 3-day reminder.
+func writeQAEvent(b *strings.Builder, o *Opportunity, day time.Time, stamp string) {
+	start := day.Format("20060102")
+	end := day.AddDate(0, 0, 1).Format("20060102")
+	summary := "Q&A closes: " + o.Title
+	desc := "SBIR topic Q&A window — ask the TPOC on the record before it closes (capture before the RFP)."
+	if o.MatchedAsset != "" {
+		desc += " Asset: " + o.MatchedAsset + "."
+	}
+	b.WriteString("BEGIN:VEVENT\r\n")
+	b.WriteString("UID:qa-" + icsEscape(o.ID) + "@realizer\r\n")
+	b.WriteString("DTSTAMP:" + stamp + "\r\n")
+	b.WriteString("DTSTART;VALUE=DATE:" + start + "\r\n")
+	b.WriteString("DTEND;VALUE=DATE:" + end + "\r\n")
+	b.WriteString(foldICS("SUMMARY:" + icsEscape(summary)))
+	b.WriteString(foldICS("DESCRIPTION:" + icsEscape(desc)))
+	if o.URL != "" {
+		b.WriteString(foldICS("URL:" + icsEscape(o.URL)))
+	}
+	b.WriteString("BEGIN:VALARM\r\nTRIGGER:-P3D\r\nACTION:DISPLAY\r\nDESCRIPTION:" + icsEscape(summary) + "\r\nEND:VALARM\r\n")
+	b.WriteString("END:VEVENT\r\n")
 }
 
 func writeVEvent(b *strings.Builder, o *Opportunity, day time.Time, stamp string) {
