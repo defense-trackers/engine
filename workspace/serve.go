@@ -45,6 +45,7 @@ type Pursuit struct {
 	Walls    Walls  `json:"walls,omitempty"` // four-walls transition-readiness scorecard
 	Link     string `json:"link,omitempty"`  // live opp ID this tracked volume maps to (manual override; else auto-matched by code)
 	Owner    string `json:"owner,omitempty"` // team member responsible for this pursuit
+	PredictedWin int `json:"predicted_win,omitempty"` // win-prob stamped at submission, for calibration vs outcome
 	Updated  string `json:"updated,omitempty"`
 }
 
@@ -108,6 +109,7 @@ func Run(o Options) error {
 	mux.HandleFunc("/api/workup", s.hWorkup)
 	mux.HandleFunc("/api/company-kit", s.hCompanyKit)
 	mux.HandleFunc("/api/proof", s.hProof)
+	mux.HandleFunc("/api/ledger", s.hLedger)
 	mux.HandleFunc("/api/awards", s.hAwards)
 	mux.HandleFunc("/api/detail", s.hDetail)
 	mux.HandleFunc("/api/strategize", s.hStrategize)
@@ -295,6 +297,22 @@ func (s *server) hState(w http.ResponseWriter, r *http.Request) {
 		s.mu.Lock()
 		p := in.Pursuit
 		p.Updated = time.Now().UTC().Format(time.RFC3339)
+		// Preserve a prediction already stamped (the client doesn't send it back).
+		if prev, ok := s.state[in.ID]; ok && p.PredictedWin == 0 {
+			p.PredictedWin = prev.PredictedWin
+		}
+		// Stamp the predicted win-prob the moment a bid is submitted (outcome still
+		// unknown) so the ledger can later calibrate prediction vs actual.
+		if p.Stage == "submitted" && p.PredictedWin == 0 {
+			byID := map[string]*Opportunity{}
+			for i := range s.opps {
+				byID[s.opps[i].ID] = &s.opps[i]
+			}
+			o, _ := resolveOpp(in.ID, p, byID, s.opps)
+			if wp, _ := winProbability(o, p); wp > 0 {
+				p.PredictedWin = wp
+			}
+		}
 		empty := p.Stage == "" && p.Decision == "" && p.Notes == "" && p.Value == 0 &&
 			p.Walls == (Walls{}) && p.Owner == "" && p.Link == ""
 		if empty {

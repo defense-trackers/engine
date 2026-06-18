@@ -309,6 +309,17 @@
   .pf span{color:var(--ink)}.pf small{color:var(--dim);font-size:11.5px;line-height:1.4}
   .pf.ok b{color:var(--ok)}.pf.warn b{color:var(--warn)}.pf.blocker b{color:var(--bad)}
   .pf-ok{color:var(--ok)}.pf-warn{color:var(--warn)}.pf-bad{color:var(--bad)}
+  /* win/loss ledger + calibration */
+  .ledger-h{margin-top:30px}
+  .calrow{display:grid;grid-template-columns:72px 1fr 130px;align-items:center;gap:10px;margin:6px 0;font-size:12px}
+  .calband{font-family:var(--mono);color:var(--dim)}
+  .calbar{height:14px;border-radius:7px;background:rgba(255,255,255,.06);overflow:hidden}
+  .calbar i{display:block;height:100%;background:linear-gradient(90deg,rgba(143,179,196,.4),rgba(143,179,196,.7))}
+  .caln{font-family:var(--mono);font-size:11px;color:#cfe0ea;text-align:right}
+  .ledrow{display:grid;grid-template-columns:64px 1fr auto;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:13px}
+  .ledrow:first-of-type{border-top:none}
+  .ledt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+  .ledmeta{font-family:var(--mono);font-size:11px;color:var(--dim);text-align:right}
   .drrow{display:flex;gap:10px;flex-wrap:wrap}
   .drcta.strat{background:linear-gradient(135deg,rgba(111,191,155,.18),rgba(143,179,196,.12));border-color:rgba(111,191,155,.4)}
   /* strategize panel: ranked pipeline + win-prob bars */

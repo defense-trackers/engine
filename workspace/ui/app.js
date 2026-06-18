@@ -1337,6 +1337,39 @@ async function renderProfit() {
     c.innerHTML = `<div class="ctop"><div><div class="ctitle">${s.stage}</div><div class="meta">${s.count} pursuit${s.count === 1 ? '' : 's'} · $${s.value.toLocaleString()}K ceiling · ${(s.prob * 100).toFixed(1)}% reach PoR</div></div><div class="score">$${s.weighted.toLocaleString()}<small>K expected</small></div></div><div style="margin-top:8px;height:6px;border-radius:4px;background:linear-gradient(to right,var(--brand) ${pct}%,var(--panel2) ${pct}%)"></div>`;
     grid.append(c);
   });
+  await renderLedger(v);
+}
+
+// Win/loss ledger + calibration — outcomes recorded, predicted vs actual win-prob
+// charted, so the win-probability model becomes defensible over time.
+async function renderLedger(v) {
+  const d = await fetch('/api/ledger').then((r) => r.json()).catch(() => null);
+  if (!d) return;
+  v.append(el('h2', 'ledger-h', 'Win / loss ledger'));
+  const wr = d.win_rate >= 0 ? d.win_rate + '%' : '—';
+  const brier = d.brier >= 0 ? d.brier.toFixed(3) : '—';
+  const head = el('div', 'card');
+  head.innerHTML = `<div class="ctop"><div><div class="ctitle">Outcomes</div><div class="meta">${d.decided} decided · ${d.won} won · ${d.lost} lost · $${(d.won_value).toLocaleString()}K won</div></div><div class="score">${wr}<small>win rate</small></div></div>`;
+  v.append(head);
+  // calibration: predicted band vs actual win rate
+  const calRows = d.calibration.map((b) => {
+    const actual = b.actual >= 0 ? b.actual + '%' : '—';
+    const w = b.actual >= 0 ? b.actual : 0;
+    return `<div class="calrow"><span class="calband">${b.band}</span><span class="calbar"><i style="width:${w}%"></i></span><span class="caln">${b.n ? `${b.won}/${b.n} → ${actual}` : 'no data'}</span></div>`;
+  }).join('');
+  const cal = el('div', 'card');
+  cal.innerHTML = `<div class="ctitle">Calibration — predicted vs actual</div><div class="meta" style="margin-bottom:10px">Of bids predicted in each band, how many actually won.${d.brier_n ? ` Brier score ${brier} (lower = better-calibrated, ${d.brier_n} resolved).` : ' Resolves once you log won/lost outcomes.'}</div>${calRows}`;
+  v.append(cal);
+  // the ledger rows (pending/open included so it's not blank pre-outcomes)
+  const order = { won: 0, lost: 1, pending: 2, open: 3 };
+  const rows = (d.rows || []).slice().sort((a, b) => (order[a.outcome] - order[b.outcome]) || (b.value - a.value));
+  const list = el('div', 'card');
+  list.innerHTML = `<div class="ctitle">Ledger (${rows.length})</div>` + rows.map((r) => {
+    const tone = r.outcome === 'won' ? 'go' : r.outcome === 'lost' ? 'nogo' : r.outcome === 'pending' ? 'fix' : '';
+    const pw = r.predicted_win ? `predicted ${r.predicted_win}%` : 'no prediction stamped';
+    return `<div class="ledrow"><span class="rdy ${tone || 'fix'}">${r.outcome}</span><span class="ledt">${escapeHtml(r.title)}</span><span class="ledmeta">${pw} · $${(r.value).toLocaleString()}K${r.owner ? ' · ' + escapeHtml(r.owner) : ''}</span></div>`;
+  }).join('');
+  v.append(list);
 }
 
 async function renderPlaybook() {
