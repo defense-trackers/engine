@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -75,6 +76,71 @@ func samSearch(dir, query string, limit int) ([]Opportunity, error) {
 	return out, nil
 }
 
+// liveQueryGeneric are filler words that make SAM's all-words title match miss.
+var liveQueryGeneric = map[string]bool{
+	"dod": true, "the": true, "for": true, "and": true, "latest": true, "current": true,
+	"opportunity": true, "opportunities": true, "contract": true, "contracts": true,
+	"system": true, "systems": true, "new": true, "defense": true, "military": true,
+}
+
+// strongTerms reduces a query to its distinctive tokens (longest first, capped),
+// so a degraded retry hits instead of AND-ing every word into zero results.
+func strongTerms(q string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, t := range strings.Fields(q) {
+		clean := strings.Trim(t, ",.\"'")
+		lt := strings.ToLower(clean)
+		if len(lt) < 4 || liveQueryGeneric[lt] || seen[lt] {
+			continue
+		}
+		seen[lt] = true
+		out = append(out, clean)
+	}
+	sort.SliceStable(out, func(i, j int) bool { return len(out[i]) > len(out[j]) })
+	if len(out) > 3 {
+		out = out[:3]
+	}
+	return out
+}
+
+// samSearchSmart runs the query, and if SAM's all-words title match returns nothing,
+// retries the distinctive terms individually and merges — so a fresh pull rarely
+// comes back empty just because the model phrased it as a sentence.
+func samSearchSmart(dir, query string, limit int) ([]Opportunity, error) {
+	res, err := samSearch(dir, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	if len(res) > 0 {
+		return res, nil
+	}
+	terms := strongTerms(query)
+	if len(terms) <= 1 {
+		return res, nil // nothing better to try
+	}
+	seen := map[string]bool{}
+	var out []Opportunity
+	for _, term := range terms {
+		r, e := samSearch(dir, term, limit)
+		if e != nil {
+			continue
+		}
+		for _, o := range r {
+			key := o.AwardText + o.URL
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			out = append(out, o)
+			if len(out) >= limit {
+				return out, nil
+			}
+		}
+	}
+	return out, nil
+}
+
 // liveData runs each fetch directive and returns a grounded text block for the
 // next prompt. Sources: sam | grants | awards | opps.
 func (s *server) liveData(dirs []string) string {
@@ -89,7 +155,7 @@ func (s *server) liveData(dirs []string) string {
 		switch src {
 		case "sam":
 			b.WriteString("LIVE SAM.gov (DoD) for \"" + q + "\":\n")
-			res, err := samSearch(s.opts.Dir, q, 8)
+			res, err := samSearchSmart(s.opts.Dir, q, 8)
 			if err != nil {
 				b.WriteString("  (fetch failed: " + err.Error() + ")\n")
 			} else if len(res) == 0 {

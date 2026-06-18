@@ -76,6 +76,23 @@ func TestComplianceRequirements(t *testing.T) {
 	}
 }
 
+func TestStrongTerms(t *testing.T) {
+	// over-stuffed query → distinctive terms only, generic words dropped, longest first
+	got := strongTerms("counter-UAS C-UAS DoD drone systems")
+	if len(got) == 0 || got[0] != "counter-UAS" {
+		t.Errorf("want counter-UAS first, got %v", got)
+	}
+	for _, term := range got {
+		if term == "DoD" || term == "systems" {
+			t.Errorf("generic term not dropped: %v", got)
+		}
+	}
+	// capped at 3
+	if len(strongTerms("alpha bravo charlie delta echo foxtrot")) > 3 {
+		t.Errorf("not capped at 3")
+	}
+}
+
 func TestComplianceEmpty(t *testing.T) {
 	if r := complianceRequirements(""); r != nil {
 		t.Errorf("empty detail should yield nil, got %v", r)

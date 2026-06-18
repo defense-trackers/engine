@@ -436,6 +436,7 @@ func (s *server) assistSystem(o *Opportunity, detail string, p Pursuit, sponsors
 	b.WriteString("[[fetch:awards:<keyword>]] — live SBIR.gov awards (the competitive field)\n")
 	b.WriteString("[[fetch:opps:<query>]] — search the opportunities already scored in Jesse's radar\n")
 	b.WriteString("Use fetch ONLY when fresh/external data is actually needed; for questions about THIS opportunity (already fully grounded above) just answer. When you fetch, emit a one-line 'Pulling fresh data on X…' plus the directive, nothing more.\n")
+	b.WriteString("QUERY TIP: SAM/grants match ALL words in the title, so use a SHORT, distinctive query — one or two key words (e.g. 'counter-UAS' or 'maritime autonomy'), NOT a sentence or stacked synonyms like 'counter-UAS C-UAS DoD drone'. Fewer words = more hits.\n")
 	b.WriteString("\nOUTREACH RULES (critical): Never give vague advice like 'find a resource sponsor.' Always name the specific office(s)/POC(s) above and the exact sanctioned channel. NEVER recommend cold or mass email — prefer the official channel (SBIR topic Q&A window, industry day / APBI, SAM RFI, BAA white paper, consortium marketplace, the program-office mailbox, a warm intro). Any drafted message must be short, mission-first (their requirement, not Jesse's product), reference the specific topic, ask one real question, and read as the opposite of spam. If you don't have a named person, name the office + role and the channel to find the current incumbent — never fabricate a name or email.\n")
 	return b.String()
 }
