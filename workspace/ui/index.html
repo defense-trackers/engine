@@ -760,7 +760,7 @@
   ::view-transition-new(root){animation:vtIn .42s cubic-bezier(.2,.8,.2,1)}
   @keyframes vtIn{from{opacity:0;transform:translateY(14px) scale(.992);filter:blur(7px)}}
   @keyframes vtOut{to{opacity:0;transform:translateY(-8px);filter:blur(4px)}}
-  @media(prefers-reduced-motion:reduce){*{animation:none!important}#boot{display:none}#grain,#radar{display:none}}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}html{scroll-behavior:auto}#boot{display:none}#grain,#radar{display:none}}
 </style>
 </head>
 <body>
