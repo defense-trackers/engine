@@ -1789,6 +1789,10 @@ function renderWarRoom() {
     aa.addEventListener('click', async () => { aaprog.hidden = false; aaprog.textContent = 'Starting…'; await autoAssessAll(aa, aaprog); await runStrategize(rowsEl, readEl, btn); });
     bar.append(btn, aa);
   } else { bar.append(btn); }
+  const rep = el('button', 'drcta'); rep.innerHTML = svg('doc') + 'Export brief';
+  rep.title = 'Download a board/investor pipeline brief (.docx) — headline numbers, top pursuits, closes, wins, team load';
+  rep.addEventListener('click', () => { const a = document.createElement('a'); a.href = '/api/report'; a.download = ''; document.body.append(a); a.click(); a.remove(); snd.apply(); toast('Exporting pipeline brief (.docx)…'); });
+  bar.append(rep);
   v.append(bar, aaprog);
   // Plan my week — effort-to-EV allocation
   const alloc = el('div', 'alloc');

@@ -115,6 +115,7 @@ func Run(o Options) error {
 	mux.HandleFunc("/api/awardgraph", s.hAwardGraph)
 	mux.HandleFunc("/api/target", s.hTarget)
 	mux.HandleFunc("/api/momentum", s.hMomentum)
+	mux.HandleFunc("/api/report", s.hReport)
 	mux.HandleFunc("/api/awards", s.hAwards)
 	mux.HandleFunc("/api/detail", s.hDetail)
 	mux.HandleFunc("/api/strategize", s.hStrategize)
