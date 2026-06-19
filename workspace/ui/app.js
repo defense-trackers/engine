@@ -976,7 +976,10 @@ async function complianceMatrix(o) {
 
 // draftVolume streams a full submittable volume to files, showing per-section
 // progress in the thread, then the output folder.
+let STREAM_BUSY = false;
 async function draftVolume(o) {
+  if (STREAM_BUSY) { toast('A task is already running…'); return; }
+  STREAM_BUSY = true;
   const t = $('#thread');
   const head = el('div', 'msg u'); head.textContent = 'Drafting the volume to files…'; t.append(head);
   const prog = el('div', 'msg a'); prog.textContent = 'Starting…'; t.append(prog); t.scrollTop = 1e9;
@@ -1004,10 +1007,13 @@ async function draftVolume(o) {
       }
     }
   } catch (e) { prog.className = 'msg err'; prog.textContent = 'draft failed: ' + e.message; }
+  finally { STREAM_BUSY = false; }
 }
 
 // Agentic chain: deep research → grounded draft → red-team critique, streamed.
 async function fullWorkup(o) {
+  if (STREAM_BUSY) { toast('A task is already running…'); return; }
+  STREAM_BUSY = true;
   const t = $('#thread');
   const head = el('div', 'msg u'); head.textContent = '› Full workup (research → draft → critique)'; t.append(head);
   const prog = el('div', 'msg a'); prog.textContent = 'Starting agentic workup…'; t.append(prog); t.scrollTop = 1e9;
@@ -1027,11 +1033,14 @@ async function fullWorkup(o) {
       }
     }
   } catch (e) { prog.className = 'msg err'; prog.textContent = 'workup failed: ' + e.message; }
+  finally { STREAM_BUSY = false; }
 }
 
 // streamInto runs an SSE endpoint, rendering markdown deltas live into one bubble
 // and noting the saved file when done. Shared by the conversion-engine actions.
 async function streamInto(url, o, headLabel, waitMsg, savedLabel) {
+  if (STREAM_BUSY) { toast('A task is already running…'); return; }
+  STREAM_BUSY = true;
   const t = $('#thread');
   const head = el('div', 'msg u'); head.textContent = '› ' + headLabel; t.append(head);
   const out = el('div', 'msg a streaming'); out.textContent = waitMsg; t.append(out); t.scrollTop = 1e9;
@@ -1051,6 +1060,7 @@ async function streamInto(url, o, headLabel, waitMsg, savedLabel) {
       }
     }
   } catch (e) { out.className = 'msg err'; out.textContent = 'failed: ' + e.message; snd.err(); }
+  finally { STREAM_BUSY = false; }
   out.classList.remove('streaming'); WAVE.mode = 'idle'; if (acc) snd.recv();
   t.scrollTop = 1e9;
 }
