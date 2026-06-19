@@ -2147,7 +2147,8 @@ function renderAll() {
     const showHw = $('#showhw').checked;
     grid.textContent = '';
     const pool = OPPS.filter((o) => showHw || !o.hardware_excluded);
-    const matched = pool.filter((o) => !q || (o.title + o.agency + o.source + o.type).toLowerCase().includes(q));
+    const blob = (o) => (o.title + ' ' + o.agency + ' ' + o.source + ' ' + o.type + ' ' + (o.matched_asset || '') + ' ' + (o.status || '') + ' ' + (o.setaside || '') + ' ' + o.id).toLowerCase();
+    const matched = pool.filter((o) => !q || blob(o).includes(q));
     count.textContent = q ? `Showing ${matched.length} of ${pool.length}` : `${pool.length} opportunities`;
     if (!matched.length) {
       grid.append(el('p', 'empty', q ? `No opportunities match “${f.value.trim()}”.` : 'No opportunities.'));
