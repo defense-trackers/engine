@@ -366,6 +366,16 @@ func eligibilityScore(o *Opportunity) int {
 // "no future deadline"; only daysLabel special-cases this value as "rolling".
 const daysRolling = -100000
 
+// deadlineRank orders by urgency for tie-breaking: a real future day-count sorts
+// ascending (sooner = more urgent), while closed/rolling (negative DaysLeft) sort
+// last. Keeps equal-fit opportunities with a live deadline ahead of dateless ones.
+func deadlineRank(daysLeft int) int {
+	if daysLeft >= 0 {
+		return daysLeft
+	}
+	return 1 << 30 // closed or rolling — least urgent
+}
+
 func runwayScore(closes string, today time.Time) (int, int) {
 	d := parseDate(closes)
 	if d.IsZero() {

@@ -287,7 +287,12 @@ func (s *server) ingest() {
 		}
 	}
 	Score(all, s.capsSnapshot(), time.Now())
-	sort.SliceStable(all, func(i, j int) bool { return all[i].Score > all[j].Score })
+	sort.SliceStable(all, func(i, j int) bool {
+		if all[i].Score != all[j].Score {
+			return all[i].Score > all[j].Score // fit first
+		}
+		return deadlineRank(all[i].DaysLeft) < deadlineRank(all[j].DaysLeft) // then nearer deadline
+	})
 	s.mu.Lock()
 	s.opps = all
 	s.changes = s.detectChangesLocked() // amendments/deadline shifts vs last ingest
