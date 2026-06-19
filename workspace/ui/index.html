@@ -347,6 +347,26 @@
   .ledrow:first-of-type{border-top:none}
   .ledt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
   .ledmeta{font-family:var(--mono);font-size:11px;color:var(--dim);text-align:right}
+  /* revenue target / north-star banner */
+  .goal{border:1px solid rgba(143,179,196,.28);border-radius:16px;padding:16px 20px;margin-bottom:20px;background:radial-gradient(600px 120px at 12% -40%,rgba(143,179,196,.12),transparent 70%)}
+  .goal-set{display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:var(--dim);font-size:13px}
+  .goal-in{width:140px;background:rgba(0,0,0,.28);border:1px solid var(--line2);color:var(--ink);font:600 13px var(--mono);border-radius:8px;padding:6px 10px}
+  .goal-save,.goal-edit{background:linear-gradient(135deg,var(--brand),var(--brand2));border:none;color:#04101e;font:700 12px var(--sans);border-radius:8px;padding:6px 13px;cursor:pointer}
+  .goal-edit{background:none;color:var(--dim);font-weight:600;padding:2px 6px;text-decoration:underline}
+  .goal-hd{display:flex;align-items:baseline;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+  .goal-hd b{font-family:var(--disp);font-size:26px;letter-spacing:0;color:var(--ink);text-transform:none}
+  .goal-hd .goal-edit{margin-left:auto}
+  .goal-bar{height:12px;border-radius:7px;background:rgba(255,255,255,.06);overflow:hidden;display:flex;margin:11px 0 8px}
+  .goal-bar .gr{background:linear-gradient(90deg,var(--ok),#8fd3b4);height:100%}
+  .goal-bar .gp{background:linear-gradient(90deg,rgba(143,179,196,.55),rgba(143,179,196,.3));height:100%}
+  .goal-meta{font-size:12.5px;color:var(--dim)}.goal-meta b{color:var(--ink)}
+  .goal-meta .gr-l{color:var(--ok)}.goal-meta .gp-l{color:var(--brand)}
+  .goal-lev-h{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:13px 0 7px}
+  .goal-levers{display:flex;flex-wrap:wrap;gap:7px}
+  .goal-lever{display:flex;align-items:center;gap:9px;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:9px;padding:7px 11px;cursor:pointer;color:var(--ink);font-size:12px;transition:.15s;max-width:340px}
+  .goal-lever:hover{border-color:var(--brand);background:rgba(143,179,196,.07)}
+  .goal-lever span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .goal-lever b{font-family:var(--mono);font-size:11px;color:var(--brand);white-space:nowrap}
   /* changed-since-last-refresh feed */
   .changes{margin:6px 0 22px;border:1px solid rgba(216,184,126,.3);border-radius:14px;padding:14px 16px;background:rgba(216,184,126,.04)}
   .chg-h{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--warn);margin-bottom:9px}

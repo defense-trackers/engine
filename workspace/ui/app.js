@@ -1437,6 +1437,36 @@ function mdLite(md) {
   function bold(s) { return s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`(.+?)`/g, '<code>$1</code>'); }
 }
 
+// renderGoal — the north-star banner: realized + pipeline expected award value
+// against a revenue target, with the biggest levers to close the gap.
+async function renderGoal(v) {
+  const d = await fetch('/api/target').then((r) => r.json()).catch(() => null);
+  if (!d) return;
+  const money = (k) => k >= 1000 ? '$' + (k / 1000).toFixed(k >= 10000 ? 0 : 1) + 'M' : '$' + k + 'K';
+  const wrap = el('div', 'goal');
+  if (!d.target_k) {
+    wrap.innerHTML = `<div class="goal-set"><span>Set a revenue target to orient the pipeline →</span><input type="number" class="goal-in" placeholder="$K (e.g. 5000)"><button class="goal-save">Set target</button></div>`;
+  } else {
+    const pct = Math.min(100, d.pct);
+    const realizedPct = d.projected ? Math.round(d.realized / Math.max(d.target_k, d.projected) * 100) : 0;
+    const pipePct = Math.min(100 - realizedPct, Math.round(d.pipeline_expected / Math.max(d.target_k, d.projected) * 100));
+    const levers = (d.levers || []).map((l) => `<button class="goal-lever" data-oppid="${escapeHtml(l.opp_id || '')}"><span>${escapeHtml(l.title)}</span><b>${money(l.expected)} · ${l.win_prob}%</b></button>`).join('');
+    wrap.innerHTML = `
+      <div class="goal-hd"><span>Revenue target</span><b>${money(d.target_k)}</b><button class="goal-edit" title="change target">edit</button></div>
+      <div class="goal-bar"><i class="gr" style="width:${realizedPct}%" title="realized (won)"></i><i class="gp" style="width:${pipePct}%" title="pipeline expected"></i></div>
+      <div class="goal-meta"><span class="gr-l">realized ${money(d.realized)}</span> · <span class="gp-l">pipeline expected ${money(d.pipeline_expected)}</span> · <b>${money(d.projected)} projected (${d.pct}%)</b></div>
+      ${levers ? `<div class="goal-lev-h">Biggest levers to the goal</div><div class="goal-levers">${levers}</div>` : ''}`;
+  }
+  v.append(wrap);
+  const saveTarget = async (val) => {
+    await fetch('/api/target', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target_k: val }) });
+    snd.apply(); render();
+  };
+  wrap.querySelector('.goal-save')?.addEventListener('click', () => { const val = parseInt(wrap.querySelector('.goal-in').value) || 0; if (val > 0) saveTarget(val); });
+  wrap.querySelector('.goal-edit')?.addEventListener('click', () => { const cur = d.target_k; const val = parseInt(prompt('Revenue target ($K):', cur) || cur); if (val > 0 && val !== cur) saveTarget(val); });
+  wrap.querySelectorAll('.goal-lever').forEach((b) => b.addEventListener('click', () => { const o = OPPS.find((x) => x.id === b.dataset.oppid); if (o) { snd.lock(); openAssist(o); } else openById(b.dataset.oppid); }));
+}
+
 // renderChanges shows what moved since the last refresh — amendments, deadline
 // shifts, Q&A changes, withdrawals — so nothing slips by unnoticed.
 async function renderChanges(v) {
@@ -1501,6 +1531,7 @@ function tsection(parent, cls, iconName, label, items, emptyMsg) {
 
 async function renderToday() {
   const v = $('#view-today'); v.hidden = false; v.textContent = '';
+  await renderGoal(v);
   BRIEF = await fetch('/api/brief').then((r) => r.json()).catch(() => null);
   const b = BRIEF || { deadlines: [], qa: [], new: [], moves: [], ev: 0, total_value: 0, pursuits: 0, act_now: 0, new_count: 0 };
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
