@@ -14,6 +14,9 @@ import (
 // stdlib .docx writer. This is what you hand a partner or put in a raise deck.
 
 func reportMoney(k int) string {
+	if k >= 1_000_000 {
+		return fmt.Sprintf("$%.1fB", float64(k)/1_000_000)
+	}
 	if k >= 1000 {
 		return fmt.Sprintf("$%.1fM", float64(k)/1000)
 	}
