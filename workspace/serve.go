@@ -35,18 +35,18 @@ type Options struct {
 // Pursuit is Jesse's private state for one opportunity. Title/Agency/URL let a
 // seeded or manually-added pursuit render even when no live opportunity matches.
 type Pursuit struct {
-	Stage    string `json:"stage"`              // see transition.go Stages (lifecycle to revenue)
-	Decision string `json:"decision,omitempty"` // bid|no-bid
-	Notes    string `json:"notes,omitempty"`
-	Title    string `json:"title,omitempty"`
-	Agency   string `json:"agency,omitempty"`
-	URL      string `json:"url,omitempty"`
-	Value    int    `json:"value,omitempty"` // estimated lifetime value, $K (Phase I→II→bridge→PoR)
-	Walls    Walls  `json:"walls,omitempty"` // four-walls transition-readiness scorecard
-	Link     string `json:"link,omitempty"`  // live opp ID this tracked volume maps to (manual override; else auto-matched by code)
-	Owner    string `json:"owner,omitempty"` // team member responsible for this pursuit
-	PredictedWin int `json:"predicted_win,omitempty"` // win-prob stamped at submission, for calibration vs outcome
-	Updated  string `json:"updated,omitempty"`
+	Stage        string `json:"stage"`              // see transition.go Stages (lifecycle to revenue)
+	Decision     string `json:"decision,omitempty"` // bid|no-bid
+	Notes        string `json:"notes,omitempty"`
+	Title        string `json:"title,omitempty"`
+	Agency       string `json:"agency,omitempty"`
+	URL          string `json:"url,omitempty"`
+	Value        int    `json:"value,omitempty"`         // estimated lifetime value, $K (Phase I→II→bridge→PoR)
+	Walls        Walls  `json:"walls,omitempty"`         // four-walls transition-readiness scorecard
+	Link         string `json:"link,omitempty"`          // live opp ID this tracked volume maps to (manual override; else auto-matched by code)
+	Owner        string `json:"owner,omitempty"`         // team member responsible for this pursuit
+	PredictedWin int    `json:"predicted_win,omitempty"` // win-prob stamped at submission, for calibration vs outcome
+	Updated      string `json:"updated,omitempty"`
 }
 
 type server struct {
@@ -99,6 +99,7 @@ func Run(o Options) error {
 	mux.HandleFunc("/api/refresh", s.hRefresh)
 	mux.HandleFunc("/api/assist", s.hAssist)
 	mux.HandleFunc("/api/assist-status", s.hAssistStatus)
+	mux.HandleFunc("/api/health", s.hHealth)
 	mux.HandleFunc("/api/assess", s.hAssess)
 	mux.HandleFunc("/api/assess-all", s.hAssessAll)
 	mux.HandleFunc("/api/playbook", func(w http.ResponseWriter, _ *http.Request) {
@@ -353,6 +354,25 @@ func (s *server) hProfit(w http.ResponseWriter, _ *http.Request) {
 		}
 	}
 	writeJSON(w, map[string]any{"stages": rows, "total_value": totalVal, "expected_value": int(ev)})
+}
+
+// hHealth is a lightweight liveness/readiness probe: confirms the server is up,
+// the profile loaded, and reports how much it's tracking. Used by the restart
+// health-check and any external monitor; never blocks on Claude.
+func (s *server) hHealth(w http.ResponseWriter, _ *http.Request) {
+	s.mu.Lock()
+	opps, pursuits, changes := len(s.opps), len(s.state), len(s.changes)
+	ready := s.caps != nil
+	s.mu.Unlock()
+	writeJSON(w, map[string]any{
+		"ok":       true,
+		"ready":    ready,
+		"opps":     opps,
+		"pursuits": pursuits,
+		"changes":  changes,
+		"claude":   assistBackend(),
+		"time":     time.Now().UTC().Format(time.RFC3339),
+	})
 }
 
 func (s *server) hState(w http.ResponseWriter, r *http.Request) {
