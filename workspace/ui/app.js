@@ -244,7 +244,7 @@ function scrambleText(node, finalText, dur = 520) {
 }
 
 // --- custom line-icon set (zero emoji; stroke = currentColor) ---
-const _s = (p) => `<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const _s = (p) => `<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${p}</svg>`;
 const ICON = {
   clock: _s('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
   chat: _s('<path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v8A1.5 1.5 0 0 1 18.5 16H9l-4 3v-3H5.5A1.5 1.5 0 0 1 4 14.5z"/><path d="M9 10.5h6M9 7.5h2"/>'),
