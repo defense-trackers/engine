@@ -1698,18 +1698,26 @@ async function renderToday() {
   if (!HERO_DECODED) { HERO_DECODED = true; const ld = hero.querySelector('.lead'); if (ld) decrypt(ld, lead, 950); }
 
   // bento: hero (dominant) + two feature stat tiles + a base row of three
-  const mkStat = (cls, n, l) => { const d = el('div', 'stat ' + cls); d.innerHTML = `<div class="n">${n}</div><div class="l">${l}</div>`; return d; };
+  const mkStat = (cls, n, l, go) => {
+    const d = el('div', 'stat ' + cls); d.innerHTML = `<div class="n">${n}</div><div class="l">${l}</div>`;
+    if (go) { d.classList.add('link'); d.setAttribute('role', 'button'); d.setAttribute('tabindex', '0'); d.title = 'Open ' + go;
+      const nav = () => { snd.tab(); switchView(go); };
+      d.addEventListener('click', nav);
+      d.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav(); } });
+    }
+    return d;
+  };
   const bento = el('div', 'bento');
   const row = el('div', 'statrow');
   row.append(
-    mkStat('', b.pursuits || 0, 'Active pursuits'),
-    mkStat('now', b.act_now || 0, 'Act-now'),
-    mkStat('new', b.new_count || 0, 'New high-fit'),
+    mkStat('', b.pursuits || 0, 'Active pursuits', 'pipeline'),
+    mkStat('now', b.act_now || 0, 'Act-now', 'now'),
+    mkStat('new', b.new_count || 0, 'New high-fit', 'all'),
   );
   bento.append(
     hero,
-    mkStat('ev feat fa', mK(b.ev || 0), 'Expected (risk-adj. to PoR)'),
-    mkStat('feat fb', mK(b.total_value || 0), 'Best-case ceiling'),
+    mkStat('ev feat fa', mK(b.ev || 0), 'Expected (risk-adj. to PoR)', 'profit'),
+    mkStat('feat fb', mK(b.total_value || 0), 'Best-case ceiling', 'profit'),
     row,
   );
   v.append(bento);
