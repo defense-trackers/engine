@@ -179,6 +179,7 @@
   .ctl{display:flex;gap:9px;margin-top:13px;flex-wrap:wrap;align-items:center}
   select,textarea,input[type=number]{background:rgba(255,255,255,.04);border:1px solid var(--line2);color:var(--ink);font:inherit;border-radius:10px;padding:7px 10px;transition:.2s}
   select:focus,textarea:focus,input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(143,179,196,.15)}
+  textarea:disabled,input:disabled,button:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
   textarea{flex:1;min-width:200px;resize:vertical;min-height:36px;font-size:13px}
   .pill{font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
   .pill.bid{color:var(--ok);border-color:rgba(111,191,155,.35)}.pill.nobid{color:var(--bad);border-color:rgba(217,122,134,.35)}
