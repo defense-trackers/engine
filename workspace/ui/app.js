@@ -530,6 +530,7 @@ async function boot() {
   initPalette();
   $('#refresh').addEventListener('click', async (e) => {
     e.target.textContent = '…'; await fetch('/api/refresh', { method: 'POST' }); await load(); render(); e.target.textContent = '↻ Refresh';
+    toast(CHANGES_COUNT ? `Synced · ${CHANGES_COUNT} change${CHANGES_COUNT === 1 ? '' : 's'} — see Today` : 'Synced · nothing moved'); snd.recv && snd.recv();
   });
   $('#assist-close').addEventListener('click', closeAssist);
   $('#log-export')?.addEventListener('click', exportLog);
