@@ -409,10 +409,10 @@ func (s *server) hStrategize(w http.ResponseWriter, _ *http.Request) {
 		}
 		val := "value unset"
 		if r.Value > 0 {
-			val = fmt.Sprintf("$%dK lifetime", r.Value)
+			val = reportMoney(r.Value) + " lifetime"
 		}
-		p.WriteString(fmt.Sprintf("%d. [%s] %s [%s] — win %d%%, fit %d/100, %s, EV $%dK, weakest wall: %s%s",
-			i+1, r.Ready, r.Title, r.Stage, r.WinProb, r.Fit, val, r.EV, r.Weakest, dl))
+		p.WriteString(fmt.Sprintf("%d. [%s] %s [%s] — win %d%%, fit %d/100, %s, EV %s, weakest wall: %s%s",
+			i+1, r.Ready, r.Title, r.Stage, r.WinProb, r.Fit, val, reportMoney(r.EV), r.Weakest, dl))
 		if r.Asset != "" {
 			p.WriteString(", asset: " + r.Asset)
 		}
@@ -459,8 +459,8 @@ func RunAutopilot(o Options, push bool) error {
 func autopilotText(rows []stratRow, br *Brief) string {
 	var b strings.Builder
 	b.WriteString("Realizer autopilot — " + br.Generated[:10] + "\n")
-	b.WriteString(fmt.Sprintf("Expected (risk-adjusted to PoR) $%dK · ceiling $%dK · %d pursuits · %d act-now · %d new\n",
-		br.EV, br.TotalValue, br.Pursuits, br.ActNow, br.NewCount))
+	b.WriteString(fmt.Sprintf("Expected (risk-adjusted to PoR) %s · ceiling %s · %d pursuits · %d act-now · %d new\n",
+		reportMoney(br.EV), reportMoney(br.TotalValue), br.Pursuits, br.ActNow, br.NewCount))
 	b.WriteString("\nPIPELINE — where the hours go (ranked by expected award value):\n")
 	for i, r := range rows {
 		if i >= 8 {
@@ -470,8 +470,8 @@ func autopilotText(rows []stratRow, br *Brief) string {
 		if r.DaysLeft >= 0 {
 			dl = fmt.Sprintf(", %dd left", r.DaysLeft)
 		}
-		b.WriteString(fmt.Sprintf("  %d. [%s] %s [%s] — win %d%%, EV $%dK, weakest: %s%s\n",
-			i+1, r.Ready, short(r.Title, 52), r.Stage, r.WinProb, r.EV, r.Weakest, dl))
+		b.WriteString(fmt.Sprintf("  %d. [%s] %s [%s] — win %d%%, EV %s, weakest: %s%s\n",
+			i+1, r.Ready, short(r.Title, 52), r.Stage, r.WinProb, reportMoney(r.EV), r.Weakest, dl))
 	}
 	if len(br.Deadlines) > 0 {
 		b.WriteString("\nDEADLINES:\n")

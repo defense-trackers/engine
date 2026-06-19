@@ -303,7 +303,7 @@ func (s *server) hDayRead(w http.ResponseWriter, _ *http.Request) {
 	sys.WriteString("You are Jesse's chief of staff and capture strategist. Give a crisp, prioritized read of his pipeline TODAY — what to do, the biggest risk, the highest-leverage move. Ground it in the doctrine below. Markdown, tight, under 220 words, lead with the single most important action.\n\n")
 	sys.Write(playbookMD)
 	var p strings.Builder
-	p.WriteString(fmt.Sprintf("PIPELINE SNAPSHOT (%s): expected value $%dK risk-adjusted, %d active pursuits, %d act-now, %d teaming plays, %d new high-fit.\n\n", br.Generated[:10], br.EV, br.Pursuits, br.ActNow, len(br.Teaming), br.NewCount))
+	p.WriteString(fmt.Sprintf("PIPELINE SNAPSHOT (%s): expected value %s risk-adjusted, %d active pursuits, %d act-now, %d teaming plays, %d new high-fit.\n\n", br.Generated[:10], reportMoney(br.EV), br.Pursuits, br.ActNow, len(br.Teaming), br.NewCount))
 	if len(br.Deadlines) > 0 {
 		p.WriteString("DEADLINES:\n")
 		for i, d := range br.Deadlines {
@@ -368,8 +368,8 @@ func RunBrief(o Options, push bool) error {
 func briefText(br *Brief) string {
 	var b strings.Builder
 	b.WriteString("Defense bid brief — " + br.Generated[:10] + "\n")
-	b.WriteString(fmt.Sprintf("Expected (risk-adjusted to program of record) $%dK · best-case ceiling $%dK · %d pursuits · %d act-now · %d new\n",
-		br.EV, br.TotalValue, br.Pursuits, br.ActNow, br.NewCount))
+	b.WriteString(fmt.Sprintf("Expected (risk-adjusted to program of record) %s · best-case ceiling %s · %d pursuits · %d act-now · %d new\n",
+		reportMoney(br.EV), reportMoney(br.TotalValue), br.Pursuits, br.ActNow, br.NewCount))
 	line := func(it BriefItem) {
 		d := ""
 		if it.Days >= 0 {
