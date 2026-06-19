@@ -1833,6 +1833,9 @@ async function renderCrew() {
   const groups = {};
   list.forEach((r) => { const o = (r.owner || '').trim() || '— unassigned'; (groups[o] ||= []).push(r); });
   const names = Object.keys(groups).sort((a, b) => (a === '— unassigned') - (b === '— unassigned') || a.localeCompare(b));
+  if (!names.some((n) => n !== '— unassigned')) {
+    v.append(el('p', 'crew-nudge', 'No owners assigned yet — open any pursuit and set the Owner field to split the load across your team.'));
+  }
   const grid = el('div', 'crewgrid');
   names.forEach((name) => {
     const rs = groups[name];
@@ -1840,7 +1843,7 @@ async function renderCrew() {
     const ev = rs.reduce((a, r) => a + (r.ev || 0), 0);
     const go = rs.filter((r) => r.ready === 'GO').length, fix = rs.filter((r) => r.ready === 'FIX').length, no = rs.filter((r) => r.ready === 'NO-GO').length;
     const near = rs.filter((r) => r.days_left >= 0).map((r) => r.days_left).sort((a, b) => a - b)[0];
-    const card = el('div', 'crewcard');
+    const card = el('div', 'crewcard' + (name === '— unassigned' ? ' unassigned' : ''));
     card.innerHTML = `<div class="crewhd"><b>${escapeHtml(name)}</b><span>${rs.length} pursuit${rs.length === 1 ? '' : 's'}</span></div>
       <div class="crewstat"><span>value</span><b>${mK(val)}</b></div>
       <div class="crewstat"><span>expected</span><b>${mK(ev)}</b></div>

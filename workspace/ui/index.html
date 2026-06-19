@@ -422,6 +422,8 @@
   /* Crew view */
   .crewgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
   .crewcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;backdrop-filter:blur(12px)}
+  .crewcard.unassigned{opacity:.82;border-style:dashed}
+  .crew-nudge{color:var(--brand);font-size:13px;background:rgba(143,179,196,.06);border:1px solid rgba(143,179,196,.25);border-radius:10px;padding:10px 14px;margin-bottom:16px}
   .crewhd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;border-bottom:1px solid var(--line);padding-bottom:9px}
   .crewhd b{font-family:var(--disp);font-size:16px;color:var(--ink)}.crewhd span{font-family:var(--mono);font-size:11px;color:var(--dim)}
   .crewstat{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--dim);margin:4px 0}
