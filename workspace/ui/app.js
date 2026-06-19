@@ -813,8 +813,10 @@ async function moveStage(o, stage) {
   $('#thread').scrollTop = $('#thread').scrollHeight;
 }
 
+let ASSIST_BUSY = false;
 async function sendAssist(action) {
   if (!ASSIST.enabled || !CUR_OPP) return;
+  if (ASSIST_BUSY) { toast('Claude is still responding…'); return; } // no overlapping streams
   const input = $('#assist-input');
   const message = action ? '' : input.value.trim();
   if (!action && !message) return;
@@ -827,7 +829,7 @@ async function sendAssist(action) {
   renderThread();
 
   const ans = el('div', 'msg a streaming'); ans.textContent = '◢ incoming transmission — decrypting…'; $('#thread').append(ans); $('#thread').scrollTop = 1e9;
-  snd.send(); $('#assist').classList.add('thinking');
+  snd.send(); $('#assist').classList.add('thinking'); ASSIST_BUSY = true;
   ttsCancel(); WAVE.mode = 'streaming';
   let acc = '';
   try {
@@ -853,7 +855,7 @@ async function sendAssist(action) {
       }
     }
   } catch (e) { ans.className = 'msg err'; ans.textContent = 'stream failed: ' + e.message; snd.err(); }
-  ans.classList.remove('streaming'); $('#assist').classList.remove('thinking');
+  ans.classList.remove('streaming'); $('#assist').classList.remove('thinking'); ASSIST_BUSY = false;
   WAVE.mode = 'idle';
   if (acc) { snd.recv(); ttsFlush(acc); const h = convo(id); h.push({ role: 'assistant', content: acc }); saveConvo(id, h); }
   const dirs = [...acc.matchAll(/\[\[do:([^\]]+)\]\]/g)].map((m) => m[1]);
