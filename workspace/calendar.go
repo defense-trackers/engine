@@ -30,6 +30,7 @@ func (s *server) hCalendar(w http.ResponseWriter, _ *http.Request) {
 	b.WriteString("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Realizer//Bid Cockpit//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\n")
 	b.WriteString("X-WR-CALNAME:Realizer deadlines\r\n")
 	stamp := time.Now().UTC().Format("20060102T150405Z")
+	today := time.Now().UTC().Truncate(24 * time.Hour)
 
 	seen := map[string]bool{}
 	for i := range opps {
@@ -45,10 +46,12 @@ func (s *server) hCalendar(w http.ResponseWriter, _ *http.Request) {
 		seen[o.ID] = true
 		// The Q&A window is the higher-leverage capture moment — shape the requirement
 		// before writing. Calendar it (tighter 3-day alarm) alongside the close.
-		if qd, ok := qaOpenUntil(o.Channel); ok {
+		if qd, ok := qaOpenUntil(o.Channel); ok && !qd.Before(today) {
 			writeQAEvent(&b, o, qd, stamp)
 		}
-		if day, ok := parseCloseDay(o.Closes); ok {
+		// Only calendar deadlines that haven't already passed — a forward-looking
+		// feed shouldn't carry closed dates (or alarms scheduled in the past).
+		if day, ok := parseCloseDay(o.Closes); ok && !day.Before(today) {
 			writeVEvent(&b, o, day, stamp)
 		}
 	}
