@@ -46,12 +46,13 @@ const snd = {
 
 // --- idle attract mode ---
 let idleTimer;
-function resetIdle() { document.body.classList.remove('idle'); clearTimeout(idleTimer); idleTimer = setTimeout(() => document.body.classList.add('idle'), 35000); }
+function resetIdle() { document.body.classList.remove('idle'); clearTimeout(idleTimer); idleTimer = setTimeout(() => document.body.classList.add('idle'), 60000); }
 
 // token-reactive Claude core — flares with each streamed token (throttled; glow only,
 // so it doesn't fight the spin transform)
 let _coreT = 0;
 function corePulse() {
+  resetIdle(); // streaming activity keeps the screen awake — don't dim mid-read
   const c = document.querySelector('.ccore'); if (!c) return;
   const now = performance.now(); if (now - _coreT < 55) return; _coreT = now;
   c.style.boxShadow = '0 0 54px 6px rgba(143,179,196,.95)'; c.style.filter = 'brightness(1.45)';
@@ -173,7 +174,7 @@ function waveInit() {
   resize(); try { new ResizeObserver(resize).observe(cv); } catch { }
   if (!matchMedia('(prefers-reduced-motion: reduce)').matches) waveLoop();
 }
-function waveKick() { WAVE.kick = Math.min(1, WAVE.kick + .5); }
+function waveKick() { WAVE.kick = Math.min(1, WAVE.kick + .5); resetIdle(); }
 let _wt = 0;
 function waveLoop() {
   WAVE.raf = requestAnimationFrame(waveLoop);
@@ -1711,7 +1712,7 @@ async function dayRead(cta, body) {
         const line = p.replace(/^data:\s*/, '').trim(); if (!line) continue;
         let ev; try { ev = JSON.parse(line); } catch { continue; }
         if (ev.error) { body.innerHTML = `<span class="drwait">${escapeHtml(ev.error)}</span>`; }
-        else if (ev.t) { acc += ev.t; body.innerHTML = mdChat(acc); }
+        else if (ev.t) { acc += ev.t; body.innerHTML = mdChat(acc); resetIdle(); }
       }
     }
   } catch (e) { body.innerHTML = `<span class="drwait">read failed: ${escapeHtml(e.message)}</span>`; }
