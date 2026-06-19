@@ -320,6 +320,15 @@
   .ledrow:first-of-type{border-top:none}
   .ledt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
   .ledmeta{font-family:var(--mono);font-size:11px;color:var(--dim);text-align:right}
+  /* changed-since-last-refresh feed */
+  .changes{margin:6px 0 22px;border:1px solid rgba(216,184,126,.3);border-radius:14px;padding:14px 16px;background:rgba(216,184,126,.04)}
+  .chg-h{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--warn);margin-bottom:9px}
+  .chg{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin:5px 0;cursor:pointer;transition:.15s;color:var(--ink)}
+  .chg:hover{border-color:var(--brand);background:rgba(143,179,196,.07)}
+  .chg svg{width:15px;height:15px;flex:none}
+  .chg.good svg{color:var(--ok)}.chg.warn svg{color:var(--warn)}.chg.gone svg{color:var(--bad)}
+  .chg-t{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46%}
+  .chg-d{font-family:var(--mono);font-size:11px;color:var(--dim);margin-left:auto;text-align:right}
   .drrow{display:flex;gap:10px;flex-wrap:wrap}
   .drcta.strat{background:linear-gradient(135deg,rgba(111,191,155,.18),rgba(143,179,196,.12));border-color:rgba(111,191,155,.4)}
   /* strategize panel: ranked pipeline + win-prob bars */

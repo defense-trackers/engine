@@ -1394,6 +1394,23 @@ function mdLite(md) {
   function bold(s) { return s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`(.+?)`/g, '<code>$1</code>'); }
 }
 
+// renderChanges shows what moved since the last refresh — amendments, deadline
+// shifts, Q&A changes, withdrawals — so nothing slips by unnoticed.
+async function renderChanges(v) {
+  const d = await fetch('/api/changes').then((r) => r.json()).catch(() => null);
+  if (!d || !d.count) return;
+  const wrap = el('div', 'changes');
+  wrap.append(el('div', 'chg-h', `⟳ Changed since last refresh (${d.count})`));
+  const icon = { deadline: 'clock', qa: 'chat', status: 'spark', gone: 'arrow' };
+  d.changes.forEach((c) => {
+    const row = el('button', 'chg' + (c.good ? ' good' : c.kind === 'gone' ? ' gone' : ' warn'));
+    row.innerHTML = svg(icon[c.kind] || 'spark') + `<span class="chg-t">${escapeHtml(c.title)}</span><span class="chg-d">${escapeHtml(c.detail)}</span>`;
+    row.addEventListener('click', () => { snd.lock(); openById(c.id); });
+    wrap.append(row);
+  });
+  v.append(wrap);
+}
+
 // open a brief card: deep-link into the Claude assist panel for the live opp;
 // for a pursuit with no live opp (e.g. a seeded volume), jump to the pipeline.
 function openById(id) {
@@ -1494,6 +1511,7 @@ async function renderToday() {
   }
   v.append(el('p', 'sub', 'Expected value = each pursuit’s program-of-record ceiling × its cumulative probability of actually reaching a funded program (the SBIR→PoR funnel is brutal — early stages are <2%). Ceilings are editable best-case estimates; set them per pursuit in its Claude panel.'));
 
+  await renderChanges(v);
   tsection(v, 'deadline', 'clock', 'Deadlines (≤30d)', b.deadlines, 'No tracked deadlines in the next 30 days.');
   tsection(v, 'qa', 'chat', 'Q&A windows — sanctioned channel', b.qa, 'No open topic Q&A windows right now.');
   tsection(v, 'new', 'spark', 'New high-fit opportunities', b.new, 'Nothing new since your last brief.');

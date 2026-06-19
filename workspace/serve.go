@@ -56,6 +56,7 @@ type server struct {
 	caps     *Capabilities
 	sponsors *SponsorBook
 	state    map[string]Pursuit
+	changes  []ChangeItem // amendments/deadline shifts detected on the last ingest
 }
 
 // newServer loads the profile, sponsor book, pursuit state, and scored
@@ -110,6 +111,7 @@ func Run(o Options) error {
 	mux.HandleFunc("/api/company-kit", s.hCompanyKit)
 	mux.HandleFunc("/api/proof", s.hProof)
 	mux.HandleFunc("/api/ledger", s.hLedger)
+	mux.HandleFunc("/api/changes", s.hChanges)
 	mux.HandleFunc("/api/awards", s.hAwards)
 	mux.HandleFunc("/api/detail", s.hDetail)
 	mux.HandleFunc("/api/strategize", s.hStrategize)
@@ -213,6 +215,7 @@ func (s *server) ingest() {
 	sort.SliceStable(all, func(i, j int) bool { return all[i].Score > all[j].Score })
 	s.mu.Lock()
 	s.opps = all
+	s.changes = s.detectChangesLocked() // amendments/deadline shifts vs last ingest
 	s.mu.Unlock()
 }
 
