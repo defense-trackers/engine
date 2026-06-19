@@ -1214,7 +1214,10 @@ function initPalette() {
     q = q.toLowerCase().trim();
     const out = [];
     VIEWS.forEach(([v, l]) => { if (!q || l.toLowerCase().includes(q)) out.push({ cat: 'View', icon: 'arrow', label: l, tag: 'go', run: () => switchView(v) }); });
-    [['Refresh data', 'radar', () => $('#refresh').click()], ['Toggle UI sound', 'spark', () => document.querySelector('#sndtoggle')?.click()]]
+    [['Refresh data', 'radar', () => $('#refresh').click()],
+     ['Subscribe to deadlines (.ics)', 'clock', () => window.open('/api/calendar.ics')],
+     ['Toggle UI sound', 'spark', () => document.querySelector('#sndtoggle')?.click()],
+     ['Toggle spoken replies', 'chat', () => document.querySelector('#spktoggle')?.click()]]
       .forEach(([l, i, fn]) => { if (!q || l.toLowerCase().includes(q)) out.push({ cat: 'Action', icon: i, label: l, tag: 'run', run: fn }); });
     const opps = (q ? OPPS.filter((o) => (o.title + ' ' + o.agency).toLowerCase().includes(q)) : OPPS).slice(0, q ? 9 : 6);
     opps.forEach((o) => out.push({ cat: 'Opportunity', icon: 'target', label: o.title, tag: o.matched_asset || o.source, run: () => openAssist(o) }));
@@ -1885,6 +1888,13 @@ function renderPipeline() {
       const bits = [o ? o.agency : p.agency, o ? daysLabel(o) : '', p.decision].filter(Boolean);
       m.innerHTML = bits.join(' · ');
       kc.append(t, m);
+      // readiness mini-bar + owner chip — the four-walls + team signals on the board
+      const rd = readiness(p.walls || {});
+      const meta = el('div', 'kmeta');
+      meta.innerHTML = `<span class="kready" title="transition readiness ${rd.score}/100 · weakest ${rd.weakest}"><i style="width:${rd.score}%"></i></span>` +
+        (p.value ? `<span class="kval">$${(p.value).toLocaleString()}K</span>` : '') +
+        (p.owner ? `<span class="kowner">${escapeHtml(p.owner)}</span>` : '');
+      kc.append(meta);
       if (p.notes) { const n = el('div', 'm'); n.textContent = p.notes; kc.append(n); }
       kc.append(stageMover(id, p));
       kc.append(el('span', 'ticks'));

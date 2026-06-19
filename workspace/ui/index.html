@@ -184,6 +184,11 @@
   .kc:hover{border-color:var(--line2);transform:translateY(-2px);box-shadow:0 14px 30px -18px rgba(0,0,0,.8)}
   .kc .t{font-family:var(--disp);font-size:12.5px;font-weight:600;line-height:1.35}
   .kc .m{font-family:var(--mono);font-size:10.5px;color:var(--dim);margin-top:5px;line-height:1.5}
+  .kmeta{display:flex;align-items:center;gap:8px;margin-top:7px}
+  .kready{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden;min-width:30px}
+  .kready i{display:block;height:100%;background:linear-gradient(90deg,var(--brand2),var(--brand))}
+  .kval{font-family:var(--mono);font-size:10px;color:#cfe0ea}
+  .kowner{font-size:10px;color:var(--brand);padding:1px 6px;border:1px solid var(--line2);border-radius:6px;white-space:nowrap}
   .kc select{width:100%;margin-top:9px;font-size:11.5px;padding:5px 7px}
   .col .empty{flex:1;display:grid;place-items:center;color:var(--faint);opacity:.45;font-style:normal;font-family:var(--mono);font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;border:1px dashed var(--line);border-radius:10px;min-height:60px}
   .kc[draggable]{cursor:grab}.kc.drag{opacity:.4;border-style:dashed}
