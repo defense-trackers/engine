@@ -1418,7 +1418,11 @@ async function saveState(id, patch, extra = {}) {
   const next = { ...cur, ...patch, ...extra };
   if (!next.stage && !next.decision && !next.notes) { delete STATE[id]; }
   else STATE[id] = next;
-  await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...next }) });
+  try {
+    const resp = await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...next }) });
+    if (!resp.ok) { toast('Save failed (' + resp.status + ') — reverting'); snd.err && snd.err(); }
+  } catch { toast('Save failed — offline? Reverting'); snd.err && snd.err(); }
+  // Always resync from the server so the board reflects what actually persisted.
   $('#stat') && load().then(() => { if (VIEW !== 'all') render(); });
 }
 
