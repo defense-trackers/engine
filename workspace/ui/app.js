@@ -1966,7 +1966,7 @@ function renderWarRoom() {
   v.append(bar, aaprog);
   // Plan my week — effort-to-EV allocation
   const alloc = el('div', 'alloc');
-  alloc.innerHTML = `<div class="alloc-hd">${svg('clock')} Plan my week — <input type="number" class="alloc-hrs" value="40" min="1" max="200"> hrs <button class="alloc-go">Allocate</button></div><div class="alloc-body"></div>`;
+  alloc.innerHTML = `<div class="alloc-hd">${svg('clock')} Plan my week — <input type="number" class="alloc-hrs" value="40" min="1" max="200" aria-label="Hours available this week"> hrs <button class="alloc-go">Allocate</button></div><div class="alloc-body"></div>`;
   v.append(alloc);
   const runAlloc = async () => {
     const inp = alloc.querySelector('.alloc-hrs');
