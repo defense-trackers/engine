@@ -3,7 +3,7 @@
 
 let OPPS = [];
 let STATE = {};
-let VIEW = 'today';
+let VIEW = (() => { try { const v = localStorage.getItem('rz-view'); return v || 'today'; } catch { return 'today'; } })();
 let BRIEF = null;
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -548,6 +548,7 @@ async function boot() {
     // Ctrl+M (or ⌘M): toggle mic from anywhere the assist is open
     if ((e.ctrlKey || e.metaKey) && (e.key === 'm' || e.key === 'M') && ASSIST.enabled && CUR_OPP) { e.preventDefault(); micToggle(false); }
   });
+  setActive(); // honor the persisted view on boot (highlight the right tab)
   render();
   requestAnimationFrame(moveIndicator);
   setTimeout(moveIndicator, 500); // after web fonts settle
@@ -1250,7 +1251,7 @@ async function load() {
 const VIEWS = [['today', 'Today'], ['warroom', 'War room'], ['crew', 'Crew'], ['now', 'Act now'], ['teaming', 'Teaming'], ['pipeline', 'Pipeline'], ['profit', 'Profit'], ['all', 'All'], ['playbook', 'Playbook']];
 function switchView(v) {
   if (v === VIEW) return;
-  VIEW = v; snd.tab(); glitchBurst();
+  VIEW = v; try { localStorage.setItem('rz-view', v); } catch { } snd.tab(); glitchBurst();
   if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
     document.startViewTransition(() => { setActive(); render(); });
   } else { setActive(); render(); }
