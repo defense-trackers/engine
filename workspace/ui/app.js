@@ -1223,6 +1223,9 @@ async function load() {
   ]);
   OPPS = opps; STATE = state; CHANGES_COUNT = chg.count || 0;
   const now = OPPS.filter((o) => o.act_now && !done(o.id)).length;
+  // surface the nearest urgent close in the browser tab title (visible when backgrounded)
+  const soon = OPPS.filter((o) => o.act_now && !done(o.id) && o.days_left >= 0).map((o) => o.days_left).sort((a, b) => a - b)[0];
+  document.title = (soon !== undefined && soon <= 7 ? (soon === 0 ? 'Closes today · ' : soon + 'd to close · ') : '') + 'Realizer — private command deck';
   $('#stat').textContent = `${OPPS.length} scored · ${now} act-now · ${Object.keys(STATE).length} pursuits`;
   // a count badge on the Today tab when amendments/deadline shifts were detected
   const tt = document.querySelector('.tab[data-view="today"]');
