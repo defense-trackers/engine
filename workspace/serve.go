@@ -435,8 +435,11 @@ func (s *server) hRefresh(w http.ResponseWriter, _ *http.Request) {
 
 func (s *server) hStatic(w http.ResponseWriter, r *http.Request) {
 	p := r.URL.Path
-	if p == "/" {
+	switch p {
+	case "/":
 		p = "/index.html"
+	case "/favicon.ico":
+		p = "/favicon.svg" // browsers/bookmarks probe .ico; serve the SVG mark
 	}
 	b, err := uiFS.ReadFile("ui" + p)
 	if err != nil {
@@ -450,7 +453,11 @@ func (s *server) hStatic(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 	case strings.HasSuffix(p, ".css"):
 		w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	case strings.HasSuffix(p, ".svg"):
+		w.Header().Set("Content-Type", "image/svg+xml")
 	}
+	// Sensitive bid data lives behind this UI — don't let the browser MIME-sniff.
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Write(b)
 }
 
