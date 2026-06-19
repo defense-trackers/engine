@@ -304,8 +304,12 @@ func appendDedupURL(base, add []Opportunity) []Opportunity {
 		}
 	}
 	for i := range add {
-		if u := strings.TrimSpace(add[i].URL); u != "" && seen[u] {
+		u := strings.TrimSpace(add[i].URL)
+		if u != "" && seen[u] {
 			continue
+		}
+		if u != "" {
+			seen[u] = true // also dedup repeats within this same batch
 		}
 		base = append(base, add[i])
 	}
