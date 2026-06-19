@@ -75,6 +75,25 @@ func TestRollingDaysSentinel(t *testing.T) {
 	}
 }
 
+// deadlineRank orders equal-fit opps: sooner real deadlines first, closed/rolling last.
+func TestDeadlineRank(t *testing.T) {
+	if deadlineRank(3) >= deadlineRank(10) {
+		t.Fatal("3 days left should rank ahead of 10")
+	}
+	if deadlineRank(0) >= deadlineRank(1) {
+		t.Fatal("closes-today should rank ahead of 1 day")
+	}
+	if deadlineRank(30) >= deadlineRank(-1) {
+		t.Fatal("a live deadline should rank ahead of closed (-1)")
+	}
+	if deadlineRank(30) >= deadlineRank(daysRolling) {
+		t.Fatal("a live deadline should rank ahead of rolling")
+	}
+	if deadlineRank(-1) != deadlineRank(daysRolling) {
+		t.Fatal("closed and rolling are both 'least urgent' for tie-breaking")
+	}
+}
+
 // classifyOne scores a single topic and returns its classification flags.
 func classifyOne(text string) Opportunity {
 	o := opp("t", text, "SBIR", "SBIR small business", "2026-06-30")
