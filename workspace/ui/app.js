@@ -683,6 +683,11 @@ function openAssist(o) {
   const qa = $('#assist-qa'); qa.textContent = '';
   qa.append(scorecard(o)); // four-walls readiness works with or without Claude
   if (ASSIST.enabled) qa.append(buildActions(o));
+  // Disable the composer when Claude isn't connected — no typing into a dead box.
+  const ain = $('#assist-input'), asend = $('#assist-send'), amic = $('#mic-btn');
+  if (ain) { ain.disabled = !ASSIST.enabled; ain.placeholder = ASSIST.enabled ? (ain.dataset.ph || 'Ask Claude about this bid…') : 'Connect Claude to chat — see the note above'; }
+  if (asend) asend.disabled = !ASSIST.enabled;
+  if (amic) amic.disabled = !ASSIST.enabled;
   renderThread();
   $('#overlay').style.display = 'block';
   $('#assist').classList.add('open');
