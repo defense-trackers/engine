@@ -2152,6 +2152,8 @@ function stageMover(id, p) {
   STAGES.forEach((s) => sel.appendChild(new Option(s, s)));
   sel.value = p.stage;
   sel.style.marginTop = '6px';
+  sel.setAttribute('aria-label', 'Pipeline stage');
+  sel.title = 'Move this pursuit to another stage';
   sel.addEventListener('change', () => saveState(id, { stage: sel.value }));
   return sel;
 }
