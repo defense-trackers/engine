@@ -1480,7 +1480,9 @@ function render() {
 // mK — money in $K, rendered as $X.XM once it crosses a million for readability.
 function mK(k) {
   k = Math.round(k || 0);
-  return k >= 1000 ? '$' + (k / 1000).toFixed(k % 1000 === 0 ? 0 : 1) + 'M' : '$' + k.toLocaleString() + 'K';
+  if (k >= 1e6) return '$' + (k / 1e6).toFixed(k % 1e6 === 0 ? 0 : 1) + 'B'; // $K → billions
+  if (k >= 1000) return '$' + (k / 1000).toFixed(k % 1000 === 0 ? 0 : 1) + 'M';
+  return '$' + k.toLocaleString() + 'K';
 }
 
 async function renderProfit() {
