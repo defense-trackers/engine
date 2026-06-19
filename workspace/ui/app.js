@@ -2127,19 +2127,22 @@ function renderAll() {
   const toggle = el('label', 'hwtoggle');
   toggle.innerHTML = `<input type="checkbox" id="showhw"> show hardware-build topics excluded by your software-only profile (${hwn})`;
   v.append(toggle);
+  const count = el('div', 'filtercount'); v.append(count);
   const grid = el('div', 'grid');
   v.append(grid);
   const draw = () => {
     const q = f.value.trim().toLowerCase();
     const showHw = $('#showhw').checked;
     grid.textContent = '';
-    const matched = OPPS.filter((o) => (showHw || !o.hardware_excluded) &&
-      (!q || (o.title + o.agency + o.source + o.type).toLowerCase().includes(q)));
+    const pool = OPPS.filter((o) => showHw || !o.hardware_excluded);
+    const matched = pool.filter((o) => !q || (o.title + o.agency + o.source + o.type).toLowerCase().includes(q));
+    count.textContent = q ? `Showing ${matched.length} of ${pool.length}` : `${pool.length} opportunities`;
     if (!matched.length) {
       grid.append(el('p', 'empty', q ? `No opportunities match “${f.value.trim()}”.` : 'No opportunities.'));
       return;
     }
     matched.slice(0, 300).forEach((o) => grid.append(oppCard(o, o.act_now)));
+    if (matched.length > 300) count.textContent += ' · showing first 300';
   };
   f.addEventListener('input', draw);
   $('#showhw').addEventListener('change', draw);
