@@ -2024,12 +2024,15 @@ function renderWarRoom() {
 // pursuit's cockpit (see → act). Falls back to a hint when no live opp is matched.
 function wireStratRows(container) {
   container.querySelectorAll('.strow.act').forEach((row) => {
-    row.addEventListener('click', () => {
+    const open = () => {
       const id = row.dataset.oppid; if (!id) return;
       const o = OPPS.find((x) => x.id === id);
       if (o) { snd.lock(); openAssist(o); }
       else { toast('No live topic matched yet — verify the solicitation is open'); }
-    });
+    };
+    row.setAttribute('role', 'button'); row.setAttribute('tabindex', '0');
+    row.addEventListener('click', open);
+    row.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
   });
 }
 
