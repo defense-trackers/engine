@@ -534,6 +534,12 @@ async function boot() {
   });
   $('#assist-close').addEventListener('click', closeAssist);
   $('#log-export')?.addEventListener('click', exportLog);
+  // back-to-top button on long views
+  const totop = $('#totop');
+  if (totop) {
+    addEventListener('scroll', () => { totop.classList.toggle('show', window.scrollY > 600); }, { passive: true });
+    totop.addEventListener('click', () => { window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); snd.tick(); });
+  }
   // double-click any Claude reply to copy it
   $('#thread').addEventListener('dblclick', (e) => {
     const m = e.target.closest && e.target.closest('.msg.a');
