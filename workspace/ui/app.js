@@ -272,15 +272,17 @@ function staggerIn() {
 function animateCounts(root) {
   root.querySelectorAll('.stat .n').forEach((node) => {
     const raw = node.textContent;
-    const m = raw.match(/-?[\d,]+/);
+    const m = raw.match(/-?[\d,]+(\.\d+)?/); // capture an optional decimal (e.g. mK's "$1.2M")
     if (!m) return;
-    const target = parseInt(m[0].replace(/,/g, ''), 10);
+    const target = parseFloat(m[0].replace(/,/g, ''));
     if (isNaN(target)) return;
+    const decimals = m[0].includes('.') ? m[0].split('.')[1].length : 0;
+    const fmt = (v) => v.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
     const pre = raw.slice(0, m.index), post = raw.slice(m.index + m[0].length);
     const dur = 850, t0 = performance.now();
     const tick = (now) => {
       const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
-      node.textContent = pre + Math.round(target * e).toLocaleString() + post;
+      node.textContent = pre + fmt(target * e) + post;
       if (p < 1) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
