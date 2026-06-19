@@ -1399,7 +1399,9 @@ function initPalette() {
 }
 let PALETTE_OPEN = null;
 
-function done(id) { const p = STATE[id]; return p && ['won', 'lost', 'pass', 'submitted'].includes(p.stage); }
+// "Done" = no longer something to START pursuing this week: submitted, decided, or
+// any post-win stage (won → pilot → transition → pom → program).
+function done(id) { const p = STATE[id]; return p && ['submitted', 'won', 'pilot', 'transition', 'pom', 'program', 'lost', 'pass'].includes(p.stage); }
 function setActive() { document.querySelectorAll('.tab').forEach((t) => { const on = t.dataset.view === VIEW; t.classList.toggle('active', on); if (on) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); }); moveIndicator(); }
 
 function celebrate(stage) {
