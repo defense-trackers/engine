@@ -1283,7 +1283,8 @@ async function load() {
     fetch('/api/state').then((r) => r.json()).catch(() => ({})),
     fetch('/api/changes').then((r) => r.json()).catch(() => ({ count: 0 })),
   ]);
-  OPPS = opps; STATE = state; CHANGES_COUNT = chg.count || 0;
+  // Coerce against a literal null/!array body (valid JSON that would slip past .catch).
+  OPPS = Array.isArray(opps) ? opps : []; STATE = (state && typeof state === 'object') ? state : {}; CHANGES_COUNT = (chg && chg.count) || 0;
   const now = OPPS.filter((o) => o.act_now && !done(o.id)).length;
   // surface the nearest urgent close in the browser tab title (visible when backgrounded)
   const soon = OPPS.filter((o) => o.act_now && !done(o.id) && o.days_left >= 0).map((o) => o.days_left).sort((a, b) => a - b)[0];
