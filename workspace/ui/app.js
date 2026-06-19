@@ -2161,7 +2161,7 @@ function stageMover(id, p) {
 function renderAll() {
   const v = $('#view-all'); v.hidden = false; v.textContent = '';
   v.append(el('h2', null, `All opportunities (${OPPS.length})`));
-  const f = el('input', 'filter'); f.placeholder = 'Filter title / agency / source / type…';
+  const f = el('input', 'filter'); f.placeholder = 'Filter by title, agency, asset, status, code…'; f.setAttribute('aria-label', 'Filter opportunities'); f.type = 'search';
   v.append(f);
   const hwn = OPPS.filter((o) => o.hardware_excluded).length;
   const toggle = el('label', 'hwtoggle');
