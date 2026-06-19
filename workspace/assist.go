@@ -335,8 +335,8 @@ func (s *server) assistSystem(o *Opportunity, detail string, p Pursuit, sponsors
 	b.WriteString("- DARPA (DPA-prefix topics) are the exception: a WhitePaper (≤10pp, 4 sections) + a ≤5-slide deck with a quad chart.\n")
 	b.WriteString("- Phase I is feasibility/architecture; stand-alone lab + full integration are Phase II/III.\n\n")
 	b.WriteString("JESSE'S ASSETS (match the opportunity to these; cite the grounded facts, don't invent):\n")
-	if s.caps != nil {
-		for _, a := range s.caps.Assets {
+	if caps := s.capsSnapshot(); caps != nil {
+		for _, a := range caps.Assets {
 			b.WriteString("- " + a.Name)
 			if a.TRL != "" {
 				b.WriteString(" [" + a.TRL + "]")

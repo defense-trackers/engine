@@ -156,6 +156,12 @@ func (s *server) loadCaps() *Capabilities {
 	return &c
 }
 
+// capsSnapshot / setCaps guard the s.caps pointer, which a manual refresh can swap
+// out from under concurrent assess/assist/ingest reads. The pointed-to Capabilities
+// is never mutated in place (loadCaps returns a fresh value), so a snapshot is safe.
+func (s *server) capsSnapshot() *Capabilities { s.mu.Lock(); defer s.mu.Unlock(); return s.caps }
+func (s *server) setCaps(c *Capabilities)      { s.mu.Lock(); s.caps = c; s.mu.Unlock() }
+
 func (s *server) statePath() string { return filepath.Join(s.opts.Dir, "bidstate.json") }
 
 func (s *server) loadState() {
@@ -280,7 +286,7 @@ func (s *server) ingest() {
 			all = appendDedupURL(all, cached)
 		}
 	}
-	Score(all, s.caps, time.Now())
+	Score(all, s.capsSnapshot(), time.Now())
 	sort.SliceStable(all, func(i, j int) bool { return all[i].Score > all[j].Score })
 	s.mu.Lock()
 	s.opps = all
@@ -426,7 +432,7 @@ func (s *server) hState(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) hRefresh(w http.ResponseWriter, _ *http.Request) {
-	s.caps = s.loadCaps()
+	s.setCaps(s.loadCaps())
 	s.ingest()
 	s.mu.Lock()
 	defer s.mu.Unlock()

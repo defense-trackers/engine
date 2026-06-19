@@ -101,8 +101,8 @@ func (s *server) assess(subject *Opportunity, detail string) (*Assessment, error
 	sys.WriteString(builderProfile)
 	sys.Write(playbookMD)
 	sys.WriteString("\n\nJESSE'S ASSETS:\n")
-	if s.caps != nil {
-		for _, a := range s.caps.Assets {
+	if caps := s.capsSnapshot(); caps != nil {
+		for _, a := range caps.Assets {
 			sys.WriteString("- " + a.Name + ": " + strings.Join(a.Domains, ", ") + "\n")
 		}
 	}
