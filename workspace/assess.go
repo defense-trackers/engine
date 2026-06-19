@@ -259,8 +259,9 @@ func (s *server) hAssess(w http.ResponseWriter, r *http.Request) {
 // per pursuit) so the whole readiness board fills with real value + four-walls
 // instead of zeros. Seeds resolve to their live topic (richer grounding) via the
 // same auto-matcher the War Room uses; sequential to be gentle on the backend.
-func (s *server) hAssessAll(w http.ResponseWriter, _ *http.Request) {
+func (s *server) hAssessAll(w http.ResponseWriter, r *http.Request) {
 	emit, _ := sseStart(w)
+	ctx := r.Context()
 	if assistBackend() == "" {
 		emit(map[string]string{"error": "Claude isn't connected."})
 		return
@@ -284,6 +285,10 @@ func (s *server) hAssessAll(w http.ResponseWriter, _ *http.Request) {
 
 	done, failed := 0, 0
 	for i, jb := range jobs {
+		// Client navigated away / closed the tab — stop burning Claude calls.
+		if ctx.Err() != nil {
+			return
+		}
 		subj, _ := resolveOpp(jb.id, jb.p, byID, opps)
 		if subj == nil {
 			subj = &Opportunity{ID: jb.id, Title: jb.p.Title, Agency: jb.p.Agency, URL: jb.p.URL, AwardText: jb.p.Notes}
