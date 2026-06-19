@@ -813,6 +813,10 @@ async function moveStage(o, stage) {
   $('#thread').scrollTop = $('#thread').scrollHeight;
 }
 
+// followThread keeps the thread pinned to the latest token ONLY when the reader is
+// already near the bottom — so scrolling up to re-read mid-stream isn't yanked back.
+function followThread() { const t = $('#thread'); if (t.scrollHeight - t.scrollTop - t.clientHeight < 120) t.scrollTop = t.scrollHeight; }
+
 let ASSIST_BUSY = false;
 async function sendAssist(action) {
   if (!ASSIST.enabled || !CUR_OPP) return;
@@ -851,7 +855,7 @@ async function sendAssist(action) {
         if (!line) continue;
         let ev; try { ev = JSON.parse(line); } catch { continue; }
         if (ev.error) { ans.className = 'msg err'; ans.textContent = ev.error; snd.err(); }
-        else if (ev.t) { acc += ev.t; ans.innerHTML = mdChat(acc); ans.classList.add('streaming'); corePulse(); waveKick(); ttsFeed(acc); $('#thread').scrollTop = 1e9; }
+        else if (ev.t) { acc += ev.t; ans.innerHTML = mdChat(acc); ans.classList.add('streaming'); corePulse(); waveKick(); ttsFeed(acc); followThread(); }
       }
     }
   } catch (e) { ans.className = 'msg err'; ans.textContent = 'stream failed: ' + e.message; snd.err(); }
@@ -977,7 +981,7 @@ async function draftVolume(o) {
         if (!line) continue;
         let ev; try { ev = JSON.parse(line); } catch { continue; }
         if (ev.error) { prog.className = 'msg err'; prog.textContent = ev.error; }
-        else if (ev.t) { lines.push(ev.t); prog.textContent = lines.slice(-14).join('\n'); t.scrollTop = 1e9; }
+        else if (ev.t) { lines.push(ev.t); prog.textContent = lines.slice(-14).join('\n'); followThread(); }
         else if (ev.dir) { const d = el('div', 'msg a'); d.innerHTML = `<b>Volume written.</b> Files are in:<br><code>${ev.dir}</code><br>Open <code>volume.md</code> for the combined draft, or the numbered section files to edit.`; const xb = el('button', 'dirchip'); xb.innerHTML = svg('doc') + 'Export .docx'; xb.addEventListener('click', () => exportDocx(o)); d.append(document.createElement('br'), xb); t.append(d); t.scrollTop = 1e9; toast('Volume drafted → files'); }
       }
     }
@@ -1000,7 +1004,7 @@ async function fullWorkup(o) {
         const line = p.replace(/^data:\s*/, '').trim(); if (!line) continue;
         let ev; try { ev = JSON.parse(line); } catch { continue; }
         if (ev.error) { prog.className = 'msg err'; prog.textContent = ev.error; }
-        else if (ev.t) { lines.push(ev.t); prog.textContent = lines.slice(-16).join('\n'); t.scrollTop = 1e9; }
+        else if (ev.t) { lines.push(ev.t); prog.textContent = lines.slice(-16).join('\n'); followThread(); }
         else if (ev.dir) { const d = el('div', 'msg a'); d.innerHTML = `<b>Workup complete.</b> Research + volume + reviewer notes in:<br><code>${ev.dir}</code><br>Open <code>00-research.md</code>, <code>volume.md</code>, and <code>00-reviewer-notes.md</code>.`; t.append(d); t.scrollTop = 1e9; toast('Full workup complete → files'); }
       }
     }
@@ -1024,7 +1028,7 @@ async function streamInto(url, o, headLabel, waitMsg, savedLabel) {
         const line = p.replace(/^data:\s*/, '').trim(); if (!line) continue;
         let ev; try { ev = JSON.parse(line); } catch { continue; }
         if (ev.error) { out.className = 'msg err'; out.textContent = ev.error; snd.err(); }
-        else if (ev.t) { if (!started) { started = true; out.textContent = ''; } acc += ev.t; out.innerHTML = mdChat(acc); out.classList.add('streaming'); corePulse(); waveKick(); $('#thread').scrollTop = 1e9; }
+        else if (ev.t) { if (!started) { started = true; out.textContent = ''; } acc += ev.t; out.innerHTML = mdChat(acc); out.classList.add('streaming'); corePulse(); waveKick(); followThread(); }
         else if (ev.saved) { const d = el('div', 'msg a'); d.innerHTML = `<b>${savedLabel}</b> Saved to:<br><code>${escapeHtml(ev.saved)}</code>`; t.append(d); toast(savedLabel); }
       }
     }
