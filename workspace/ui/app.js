@@ -500,15 +500,19 @@ async function boot() {
   $('#statusbar').addEventListener('click', (e) => {
     if (e.target.closest && e.target.closest('#sndtoggle')) {
       SOUND_ON = !SOUND_ON; localStorage.setItem('snd', SOUND_ON ? '1' : '0');
-      const b = document.querySelector('#sndtoggle b'); if (b) b.textContent = SOUND_ON ? 'ON' : 'OFF';
+      const el = document.querySelector('#sndtoggle'); el.querySelector('b').textContent = SOUND_ON ? 'ON' : 'OFF'; el.setAttribute('aria-pressed', SOUND_ON);
       if (SOUND_ON) { actx(); snd.tick(); }
       return;
     }
     if (e.target.closest && e.target.closest('#spktoggle')) {
       VOICE.speak = !VOICE.speak; localStorage.setItem('rz-speak', VOICE.speak ? '1' : '0');
-      const b = document.querySelector('#spktoggle b'); if (b) b.textContent = VOICE.speak ? 'ON' : 'OFF';
+      const el = document.querySelector('#spktoggle'); el.querySelector('b').textContent = VOICE.speak ? 'ON' : 'OFF'; el.setAttribute('aria-pressed', VOICE.speak);
       if (!VOICE.speak) ttsCancel(); else { actx(); snd.recv(); }
     }
+  });
+  // keyboard activation for the status-bar toggle "buttons"
+  $('#statusbar').addEventListener('keydown', (e) => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.closest && e.target.closest('#sndtoggle,#spktoggle')) { e.preventDefault(); e.target.closest('#sndtoggle,#spktoggle').click(); }
   });
   // idle attract mode
   ['pointermove', 'pointerdown', 'keydown', 'wheel'].forEach((ev) => addEventListener(ev, resetIdle, { passive: true }));
@@ -1263,8 +1267,8 @@ async function load() {
       `<span class="ss">PURSUITS <b>${Object.keys(STATE).length}</b></span>` +
       `<span class="ss" title="data last synced">SYNCED <b>${new Date().toISOString().slice(11, 16)}Z</b></span>` +
       `<span class="grow"></span>` +
-      `<span class="ss snd" id="sndtoggle" title="toggle UI sound">SND <b>${SOUND_ON ? 'ON' : 'OFF'}</b></span>` +
-      `<span class="ss snd" id="spktoggle" title="Claude speaks replies aloud (on-device)">SPEAK <b>${VOICE.speak ? 'ON' : 'OFF'}</b></span>` +
+      `<span class="ss snd" id="sndtoggle" role="button" tabindex="0" aria-pressed="${SOUND_ON}" title="toggle UI sound">SND <b>${SOUND_ON ? 'ON' : 'OFF'}</b></span>` +
+      `<span class="ss snd" id="spktoggle" role="button" tabindex="0" aria-pressed="${VOICE.speak}" title="Claude speaks replies aloud (on-device)">SPEAK <b>${VOICE.speak ? 'ON' : 'OFF'}</b></span>` +
       `<span class="ss" id="clock"></span>` +
       `<span class="ss">CLAUDE <b>${be}</b></span>`;
     tickClock();
@@ -1343,7 +1347,7 @@ function initPalette() {
 let PALETTE_OPEN = null;
 
 function done(id) { const p = STATE[id]; return p && ['won', 'lost', 'pass', 'submitted'].includes(p.stage); }
-function setActive() { document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.view === VIEW)); moveIndicator(); }
+function setActive() { document.querySelectorAll('.tab').forEach((t) => { const on = t.dataset.view === VIEW; t.classList.toggle('active', on); if (on) t.setAttribute('aria-current', 'page'); else t.removeAttribute('aria-current'); }); moveIndicator(); }
 
 function celebrate(stage) {
   const f = document.getElementById('winflash');
