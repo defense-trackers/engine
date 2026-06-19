@@ -43,7 +43,7 @@ type Opportunity struct {
 	Value        int    `json:"value"`
 	MatchedAsset     string `json:"matched_asset,omitempty"`
 	MatchedAssetTRL  string `json:"matched_asset_trl,omitempty"` // grounded TRL of the matched asset (lead with the bid-ready horse)
-	DaysLeft         int    `json:"days_left"` // -1 when no/unparseable close date
+	DaysLeft         int    `json:"days_left"` // negative = closed N days ago; daysRolling sentinel = no fixed close date
 	ActNow           bool   `json:"act_now"`
 	HardwareExcluded bool   `json:"hardware_excluded,omitempty"` // pure hardware build, no software role — a no-go (USV exempt)
 	TeamingOnly      bool   `json:"teaming_only,omitempty"`      // hardware platform where his software is the brain — sub to a hardware prime

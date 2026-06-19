@@ -1394,11 +1394,13 @@ async function saveState(id, patch, extra = {}) {
 }
 
 function daysLabel(o) {
-  if (o.days_left == null || o.days_left < -10000) return '';
-  if (o.days_left < 0) return `<span class="exp">closed ${-o.days_left}d ago</span>`;
-  if (o.days_left === -1) return 'rolling';
-  const c = o.days_left <= 30 ? 'soon' : '';
-  return `<span class="${c}">closes in ${o.days_left}d</span>`;
+  const d = o.days_left;
+  if (d == null) return '';
+  if (d <= -10000) return 'rolling'; // sentinel: no fixed close date
+  if (d < 0) return `<span class="exp">closed ${-d}d ago</span>`;
+  if (d === 0) return `<span class="soon">closes today</span>`;
+  const c = d <= 30 ? 'soon' : '';
+  return `<span class="${c}">closes in ${d}d</span>`;
 }
 
 function controls(id) {

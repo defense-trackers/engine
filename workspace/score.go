@@ -360,10 +360,16 @@ func eligibilityScore(o *Opportunity) int {
 
 // runwayScore returns days-to-close (-1 if none) and a 0–20 score: an ideal
 // writing window scores highest, expired scores 0, rolling stays steady.
+// daysRolling is a sentinel for "no fixed close date" (rolling/continuous), kept
+// distinct from a small negative day-count so a just-closed opp (e.g. -1 = closed
+// yesterday) is never mistaken for rolling. All consumers treat any negative as
+// "no future deadline"; only daysLabel special-cases this value as "rolling".
+const daysRolling = -100000
+
 func runwayScore(closes string, today time.Time) (int, int) {
 	d := parseDate(closes)
 	if d.IsZero() {
-		return -1, 12 // rolling / no fixed date
+		return daysRolling, 12 // rolling / no fixed date
 	}
 	days := int(d.UTC().Truncate(24*time.Hour).Sub(today).Hours() / 24)
 	switch {
