@@ -1969,7 +1969,10 @@ function renderWarRoom() {
   alloc.innerHTML = `<div class="alloc-hd">${svg('clock')} Plan my week — <input type="number" class="alloc-hrs" value="40" min="1" max="200"> hrs <button class="alloc-go">Allocate</button></div><div class="alloc-body"></div>`;
   v.append(alloc);
   const runAlloc = async () => {
-    const hrs = parseInt(alloc.querySelector('.alloc-hrs').value) || 40;
+    const inp = alloc.querySelector('.alloc-hrs');
+    let hrs = parseInt(inp.value) || 40;
+    hrs = Math.min(200, Math.max(1, hrs)); // clamp to the field's min/max (typing can bypass them)
+    inp.value = hrs;
     const body = alloc.querySelector('.alloc-body'); body.innerHTML = '<span class="drwait">allocating…</span>';
     const d = await fetch('/api/allocate?hours=' + hrs).then((r) => r.json()).catch(() => null);
     if (!d) { body.innerHTML = '<span class="drwait">allocation failed</span>'; return; }
