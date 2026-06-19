@@ -708,6 +708,7 @@ function openAssist(o) {
   renderThread();
   $('#overlay').style.display = 'block';
   $('#assist').classList.add('open');
+  document.body.classList.add('cockpit-open'); // lock background scroll behind the panel
   // land keyboard focus in the composer (after the slide-in), so you can type at once
   if (ASSIST.enabled && !matchMedia('(pointer: coarse)').matches) {
     setTimeout(() => { const i = $('#assist-input'); if (i && $('#assist').classList.contains('open')) i.focus(); }, 120);
@@ -791,7 +792,7 @@ function readiness(w) {
   WALLS.forEach((k) => { const s = v(w[k]); sum += s; if (s < low) { low = s; weak = WALL_LABEL[k]; } });
   return { score: Math.round(sum / 4), weakest: weak };
 }
-function closeAssist() { if (VOICE.listening) micStop(false); ttsCancel(); WAVE.mode = 'idle'; $('#assist').classList.remove('open'); $('#overlay').style.display = 'none'; CUR_OPP = null; }
+function closeAssist() { if (VOICE.listening) micStop(false); ttsCancel(); WAVE.mode = 'idle'; $('#assist').classList.remove('open'); $('#overlay').style.display = 'none'; document.body.classList.remove('cockpit-open'); CUR_OPP = null; }
 
 // Export the current pursuit's Claude conversation as a timestamped markdown log.
 function exportLog() {
