@@ -1542,6 +1542,7 @@ async function renderLedger(v) {
 async function renderPlaybook() {
   const v = $('#view-playbook'); v.hidden = false; v.textContent = '';
   const md = await fetch('/api/playbook').then((r) => r.text()).catch(() => '');
+  if (!md.trim()) { v.append(el('p', 'empty', 'Playbook unavailable right now.')); return; }
   const pre = el('div', 'playbook'); pre.innerHTML = mdLite(md);
   v.append(pre);
 }
