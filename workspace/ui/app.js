@@ -508,13 +508,13 @@ async function boot() {
   // status-bar toggles (delegated, since the status bar re-renders)
   $('#statusbar').addEventListener('click', (e) => {
     if (e.target.closest && e.target.closest('#sndtoggle')) {
-      SOUND_ON = !SOUND_ON; localStorage.setItem('snd', SOUND_ON ? '1' : '0');
+      SOUND_ON = !SOUND_ON; try { localStorage.setItem('snd', SOUND_ON ? '1' : '0'); } catch { }
       const el = document.querySelector('#sndtoggle'); el.querySelector('b').textContent = SOUND_ON ? 'ON' : 'OFF'; el.setAttribute('aria-pressed', SOUND_ON);
       if (SOUND_ON) { actx(); snd.tick(); }
       return;
     }
     if (e.target.closest && e.target.closest('#spktoggle')) {
-      VOICE.speak = !VOICE.speak; localStorage.setItem('rz-speak', VOICE.speak ? '1' : '0');
+      VOICE.speak = !VOICE.speak; try { localStorage.setItem('rz-speak', VOICE.speak ? '1' : '0'); } catch { }
       const el = document.querySelector('#spktoggle'); el.querySelector('b').textContent = VOICE.speak ? 'ON' : 'OFF'; el.setAttribute('aria-pressed', VOICE.speak);
       if (!VOICE.speak) ttsCancel(); else { actx(); snd.recv(); }
     }
