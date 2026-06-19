@@ -2079,9 +2079,13 @@ function renderAll() {
     const q = f.value.trim().toLowerCase();
     const showHw = $('#showhw').checked;
     grid.textContent = '';
-    OPPS.filter((o) => (showHw || !o.hardware_excluded) &&
-      (!q || (o.title + o.agency + o.source + o.type).toLowerCase().includes(q)))
-      .slice(0, 300).forEach((o) => grid.append(oppCard(o, o.act_now)));
+    const matched = OPPS.filter((o) => (showHw || !o.hardware_excluded) &&
+      (!q || (o.title + o.agency + o.source + o.type).toLowerCase().includes(q)));
+    if (!matched.length) {
+      grid.append(el('p', 'empty', q ? `No opportunities match “${f.value.trim()}”.` : 'No opportunities.'));
+      return;
+    }
+    matched.slice(0, 300).forEach((o) => grid.append(oppCard(o, o.act_now)));
   };
   f.addEventListener('input', draw);
   $('#showhw').addEventListener('change', draw);
