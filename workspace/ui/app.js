@@ -2165,6 +2165,8 @@ function renderAll() {
   };
   let dq; const drawDebounced = () => { clearTimeout(dq); dq = setTimeout(draw, 120); };
   f.addEventListener('input', drawDebounced);
+  // Esc clears the filter when it has text (otherwise let global Esc handle it).
+  f.addEventListener('keydown', (e) => { if (e.key === 'Escape' && f.value) { e.stopPropagation(); f.value = ''; draw(); } });
   $('#showhw').addEventListener('change', draw);
   draw();
 }
