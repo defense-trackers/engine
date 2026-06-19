@@ -1550,15 +1550,20 @@ async function renderPlaybook() {
 // minimal markdown → HTML (headings, bold, lists) for the playbook view
 function mdLite(md) {
   const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-  return esc(md).split('\n').map((l) => {
-    if (/^### /.test(l)) return '<h3>' + l.slice(4) + '</h3>';
-    if (/^## /.test(l)) return '<h2>' + l.slice(3) + '</h2>';
-    if (/^# /.test(l)) return '<h1>' + l.slice(2) + '</h1>';
-    if (/^- /.test(l)) return '<li>' + bold(l.slice(2)) + '</li>';
-    if (/^\d+\. /.test(l)) return '<li>' + bold(l.replace(/^\d+\.\s/, '')) + '</li>';
-    if (l.trim() === '') return '<br>';
-    return '<p>' + bold(l) + '</p>';
-  }).join('');
+  let out = '', inList = false;
+  const closeList = () => { if (inList) { out += '</ul>'; inList = false; } };
+  esc(md).split('\n').forEach((l) => {
+    const li = /^- /.test(l) ? l.slice(2) : /^\d+\. /.test(l) ? l.replace(/^\d+\.\s/, '') : null;
+    if (li !== null) { if (!inList) { out += '<ul>'; inList = true; } out += '<li>' + bold(li) + '</li>'; return; }
+    closeList();
+    if (/^### /.test(l)) out += '<h3>' + l.slice(4) + '</h3>';
+    else if (/^## /.test(l)) out += '<h2>' + l.slice(3) + '</h2>';
+    else if (/^# /.test(l)) out += '<h1>' + l.slice(2) + '</h1>';
+    else if (l.trim() === '') out += '<br>';
+    else out += '<p>' + bold(l) + '</p>';
+  });
+  closeList();
+  return out;
   function bold(s) { return s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`(.+?)`/g, '<code>$1</code>'); }
 }
 
