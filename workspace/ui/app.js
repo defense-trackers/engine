@@ -535,9 +535,20 @@ async function boot() {
   document.querySelectorAll('.tab').forEach((t) =>
     t.addEventListener('click', () => switchView(t.dataset.view)));
   initPalette();
-  $('#refresh').addEventListener('click', async (e) => {
-    e.target.textContent = '…'; await fetch('/api/refresh', { method: 'POST' }); await load(); render(); e.target.textContent = '↻ Refresh';
-    toast(CHANGES_COUNT ? `Synced · ${CHANGES_COUNT} change${CHANGES_COUNT === 1 ? '' : 's'} — see Today` : 'Synced · nothing moved'); snd.recv && snd.recv();
+  $('#refresh').addEventListener('click', async () => {
+    const btn = $('#refresh');
+    if (btn.dataset.busy) return; // guard against double-clicks during a sync
+    btn.dataset.busy = '1';
+    const orig = btn.innerHTML; // preserve the SVG icon + label
+    btn.disabled = true; btn.innerHTML = svg('radar') + ' Syncing…';
+    try {
+      await fetch('/api/refresh', { method: 'POST' }); await load(); render();
+      toast(CHANGES_COUNT ? `Synced · ${CHANGES_COUNT} change${CHANGES_COUNT === 1 ? '' : 's'} — see Today` : 'Synced · nothing moved'); snd.recv && snd.recv();
+    } catch {
+      toast('Sync failed — check the connection'); snd.err && snd.err();
+    } finally {
+      btn.disabled = false; btn.innerHTML = orig; delete btn.dataset.busy;
+    }
   });
   $('#assist-close').addEventListener('click', closeAssist);
   $('#log-export')?.addEventListener('click', exportLog);
