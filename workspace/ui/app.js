@@ -2045,10 +2045,10 @@ function stratTable(rows) {
 
 function renderTeaming() {
   const v = $('#view-teaming'); v.hidden = false; v.textContent = '';
-  v.append(el('h2', null, 'Teaming plays — you provide the software brain'));
-  v.append(el('p', 'sub', 'Hardware you do not fabricate yourself (payloads, autonomous vehicles incl. UUV/UAV/UGV) where you lead software + design. Your Australian partner can build and fund the hardware as subcontractor (mind ITAR/EAR + SBIR foreign-sub limits) - open one with Claude to structure the teaming compliantly. USV topics where the partner builds+funds and you prime appear in Act now.'));
   const team = OPPS.filter((o) => o.teaming_only);
   const usv = OPPS.filter((o) => o.usv_prime);
+  v.append(el('h2', null, team.length ? `Teaming plays — you provide the software brain (${team.length})` : 'Teaming plays — you provide the software brain'));
+  v.append(el('p', 'sub', 'Hardware you do not fabricate yourself (payloads, autonomous vehicles incl. UUV/UAV/UGV) where you lead software + design. Your Australian partner can build and fund the hardware as subcontractor (mind ITAR/EAR + SBIR foreign-sub limits) - open one with Claude to structure the teaming compliantly. USV topics where the partner builds+funds and you prime appear in Act now.'));
   if (usv.length) v.append(el('p', 'sub', `${usv.length} USV / surface-vessel topic${usv.length === 1 ? '' : 's'} you can PRIME — see Act now / All.`));
   if (!team.length) { v.append(el('p', 'empty', 'No teaming plays surfaced right now. Grounding more of your portfolio will surface more autonomy/perception teaming fits.')); return; }
   const grid = el('div', 'grid');
