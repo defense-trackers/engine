@@ -2086,7 +2086,7 @@ function renderPipeline() {
     const c = el('div', 'col');
     const items = Object.entries(STATE).filter(([, p]) => col.match.includes(p.stage));
     const h = el('h3'); h.innerHTML = `${col.label} <span>${items.length}</span>`; c.append(h);
-    if (!items.length) c.append(el('div', 'empty', 'empty'));
+    if (!items.length) c.append(el('div', 'dropz', 'Drop a pursuit here'));
     items.forEach(([id, p]) => {
       const o = byId[id];
       const kc = el('div', 'kc');
