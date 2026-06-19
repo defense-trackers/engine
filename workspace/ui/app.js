@@ -1321,7 +1321,7 @@ function initPalette() {
      ['Toggle UI sound', 'spark', () => document.querySelector('#sndtoggle')?.click()],
      ['Toggle spoken replies', 'chat', () => document.querySelector('#spktoggle')?.click()]]
       .forEach(([l, i, fn]) => { if (!q || l.toLowerCase().includes(q)) out.push({ cat: 'Action', icon: i, label: l, tag: 'run', run: fn }); });
-    const opps = (q ? OPPS.filter((o) => (o.title + ' ' + o.agency).toLowerCase().includes(q)) : OPPS).slice(0, q ? 9 : 6);
+    const opps = (q ? OPPS.filter((o) => (o.title + ' ' + o.agency + ' ' + (o.matched_asset || '') + ' ' + o.type + ' ' + o.id).toLowerCase().includes(q)) : OPPS).slice(0, q ? 9 : 6);
     opps.forEach((o) => out.push({ cat: 'Opportunity', icon: 'target', label: o.title, tag: o.matched_asset || o.source, run: () => openAssist(o) }));
     items = out; sel = 0; render();
   }
