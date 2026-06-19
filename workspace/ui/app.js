@@ -1352,6 +1352,18 @@ function initPalette() {
     if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || (e.key === '/' && !typing && !isOpen())) { e.preventDefault(); open(); return; }
     const help = document.getElementById('help');
     if (e.key === 'Escape') { if (isOpen()) { close(); return; } if (help && help.classList.contains('open')) { help.classList.remove('open'); return; } closeAssist(); return; }
+    // Focus-trap: while the cockpit is open, keep Tab inside the panel.
+    if (e.key === 'Tab') {
+      const panel = $('#assist');
+      if (panel && panel.classList.contains('open')) {
+        const f = [...panel.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter((el) => el.offsetParent !== null);
+        if (f.length) {
+          const first = f[0], last = f[f.length - 1], a = document.activeElement;
+          if (e.shiftKey && (a === first || !panel.contains(a))) { e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && (a === last || !panel.contains(a))) { e.preventDefault(); first.focus(); }
+        }
+      }
+    }
     if (e.key === '?' && !typing) { e.preventDefault(); if (help) help.classList.toggle('open'); return; }
     if (typing || isOpen() || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key >= '1' && e.key <= '9' && +e.key <= VIEWS.length) { switchView(VIEWS[+e.key - 1][0]); }
