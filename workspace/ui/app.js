@@ -2156,7 +2156,8 @@ function renderAll() {
     matched.slice(0, 300).forEach((o) => grid.append(oppCard(o, o.act_now)));
     if (matched.length > 300) count.textContent += ' · showing first 300';
   };
-  f.addEventListener('input', draw);
+  let dq; const drawDebounced = () => { clearTimeout(dq); dq = setTimeout(draw, 120); };
+  f.addEventListener('input', drawDebounced);
   $('#showhw').addEventListener('change', draw);
   draw();
 }
