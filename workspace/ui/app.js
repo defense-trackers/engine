@@ -1062,6 +1062,7 @@ async function engagementLog(o) {
       if (r.ok) { touches.unshift({ date: new Date().toISOString().slice(0, 10), ...body }); snd.apply(); toast('Touch logged'); render(); }
       else box.querySelector('.ingstat').textContent = 'failed';
     });
+    box.querySelectorAll('.tc-who,.tc-chan,.tc-note,.tc-next').forEach((i) => i.addEventListener('keydown', (e) => { if (e.key === 'Enter') box.querySelector('.tc-add').click(); }));
   };
   render(); t.append(box); t.scrollTop = 1e9;
 }
@@ -1090,6 +1091,7 @@ async function proofLibrary(o) {
       if (r.ok) { proof.push(body); snd.apply(); toast('Proof added — now grounds every draft'); render(); }
       else box.querySelector('.ingstat').textContent = 'failed';
     });
+    box.querySelectorAll('.pf-claim,.pf-metric,.pf-src,.pf-tags').forEach((i) => i.addEventListener('keydown', (e) => { if (e.key === 'Enter') box.querySelector('.pf-add').click(); }));
   };
   render(); t.append(box); t.scrollTop = 1e9;
 }
@@ -1523,6 +1525,7 @@ async function renderGoal(v) {
     snd.apply(); render();
   };
   wrap.querySelector('.goal-save')?.addEventListener('click', () => { const val = parseInt(wrap.querySelector('.goal-in').value) || 0; if (val > 0) saveTarget(val); });
+  wrap.querySelector('.goal-in')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') wrap.querySelector('.goal-save').click(); });
   wrap.querySelector('.goal-edit')?.addEventListener('click', () => { const cur = d.target_k; const val = parseInt(prompt('Revenue target ($K):', cur) || cur); if (val > 0 && val !== cur) saveTarget(val); });
   wrap.querySelectorAll('.goal-lever').forEach((b) => b.addEventListener('click', () => { const o = OPPS.find((x) => x.id === b.dataset.oppid); if (o) { snd.lock(); openAssist(o); } else openById(b.dataset.oppid); }));
 }
