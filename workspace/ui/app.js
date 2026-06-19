@@ -750,6 +750,7 @@ function scorecard(o) {
     const sel = el('select');
     ['', 'gap', 'partial', 'ready'].forEach((s) => sel.appendChild(new Option(s || '—', s)));
     sel.value = walls[wkey] || '';
+    sel.setAttribute('aria-label', WALL_LABEL[wkey] + ' wall readiness');
     sel.addEventListener('change', () => {
       const nw = { ...(STATE[k]?.walls || {}) }; nw[wkey] = sel.value;
       saveState(k, { walls: nw }, { title: o.title, agency: o.agency, url: o.url });
@@ -758,13 +759,13 @@ function scorecard(o) {
   });
   const val = el('div', 'wall');
   val.append(el('span', 'wname', 'Value $K'));
-  const vi = el('input'); vi.type = 'number'; vi.placeholder = 'e.g. 1800'; vi.value = p.value || '';
+  const vi = el('input'); vi.type = 'number'; vi.placeholder = 'e.g. 1800'; vi.value = p.value || ''; vi.setAttribute('aria-label', 'Estimated lifetime value in thousands of dollars');
   let t; vi.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => saveState(k, { value: parseInt(vi.value) || 0 }, { title: o.title, agency: o.agency, url: o.url }), 600); });
   val.append(vi); box.append(val);
   // owner — who on the team carries this pursuit
   const own = el('div', 'wall');
   own.append(el('span', 'wname', 'Owner'));
-  const oi = el('input'); oi.type = 'text'; oi.placeholder = 'assign…'; oi.value = p.owner || ''; oi.setAttribute('list', 'owners-dl');
+  const oi = el('input'); oi.type = 'text'; oi.placeholder = 'assign…'; oi.value = p.owner || ''; oi.setAttribute('list', 'owners-dl'); oi.setAttribute('aria-label', 'Pursuit owner');
   const dl = el('datalist'); dl.id = 'owners-dl'; teamOwners().forEach((n) => dl.appendChild(new Option(n)));
   let ot; oi.addEventListener('input', () => { clearTimeout(ot); ot = setTimeout(() => saveState(k, { owner: oi.value.trim() }, { title: o.title, agency: o.agency, url: o.url }), 600); });
   own.append(oi, dl); box.append(own);
