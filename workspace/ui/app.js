@@ -1244,6 +1244,7 @@ async function load() {
       (CHANGES_COUNT ? `<span class="ss moved">MOVED <b>${CHANGES_COUNT}</b></span>` : '') +
       `<span class="ss">TEAMING <b>${team}</b></span>` +
       `<span class="ss">PURSUITS <b>${Object.keys(STATE).length}</b></span>` +
+      `<span class="ss" title="data last synced">SYNCED <b>${new Date().toISOString().slice(11, 16)}Z</b></span>` +
       `<span class="grow"></span>` +
       `<span class="ss snd" id="sndtoggle" title="toggle UI sound">SND <b>${SOUND_ON ? 'ON' : 'OFF'}</b></span>` +
       `<span class="ss snd" id="spktoggle" title="Claude speaks replies aloud (on-device)">SPEAK <b>${VOICE.speak ? 'ON' : 'OFF'}</b></span>` +
