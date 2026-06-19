@@ -592,6 +592,7 @@ const ACTION_GROUPS = [
     { a: 'pom', label: 'POM readiness' },
     { a: 'pmadopt', label: 'PM adoption pitch' },
     { a: 'outreach', label: 'Outreach + draft message' },
+    { fn: 'engagementLog', icon: 'link', label: 'Engagement log' },
   ] },
   { key: 'move', label: 'Move', stages: true },
 ];
@@ -606,7 +607,7 @@ function saveConvo(id, h) { localStorage.setItem('assist:' + id, JSON.stringify(
 // (Assess · Intel · Draft · Win · Transition · Move) over a single button row that
 // swaps with the active tab. The active tab persists across opens.
 function buildActions(o) {
-  const fns = { competitiveIntel, awardGraph, topicDetail, ingestRFP, draftVolume, fullWorkup, exportDocx, winPlan, verifyCompliance, remediate, complianceMatrix, preflight, editVolume, proofLibrary };
+  const fns = { competitiveIntel, awardGraph, topicDetail, ingestRFP, draftVolume, fullWorkup, exportDocx, winPlan, verifyCompliance, remediate, complianceMatrix, preflight, editVolume, proofLibrary, engagementLog };
   const wrap = el('div', 'actions');
   const tabs = el('div', 'atabs');
   const body = el('div', 'abody');
@@ -1012,6 +1013,35 @@ function verifyCompliance(o) { streamInto('/api/verify-compliance', o, 'Complian
 
 // Close the gaps: regenerate ready-to-paste content for every uncovered requirement.
 function remediate(o) { streamInto('/api/remediate', o, 'Close the gaps (make it submittable)', 'Writing drop-in content for every uncovered requirement…', 'Compliance fixes ready →'); }
+
+// Engagement log — the relationship CRM per pursuit: log every touch with a
+// next-action date so the pre-RFP capture game never drops a follow-up.
+async function engagementLog(o) {
+  const t = $('#thread');
+  const k = pkey(o);
+  let touches = [];
+  try { touches = (await fetch('/api/touch?id=' + encodeURIComponent(k)).then((x) => x.json())).touches || []; } catch { }
+  const head = el('div', 'msg u'); head.textContent = '› Engagement log'; t.append(head);
+  const box = el('div', 'msg a');
+  const render = () => {
+    const log = touches.length
+      ? '<ul class="touchlist">' + touches.map((c) => `<li><b>${escapeHtml(c.date)}</b> — ${escapeHtml(c.who)}${c.channel ? ` <i style="color:var(--dim)">(${escapeHtml(c.channel)})</i>` : ''}${c.note ? '<br>' + escapeHtml(c.note) : ''}${c.next_action ? `<br><span class="tnext">↳ next: ${escapeHtml(c.next_action)}${c.next_date ? ' by ' + escapeHtml(c.next_date) : ''}</span>` : ''}</li>`).join('') + '</ul>'
+      : '<p style="color:var(--dim)">No touches logged yet. Track every sponsor/POC engagement so a follow-up never slips.</p>';
+    box.innerHTML = `<h4>Engagement log (${touches.length})</h4>${log}
+      <div class="ingbtns" style="margin-top:10px"><input class="tc-who" placeholder="who (e.g. DLA J6 / TPOC name)" style="flex:1;min-width:140px;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:8px;color:var(--ink);font:12px var(--sans);padding:7px 9px"><input class="tc-chan" placeholder="channel" style="width:120px;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:8px;color:var(--ink);font:12px var(--sans);padding:7px 9px"></div>
+      <div class="ingbtns"><input class="tc-note" placeholder="what happened" style="flex:1;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:8px;color:var(--ink);font:12px var(--sans);padding:7px 9px"></div>
+      <div class="ingbtns"><input class="tc-next" placeholder="next action" style="flex:1;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:8px;color:var(--ink);font:12px var(--sans);padding:7px 9px"><input class="tc-date" type="date" style="background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:8px;color:var(--ink);font:12px var(--mono);padding:6px 9px"><button class="ingsave tc-add">Log</button><span class="ingstat"></span></div>`;
+    box.querySelector('.tc-add').addEventListener('click', async () => {
+      const who = box.querySelector('.tc-who').value.trim(); if (!who) return;
+      const body = { opp_id: k, who, channel: box.querySelector('.tc-chan').value.trim(), note: box.querySelector('.tc-note').value.trim(), next_action: box.querySelector('.tc-next').value.trim(), next_date: box.querySelector('.tc-date').value };
+      box.querySelector('.ingstat').textContent = 'saving…';
+      const r = await fetch('/api/touch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then((x) => x.json()).catch(() => ({}));
+      if (r.ok) { touches.unshift({ date: new Date().toISOString().slice(0, 10), ...body }); snd.apply(); toast('Touch logged'); render(); }
+      else box.querySelector('.ingstat').textContent = 'failed';
+    });
+  };
+  render(); t.append(box); t.scrollTop = 1e9;
+}
 
 // Proof library — the firm's evidence locker (claims + metrics + sources) that
 // auto-grounds every draft. View it, and add a proof point inline (persists).
@@ -1467,6 +1497,25 @@ async function renderGoal(v) {
   wrap.querySelectorAll('.goal-lever').forEach((b) => b.addEventListener('click', () => { const o = OPPS.find((x) => x.id === b.dataset.oppid); if (o) { snd.lock(); openAssist(o); } else openById(b.dataset.oppid); }));
 }
 
+// renderFollowups — open relationship follow-ups (overdue + due soon) so the
+// pre-RFP capture work never slips.
+async function renderFollowups(v) {
+  const d = await fetch('/api/followups').then((r) => r.json()).catch(() => null);
+  if (!d || !d.followups || !d.followups.length) return;
+  const soon = d.followups.filter((f) => f.days <= 7);
+  if (!soon.length) return;
+  const wrap = el('div', 'followups');
+  wrap.append(el('div', 'fu-h', `↳ Follow-ups due${d.overdue ? ` · ${d.overdue} overdue` : ''}`));
+  soon.forEach((f) => {
+    const when = f.days < 0 ? `${-f.days}d overdue` : f.days === 0 ? 'today' : `in ${f.days}d`;
+    const row = el('button', 'fu' + (f.days < 0 ? ' over' : ''));
+    row.innerHTML = `<span class="fu-t">${escapeHtml(f.title)}</span><span class="fu-a">${escapeHtml(f.action)} · ${escapeHtml(f.who)}</span><span class="fu-d">${when}</span>`;
+    row.addEventListener('click', () => { snd.lock(); openById(f.id); });
+    wrap.append(row);
+  });
+  v.append(wrap);
+}
+
 // renderMomentum — velocity (advanced this week) + stalled pursuits going cold.
 async function renderMomentum(v) {
   const d = await fetch('/api/momentum').then((r) => r.json()).catch(() => null);
@@ -1605,6 +1654,7 @@ async function renderToday() {
   v.append(el('p', 'sub', 'Expected value = each pursuit’s program-of-record ceiling × its cumulative probability of actually reaching a funded program (the SBIR→PoR funnel is brutal — early stages are <2%). Ceilings are editable best-case estimates; set them per pursuit in its Claude panel.'));
 
   await renderChanges(v);
+  await renderFollowups(v);
   await renderMomentum(v);
   tsection(v, 'deadline', 'clock', 'Deadlines (≤30d)', b.deadlines, 'No tracked deadlines in the next 30 days.');
   tsection(v, 'qa', 'chat', 'Q&A windows — sanctioned channel', b.qa, 'No open topic Q&A windows right now.');

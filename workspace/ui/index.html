@@ -367,6 +367,20 @@
   .goal-lever:hover{border-color:var(--brand);background:rgba(143,179,196,.07)}
   .goal-lever span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .goal-lever b{font-family:var(--mono);font-size:11px;color:var(--brand);white-space:nowrap}
+  /* engagement follow-ups */
+  .followups{margin:6px 0 22px;border:1px solid rgba(143,179,196,.28);border-radius:14px;padding:13px 16px;background:rgba(143,179,196,.04)}
+  .fu-h{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--brand);margin-bottom:9px}
+  .fu{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:9px;padding:8px 12px;margin:5px 0;cursor:pointer;color:var(--ink);transition:.15s}
+  .fu:hover{border-color:var(--brand);background:rgba(143,179,196,.07)}
+  .fu.over{border-color:rgba(217,122,134,.4)}
+  .fu-t{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:34%}
+  .fu-a{flex:1;font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fu-d{font-family:var(--mono);font-size:11px;color:var(--brand);white-space:nowrap}.fu.over .fu-d{color:var(--bad)}
+  /* engagement log (cockpit) */
+  .touchlist{list-style:none;margin:6px 0;padding:0;display:flex;flex-direction:column;gap:7px}
+  .touchlist li{font-size:12.5px;line-height:1.5;border-left:2px solid var(--line2);padding-left:10px}
+  .touchlist b{color:var(--brand);font-family:var(--mono);font-size:11px}
+  .tnext{color:var(--ok);font-size:11.5px}
   /* pipeline momentum */
   .momentum{margin:6px 0 22px;border:1px solid var(--line);border-radius:14px;padding:13px 16px;background:rgba(255,255,255,.02)}
   .mom-hd{display:flex;gap:14px;align-items:center;font-family:var(--mono);font-size:12px;margin-bottom:8px}
