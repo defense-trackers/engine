@@ -2112,6 +2112,12 @@ function renderPipeline() {
       kc.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', id); e.dataTransfer.effectAllowed = 'move'; kc.classList.add('drag'); });
       kc.addEventListener('dragend', () => kc.classList.remove('drag'));
       const t = el('div', 't'); t.textContent = (o ? o.title : p.title) || id;
+      // Open the cockpit straight from the board (works for pursuit-only cards too).
+      const openCard = () => openAssist(o || { id, title: p.title || id, agency: p.agency || '', url: p.url || '' });
+      t.style.cursor = 'pointer'; t.title = 'Open in cockpit';
+      t.setAttribute('role', 'button'); t.setAttribute('tabindex', '0');
+      t.addEventListener('click', openCard);
+      t.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openCard(); } });
       const m = el('div', 'm');
       const bits = [o ? o.agency : p.agency, o ? daysLabel(o) : '', p.decision].filter(Boolean);
       m.innerHTML = bits.join(' · ');
