@@ -379,6 +379,12 @@ function bootSequence() {
   let entered = false;
   const enter = () => { if (entered) return; entered = true; snd.enter(); glitchBurst(); boot.classList.add('gone'); setTimeout(() => boot.remove(), 950); };
   boot.addEventListener('click', enter);
+  // Keyboard parity: the boot screen is "click to enter" — let Enter/Space/Escape in too.
+  boot.setAttribute('role', 'button');
+  boot.setAttribute('tabindex', '0');
+  boot.setAttribute('aria-label', 'Enter Realizer');
+  boot.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') { e.preventDefault(); enter(); } });
+  setTimeout(() => { if (!entered) boot.focus(); }, 100);
   const con = document.getElementById('bconsole');
   const pct = document.getElementById('bpct');
   const steps = [
