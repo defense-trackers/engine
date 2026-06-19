@@ -642,7 +642,7 @@ ACTION_GROUPS.forEach((g) => (g.items || []).forEach((it) => { if (it.a) ACTION_
 let ASSIST_TAB = 'assess';
 
 function convo(id) { try { return JSON.parse(localStorage.getItem('assist:' + id) || '[]'); } catch { return []; } }
-function saveConvo(id, h) { localStorage.setItem('assist:' + id, JSON.stringify(h.slice(-20))); }
+function saveConvo(id, h) { try { localStorage.setItem('assist:' + id, JSON.stringify(h.slice(-20))); } catch { /* quota/private-mode — keep chatting, just don't persist */ } }
 
 // buildActions renders the segmented action panel for an opportunity: a tab bar
 // (Assess · Intel · Draft · Win · Transition · Move) over a single button row that
