@@ -58,6 +58,23 @@ func TestExpiredRunwayZero(t *testing.T) {
 	}
 }
 
+// A rolling (no fixed date) opp must carry the daysRolling sentinel — distinct
+// from a real -1 day-count (closed yesterday) — so the UI never mislabels it as
+// "closed 1d ago". Guards the sentinel-collision fix.
+func TestRollingDaysSentinel(t *testing.T) {
+	now := time.Date(2026, 6, 12, 0, 0, 0, 0, time.UTC)
+	if d, _ := runwayScore("", now); d != daysRolling {
+		t.Fatalf("rolling/no-date should return daysRolling sentinel, got %d", d)
+	}
+	// An opp that closed exactly one day ago is a genuine -1, NOT the sentinel.
+	if d, _ := runwayScore("2026-06-11", now); d != -1 {
+		t.Fatalf("closed-yesterday should be -1 day-count, got %d", d)
+	}
+	if daysRolling > -10000 {
+		t.Fatalf("daysRolling (%d) must stay well below any real day-count and the UI's -10000 guard", daysRolling)
+	}
+}
+
 // classifyOne scores a single topic and returns its classification flags.
 func classifyOne(text string) Opportunity {
 	o := opp("t", text, "SBIR", "SBIR small business", "2026-06-30")
