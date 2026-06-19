@@ -1467,6 +1467,25 @@ async function renderGoal(v) {
   wrap.querySelectorAll('.goal-lever').forEach((b) => b.addEventListener('click', () => { const o = OPPS.find((x) => x.id === b.dataset.oppid); if (o) { snd.lock(); openAssist(o); } else openById(b.dataset.oppid); }));
 }
 
+// renderMomentum — velocity (advanced this week) + stalled pursuits going cold.
+async function renderMomentum(v) {
+  const d = await fetch('/api/momentum').then((r) => r.json()).catch(() => null);
+  if (!d) return;
+  const stalled = d.stalled || [];
+  if (!d.velocity && !stalled.length) return; // nothing to say
+  const wrap = el('div', 'momentum');
+  let html = `<div class="mom-hd"><span class="mom-v">↑ ${d.velocity} advanced this week</span>`;
+  if (stalled.length) html += `<span class="mom-s">⚠ ${stalled.length} stalled</span>`;
+  html += `</div>`;
+  if (stalled.length) {
+    html += `<div class="mom-stall">` + stalled.slice(0, 6).map((p) =>
+      `<button class="mom-row" data-oppid="${escapeHtml(p.id)}"><span class="mom-t">${escapeHtml(p.title)}</span><span class="mom-d">${escapeHtml(p.stage)} · ${p.days}d cold</span></button>`).join('') + `</div>`;
+  }
+  wrap.innerHTML = html;
+  wrap.querySelectorAll('.mom-row').forEach((b) => b.addEventListener('click', () => { snd.lock(); openById(b.dataset.oppid); }));
+  v.append(wrap);
+}
+
 // renderChanges shows what moved since the last refresh — amendments, deadline
 // shifts, Q&A changes, withdrawals — so nothing slips by unnoticed.
 async function renderChanges(v) {
@@ -1586,6 +1605,7 @@ async function renderToday() {
   v.append(el('p', 'sub', 'Expected value = each pursuit’s program-of-record ceiling × its cumulative probability of actually reaching a funded program (the SBIR→PoR funnel is brutal — early stages are <2%). Ceilings are editable best-case estimates; set them per pursuit in its Claude panel.'));
 
   await renderChanges(v);
+  await renderMomentum(v);
   tsection(v, 'deadline', 'clock', 'Deadlines (≤30d)', b.deadlines, 'No tracked deadlines in the next 30 days.');
   tsection(v, 'qa', 'chat', 'Q&A windows — sanctioned channel', b.qa, 'No open topic Q&A windows right now.');
   tsection(v, 'new', 'spark', 'New high-fit opportunities', b.new, 'Nothing new since your last brief.');

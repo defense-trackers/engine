@@ -114,6 +114,7 @@ func Run(o Options) error {
 	mux.HandleFunc("/api/changes", s.hChanges)
 	mux.HandleFunc("/api/awardgraph", s.hAwardGraph)
 	mux.HandleFunc("/api/target", s.hTarget)
+	mux.HandleFunc("/api/momentum", s.hMomentum)
 	mux.HandleFunc("/api/awards", s.hAwards)
 	mux.HandleFunc("/api/detail", s.hDetail)
 	mux.HandleFunc("/api/strategize", s.hStrategize)
@@ -302,9 +303,12 @@ func (s *server) hState(w http.ResponseWriter, r *http.Request) {
 		s.mu.Lock()
 		p := in.Pursuit
 		p.Updated = time.Now().UTC().Format(time.RFC3339)
-		// Preserve a prediction already stamped (the client doesn't send it back).
-		if prev, ok := s.state[in.ID]; ok && p.PredictedWin == 0 {
-			p.PredictedWin = prev.PredictedWin
+		prevStage := ""
+		if prev, ok := s.state[in.ID]; ok {
+			prevStage = prev.Stage
+			if p.PredictedWin == 0 {
+				p.PredictedWin = prev.PredictedWin
+			}
 		}
 		// Stamp the predicted win-prob the moment a bid is submitted (outcome still
 		// unknown) so the ledger can later calibrate prediction vs actual.
@@ -326,6 +330,9 @@ func (s *server) hState(w http.ResponseWriter, r *http.Request) {
 			s.state[in.ID] = p
 		}
 		s.saveState()
+		if !empty && p.Stage != "" && p.Stage != prevStage {
+			s.logStageChange(in.ID, p.Title, prevStage, p.Stage) // momentum/velocity trail
+		}
 		s.mu.Unlock()
 	}
 	s.mu.Lock()
