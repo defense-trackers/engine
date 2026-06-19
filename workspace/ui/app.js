@@ -534,6 +534,13 @@ async function boot() {
   });
   $('#assist-close').addEventListener('click', closeAssist);
   $('#log-export')?.addEventListener('click', exportLog);
+  // double-click any Claude reply to copy it
+  $('#thread').addEventListener('dblclick', (e) => {
+    const m = e.target.closest && e.target.closest('.msg.a');
+    if (!m || !navigator.clipboard) return;
+    const txt = (m.innerText || '').trim(); if (!txt) return;
+    navigator.clipboard.writeText(txt).then(() => { toast('Reply copied'); snd.tick(); }).catch(() => { });
+  });
   $('#overlay').addEventListener('click', closeAssist);
   $('#assist-send').addEventListener('click', () => sendAssist());
   $('#assist-input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAssist(); } });
