@@ -66,7 +66,12 @@ func (s *server) detectChangesLocked() []ChangeItem {
 			continue // newly relevant — "new high-fit" is handled by the brief
 		}
 		if old.Closes != o.Closes && old.Closes != "" && o.Closes != "" {
-			extended := o.Closes > old.Closes // YYYY-MM-DD compares lexically
+			extended := o.Closes > old.Closes // ISO compares lexically…
+			if a, okA := parseCloseDay(old.Closes); okA {
+				if b, okB := parseCloseDay(o.Closes); okB {
+					extended = b.After(a) // …but parse when possible, so MM/DD/YYYY compares correctly
+				}
+			}
 			changes = append(changes, ChangeItem{
 				ID: o.ID, Title: o.Title, Kind: "deadline", URL: o.URL, Good: extended,
 				Detail: fmt.Sprintf("deadline moved %s → %s (%s)", old.Closes, o.Closes, ifs(extended, "extended", "pulled in")),
