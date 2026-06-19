@@ -773,13 +773,35 @@ function renderThread() {
     t.innerHTML = `<div class="disabled-note">Claude isn't connected. Easiest: install + log in to <b>Claude Code</b> — the workspace will use your <b>Max subscription</b> (no per-token cost):<br><br><code>npm i -g @anthropic-ai/claude-code</code><br><code>claude login</code><br><code>go run . workspace</code><br><br>Or set <b>ANTHROPIC_API_KEY</b> for the pay-per-token API. Everything stays on this machine.</div>`;
     return;
   }
-  convo(CUR_OPP.id).forEach((m) => {
+  const conv = convo(CUR_OPP.id);
+  if (!conv.length) { t.appendChild(threadEmpty(CUR_OPP)); return; }
+  conv.forEach((m) => {
     const d = el('div', 'msg ' + (m.role === 'user' ? 'u' : 'a'));
     if (m.role === 'user') d.textContent = '› ' + m.content;
     else d.innerHTML = mdChat(m.content);
     t.append(d);
   });
   t.scrollTop = t.scrollHeight;
+}
+
+// A guided empty state — when the thread is fresh, suggest the strongest opening
+// moves for THIS pursuit so you're never staring at a blank box.
+function threadEmpty(o) {
+  const wrap = el('div', 'thread-empty');
+  const moat = o.usv_prime ? 'USV prime — your partner builds + funds the vessel'
+    : o.clearance_edge ? 'clearance / IL5 moat — most competitors can’t operate here'
+    : o.allied_edge ? 'AUKUS / allied edge with your partner'
+    : o.teaming_only ? 'teaming play — you bring the software brain' : '';
+  const ctx = [o.matched_asset ? 'matched to ' + o.matched_asset : '', o.score ? 'fit ' + o.score + '/100' : '', moat].filter(Boolean).join(' · ');
+  const picks = [['bidpass', 'Bid or pass?']];
+  picks.push(o.teaming_only ? ['teaming', 'Find a prime / team'] : ['wintheme', 'Win theme']);
+  picks.push(['nextstep', 'Next best action']);
+  wrap.innerHTML = `<div class="te-icon">${svg('spark')}</div><div class="te-h">Where do you want to start?</div>` +
+    (ctx ? `<div class="te-ctx">${escapeHtml(ctx)}</div>` : '') +
+    `<div class="te-chips"></div><div class="te-hint">…or just ask anything below.</div>`;
+  const chips = wrap.querySelector('.te-chips');
+  picks.forEach(([a, label]) => { const c = el('button', 'te-chip'); c.innerHTML = svg('arrow') + label; c.addEventListener('click', () => { snd.tick(); sendAssist(a); }); chips.append(c); });
+  return wrap;
 }
 
 async function moveStage(o, stage) {
