@@ -25,6 +25,17 @@ var stageProb = map[string]float64{
 // Stages in lifecycle order (for the stage pickers).
 var Stages = []string{"watching", "qualifying", "drafting", "submitted", "won", "pilot", "transition", "pom", "program", "lost", "pass"}
 
+// validStage reports whether s is one of the known lifecycle stages. An unknown
+// stage would make a pursuit vanish from every pipeline column, so writes reject it.
+func validStage(s string) bool {
+	for _, v := range Stages {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
 // Walls is the transition-readiness scorecard — the four structural walls of the
 // second valley of death. Each is "" (unset) | "gap" | "partial" | "ready".
 type Walls struct {

@@ -391,6 +391,10 @@ func (s *server) hState(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "bad request", 400)
 			return
 		}
+		if in.Stage != "" && !validStage(in.Stage) {
+			http.Error(w, "invalid stage: "+in.Stage, 400)
+			return
+		}
 		s.mu.Lock()
 		p := in.Pursuit
 		p.Updated = time.Now().UTC().Format(time.RFC3339)
