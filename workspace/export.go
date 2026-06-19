@@ -34,6 +34,10 @@ func (s *server) hExport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "no draft yet — run a draft first", 404)
 		return
 	}
+	if r.Method == http.MethodHead {
+		w.WriteHeader(http.StatusOK) // probe: draft exists, skip the docx build
+		return
+	}
 	body := string(md)
 	if r.URL.Query().Get("compliance") == "1" {
 		if cm := complianceMatrixMD(s.detailFor(subj)); cm != "" {
