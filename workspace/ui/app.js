@@ -298,6 +298,7 @@ const COLS = [
 ];
 function toast(msg) {
   const c = document.getElementById('toasts'); if (!c) return;
+  while (c.children.length >= 4) c.firstChild.remove(); // cap the stack
   const t = el('div', 'toast'); t.textContent = msg; c.append(t);
   setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 400); }, 2600);
 }
@@ -1647,6 +1648,8 @@ function tcard(it) {
   if (it.detail) c.append(el('div', 'det', it.detail));
   c.append(el('span', 'ticks'));
   c.addEventListener('click', () => openById(it.id));
+  c.setAttribute('role', 'button'); c.setAttribute('tabindex', '0');
+  c.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openById(it.id); } });
   return c;
 }
 
