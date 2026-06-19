@@ -37,3 +37,5 @@
 /workspace/watch.json
 /workspace/target.json
 /workspace/momentum.json
+/workspace/backups/
+/workspace/bidstate.json.tmp

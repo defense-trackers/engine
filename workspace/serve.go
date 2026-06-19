@@ -158,16 +158,78 @@ func (s *server) statePath() string { return filepath.Join(s.opts.Dir, "bidstate
 func (s *server) loadState() {
 	b, err := os.ReadFile(s.statePath())
 	if err == nil {
-		_ = json.Unmarshal(b, &s.state)
-		return
+		if json.Unmarshal(b, &s.state) == nil && len(s.state) > 0 {
+			s.backupStateDaily(b) // point-in-time snapshot once per day
+			return
+		}
+		// File present but unreadable/empty — try the newest backup before reseeding.
+		if rb := s.newestBackup(); rb != nil && json.Unmarshal(rb, &s.state) == nil && len(s.state) > 0 {
+			fmt.Println("note: bidstate.json was unreadable — recovered from the latest backup")
+			s.saveState()
+			return
+		}
 	}
 	s.state = seedPipeline() // first run: open on Jesse's known in-flight volumes
 	s.saveState()
 }
 
+// saveState writes the pursuit board atomically (temp + rename) so a crash mid-write
+// can't corrupt the crown-jewel file.
 func (s *server) saveState() {
 	b, _ := json.MarshalIndent(s.state, "", " ")
-	_ = os.WriteFile(s.statePath(), b, 0o644)
+	tmp := s.statePath() + ".tmp"
+	if os.WriteFile(tmp, b, 0o644) == nil {
+		if os.Rename(tmp, s.statePath()) == nil {
+			return
+		}
+	}
+	_ = os.WriteFile(s.statePath(), b, 0o644) // fallback
+}
+
+func (s *server) backupDir() string { return filepath.Join(s.opts.Dir, "backups") }
+
+// backupStateDaily keeps one snapshot per day under backups/, pruning past 14 days.
+func (s *server) backupStateDaily(b []byte) {
+	dir := s.backupDir()
+	if os.MkdirAll(dir, 0o755) != nil {
+		return
+	}
+	path := filepath.Join(dir, "bidstate-"+time.Now().Format("2006-01-02")+".json")
+	if _, err := os.Stat(path); err == nil {
+		return // already snapshotted today
+	}
+	_ = os.WriteFile(path, b, 0o644)
+	// prune
+	if ents, err := os.ReadDir(dir); err == nil {
+		cutoff := time.Now().AddDate(0, 0, -14)
+		for _, e := range ents {
+			if info, err := e.Info(); err == nil && info.ModTime().Before(cutoff) {
+				_ = os.Remove(filepath.Join(dir, e.Name()))
+			}
+		}
+	}
+}
+
+// newestBackup returns the contents of the most recent state backup, or nil.
+func (s *server) newestBackup() []byte {
+	ents, err := os.ReadDir(s.backupDir())
+	if err != nil {
+		return nil
+	}
+	var newest string
+	for _, e := range ents {
+		if strings.HasPrefix(e.Name(), "bidstate-") && e.Name() > newest {
+			newest = e.Name()
+		}
+	}
+	if newest == "" {
+		return nil
+	}
+	b, err := os.ReadFile(filepath.Join(s.backupDir(), newest))
+	if err != nil {
+		return nil
+	}
+	return b
 }
 
 // ingest loads tracker JSON + DSIP, scores, and caches DSIP for offline reuse.
