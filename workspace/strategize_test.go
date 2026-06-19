@@ -76,6 +76,10 @@ func TestResolveOppAutoLink(t *testing.T) {
 	if o3, _ := resolveOpp("seed:x", Pursuit{Title: "no code here"}, byID, opps); o3 != nil {
 		t.Errorf("expected nil, got %v", o3)
 	}
+	// explicit Link override → resolves to the linked opp (flagged linked), even with no code in title
+	if o4, lk := resolveOpp("seed:manual", Pursuit{Title: "no code", Link: "dsip:OTHER"}, byID, opps); o4 == nil || !lk || o4.ID != "dsip:OTHER" {
+		t.Errorf("explicit Link override failed: o=%v linked=%v", o4, lk)
+	}
 }
 
 func TestSubmissionState(t *testing.T) {
