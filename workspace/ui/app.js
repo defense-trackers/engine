@@ -1560,6 +1560,15 @@ async function renderLedger(v) {
   const cal = el('div', 'card');
   cal.innerHTML = `<div class="ctitle">Calibration — predicted vs actual</div><div class="meta" style="margin-bottom:10px">Of bids predicted in each band, how many actually won.${d.brier_n ? ` Brier score ${brier} (lower = better-calibrated, ${d.brier_n} resolved).` : ' Resolves once you log won/lost outcomes.'}</div>${calRows}`;
   v.append(cal);
+  // closed-loop correction now applied to every live win-probability
+  if (d.model) {
+    const m = d.model;
+    const tone = m.n === 0 ? '' : m.trusted ? (Math.abs(m.shift) <= 3 ? 'ok' : 'warn') : 'warn';
+    const sign = m.shift > 0 ? '+' : '';
+    const loop = el('div', 'card calloop');
+    loop.innerHTML = `<div class="ctop"><div><div class="ctitle">Calibration loop</div><div class="meta">${escapeHtml(m.verdict)}${m.n ? ` · raw avg ${m.mean_pred}% vs actual ${m.mean_act}%` : ''}</div></div><div class="score ${tone}">${m.n ? sign + m.shift : '—'}<small>${m.n ? 'pts applied' : 'no data'}</small></div></div>${m.n ? `<div class="meta" style="margin-top:8px">Every win-probability in War room, Today and win-plans is the raw model ${sign}${m.shift} pts. ${m.trusted ? 'Trusted.' : 'Provisional until ' + (5 - m.n) + ' more outcomes.'}</div>` : ''}`;
+    v.append(loop);
+  }
   // the ledger rows (pending/open included so it's not blank pre-outcomes)
   const order = { won: 0, lost: 1, pending: 2, open: 3 };
   const rows = (d.rows || []).slice().sort((a, b) => (order[a.outcome] - order[b.outcome]) || (b.value - a.value));

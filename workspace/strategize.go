@@ -225,6 +225,7 @@ func (s *server) strategizeRows() []stratRow {
 	}
 	s.mu.Unlock()
 
+	cal := calibrationReport(state) // close the loop: correct raw predictions from logged outcomes
 	var rows []stratRow
 	for id, p := range state {
 		o, linked := resolveOpp(id, p, byID, opps)
@@ -248,6 +249,7 @@ func (s *server) strategizeRows() []stratRow {
 			title = id
 		}
 		wp, reasons := winProbability(o, p)
+		wp = calibrate(wp, cal.Shift) // apply the learned correction to the number you act on
 		_, weakest := p.Walls.Readiness()
 		ev := int(float64(p.Value) * stageProb[stage])
 		priority := p.Value * wp / 100

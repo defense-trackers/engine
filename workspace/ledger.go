@@ -111,5 +111,6 @@ func (s *server) hLedger(w http.ResponseWriter, _ *http.Request) {
 		"rows": rows, "won": won, "lost": lost, "decided": decided,
 		"win_rate": winRate, "won_value": wonValue, "calibration": cal,
 		"brier": brier, "brier_n": brierN,
+		"model": s.calReport(), // the closed-loop correction now applied to live predictions
 	})
 }

@@ -84,6 +84,7 @@ func (s *server) hWinPlan(w http.ResponseWriter, r *http.Request) {
 	}
 	detail := s.detailFor(opp)
 	wp, _ := winProbability(opp, pursuit)
+	wp = calibrate(wp, s.calReport().Shift) // reason over the calibrated number, not the raw guess
 	readiness, weakest := pursuit.Walls.Readiness()
 	today := time.Now().Format("Monday, January 2, 2006")
 
