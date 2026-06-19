@@ -1473,7 +1473,7 @@ async function renderLedger(v) {
   list.innerHTML = `<div class="ctitle">Ledger (${rows.length})</div>` + rows.map((r) => {
     const tone = r.outcome === 'won' ? 'go' : r.outcome === 'lost' ? 'nogo' : r.outcome === 'pending' ? 'fix' : 'open';
     const pw = r.predicted_win ? `predicted ${r.predicted_win}%` : 'no prediction stamped';
-    return `<div class="ledrow"><span class="rdy ${tone}">${r.outcome}</span><span class="ledt">${escapeHtml(r.title)}</span><span class="ledmeta">${pw} · $${(r.value).toLocaleString()}K${r.owner ? ' · ' + escapeHtml(r.owner) : ''}</span></div>`;
+    return `<div class="ledrow"><span class="rdy ${tone}">${r.outcome}</span><span class="ledt">${escapeHtml(r.title)}</span><span class="ledmeta">${pw} · ${mK(r.value)}${r.owner ? ' · ' + escapeHtml(r.owner) : ''}</span></div>`;
   }).join('');
   v.append(list);
 }
@@ -1926,7 +1926,7 @@ function wireStratRows(container) {
 function allocTable(d) {
   if (!d.items || !d.items.length) return '<p class="empty">No actionable pursuits to allocate — everything is won, closed, or unscored.</p>';
   const pct = d.ev_total ? Math.round(100 * d.ev_captured / d.ev_total) : 0;
-  const head = `<div class="alloc-sum"><b>${d.hours_used}</b>/${d.budget}h booked · captures <b>$${(d.ev_captured).toLocaleString()}K</b> of $${(d.ev_total).toLocaleString()}K expected award value (${pct}%)</div>`;
+  const head = `<div class="alloc-sum"><b>${d.hours_used}</b>/${d.budget}h booked · captures <b>${mK(d.ev_captured)}</b> of ${mK(d.ev_total)} expected award value (${pct}%)</div>`;
   const groups = [['fund', 'Fund this week'], ['tight', 'Tight — triage call'], ['defer', 'Defer / next week']];
   let html = head;
   groups.forEach(([b, label]) => {
@@ -1941,7 +1941,7 @@ function allocRowHTML(i) {
   const oid = (i.opp_id || i.id || '').replace(/"/g, '&quot;');
   const tone = i.win_prob >= 60 ? 'ok' : i.win_prob >= 25 ? 'warn' : 'bad';
   return `<div class="strow act alloc-row ${i.bucket}" data-oppid="${escapeHtml(oid)}" title="Open Claude on this pursuit">
-    <span class="sttitle"><b>${escapeHtml(i.title)}</b><small>win ${i.win_prob}% · $${(i.priority).toLocaleString()}K expected · weakest ${escapeHtml(i.weakest || '—')}</small></span>
+    <span class="sttitle"><b>${escapeHtml(i.title)}</b><small>win ${i.win_prob}% · ${mK(i.priority)} expected · weakest ${escapeHtml(i.weakest || '—')}</small></span>
     <span class="stwin ${tone}"><i style="width:${Math.min(100, i.win_prob)}%"></i><em>${i.win_prob}%</em></span>
     <span class="stev">${i.effort}h</span>
     <span class="stdl ${i.days_left >= 0 && i.days_left <= 7 ? 'urgent' : ''}">${dl}</span>
@@ -1956,7 +1956,7 @@ function stratTable(rows) {
     const wp = Math.max(0, Math.min(100, r.win_prob || 0));
     const tone = wp >= 60 ? 'ok' : wp >= 25 ? 'warn' : 'bad';
     const dl = r.days_left >= 0 ? (r.days_left === 0 ? 'today' : r.days_left + 'd') : '—';
-    const ev = r.ev > 0 ? '$' + r.ev + 'K' : '—';
+    const ev = r.ev > 0 ? mK(r.ev) : '—';
     const asset = r.asset ? `<span class="stasset">${escapeHtml(r.asset)}</span>` : '';
     const lk = r.linked ? `<span class="stlink" title="scored against a live topic auto-matched to this volume">↪ live</span>` : '';
     const ow = r.owner ? `<span class="stowner" title="owner">${escapeHtml(r.owner)}</span>` : '';
@@ -2035,7 +2035,7 @@ function renderPipeline() {
       const rd = readiness(p.walls || {});
       const meta = el('div', 'kmeta');
       meta.innerHTML = `<span class="kready" title="transition readiness ${rd.score}/100 · weakest ${rd.weakest}"><i style="width:${rd.score}%"></i></span>` +
-        (p.value ? `<span class="kval">$${(p.value).toLocaleString()}K</span>` : '') +
+        (p.value ? `<span class="kval">${mK(p.value)}</span>` : '') +
         (p.owner ? `<span class="kowner">${escapeHtml(p.owner)}</span>` : '');
       kc.append(meta);
       if (p.notes) { const n = el('div', 'm'); n.textContent = p.notes; kc.append(n); }
