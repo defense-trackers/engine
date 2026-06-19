@@ -536,6 +536,7 @@ async function boot() {
   $('#overlay').addEventListener('click', closeAssist);
   $('#assist-send').addEventListener('click', () => sendAssist());
   $('#assist-input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAssist(); } });
+  $('#assist-input').addEventListener('input', (e) => { const ta = e.target; ta.style.height = 'auto'; ta.style.height = Math.min(150, ta.scrollHeight) + 'px'; });
   const mic = $('#mic-btn');
   if (mic) {
     if (!VOICE.supported) mic.classList.add('off');
@@ -820,7 +821,7 @@ async function sendAssist(action) {
   const userLabel = action ? (ACTION_LABEL[action] || action) : message;
   hist.push({ role: 'user', content: userLabel });
   saveConvo(id, hist);
-  input.value = '';
+  input.value = ''; input.style.height = ''; // reset auto-grown composer
   renderThread();
 
   const ans = el('div', 'msg a streaming'); ans.textContent = '◢ incoming transmission — decrypting…'; $('#thread').append(ans); $('#thread').scrollTop = 1e9;
