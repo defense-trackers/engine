@@ -2058,10 +2058,10 @@ function renderTeaming() {
 
 function renderNow() {
   const v = $('#view-now'); v.hidden = false; v.textContent = '';
-  v.append(el('h2', null, 'Act now — pursue this week'));
+  const list = OPPS.filter((o) => o.act_now && !done(o.id));
+  v.append(el('h2', null, list.length ? `Act now — pursue this week (${list.length})` : 'Act now — pursue this week'));
   const sub = el('p', 'sub', 'High capability-fit, eligible, closing within 30 days, not yet decided. Ranked by fit score.');
   v.append(sub);
-  const list = OPPS.filter((o) => o.act_now && !done(o.id));
   if (!list.length) { v.append(el('p', 'empty', 'Nothing urgent matches your capabilities right now. Check All opportunities.')); return; }
   const grid = el('div', 'grid');
   list.forEach((o) => grid.append(oppCard(o, true)));
