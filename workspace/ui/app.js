@@ -1154,13 +1154,22 @@ async function competitiveIntel(o) {
   } catch (e) { m.className = 'msg err'; m.textContent = 'intel failed: ' + e.message; }
 }
 
+let CHANGES_COUNT = 0;
 async function load() {
-  [OPPS, STATE] = await Promise.all([
+  const [opps, state, chg] = await Promise.all([
     fetch('/api/opportunities').then((r) => r.json()).catch(() => []),
     fetch('/api/state').then((r) => r.json()).catch(() => ({})),
+    fetch('/api/changes').then((r) => r.json()).catch(() => ({ count: 0 })),
   ]);
+  OPPS = opps; STATE = state; CHANGES_COUNT = chg.count || 0;
   const now = OPPS.filter((o) => o.act_now && !done(o.id)).length;
   $('#stat').textContent = `${OPPS.length} scored · ${now} act-now · ${Object.keys(STATE).length} pursuits`;
+  // a count badge on the Today tab when amendments/deadline shifts were detected
+  const tt = document.querySelector('.tab[data-view="today"]');
+  if (tt) {
+    tt.querySelector('.navbadge')?.remove();
+    if (CHANGES_COUNT) { const bdg = el('span', 'navbadge'); bdg.textContent = CHANGES_COUNT; tt.append(bdg); }
+  }
   const sb = $('#statusbar');
   if (sb) {
     const team = OPPS.filter((o) => o.teaming_only).length;
@@ -1169,6 +1178,7 @@ async function load() {
       `<span class="ss">DSIP <b>LIVE</b></span>` +
       `<span class="ss">SCORED <b>${OPPS.length}</b></span>` +
       `<span class="ss">ACT-NOW <b>${now}</b></span>` +
+      (CHANGES_COUNT ? `<span class="ss moved">MOVED <b>${CHANGES_COUNT}</b></span>` : '') +
       `<span class="ss">TEAMING <b>${team}</b></span>` +
       `<span class="ss">PURSUITS <b>${Object.keys(STATE).length}</b></span>` +
       `<span class="grow"></span>` +
@@ -1241,7 +1251,7 @@ function initPalette() {
     if (e.key === 'Escape') { if (isOpen()) { close(); return; } if (help && help.classList.contains('open')) { help.classList.remove('open'); return; } closeAssist(); return; }
     if (e.key === '?' && !typing) { e.preventDefault(); if (help) help.classList.toggle('open'); return; }
     if (typing || isOpen() || e.metaKey || e.ctrlKey || e.altKey) return;
-    if (e.key >= '1' && e.key <= '8') { switchView(VIEWS[+e.key - 1][0]); }
+    if (e.key >= '1' && e.key <= '9' && +e.key <= VIEWS.length) { switchView(VIEWS[+e.key - 1][0]); }
     else if (e.key === 'r') { $('#refresh').click(); }
   });
   PALETTE_OPEN = open;
@@ -1352,7 +1362,9 @@ async function renderProfit() {
   const v = $('#view-profit'); v.hidden = false; v.textContent = '';
   v.append(el('h2', null, 'Pipeline → profit'));
   v.append(el('p', 'sub', 'Each pursuit carries a best-case program-of-record value ceiling. Expected value = ceiling × the cumulative probability of that stage actually reaching a funded program of record — not the odds of clearing the next gate. The SBIR→PoR funnel is brutal, so a drafting/submitted bid is risk-adjusted to ~1–2%. Edit a pursuit’s ceiling in its Claude panel.'));
+  const ld = el('div', 'loading', 'computing expected value'); v.append(ld);
   const d = await fetch('/api/profit').then((r) => r.json()).catch(() => null);
+  ld.remove();
   if (!d || !d.stages || !d.stages.length) { v.append(el('p', 'empty', 'No valued pursuits yet. Open a pursuit → set its estimated value.')); return; }
   const head = el('div', 'card');
   head.innerHTML = `<div class="ctop"><div><div class="ctitle">Expected revenue — risk-adjusted to program of record</div><div class="meta">best-case ceiling $${(d.total_value).toLocaleString()}K across ${d.stages.reduce((a, s) => a + s.count, 0)} pursuits</div></div><div class="score">$${(d.expected_value).toLocaleString()}<small>K expected</small></div></div>`;
@@ -1393,9 +1405,9 @@ async function renderLedger(v) {
   const rows = (d.rows || []).slice().sort((a, b) => (order[a.outcome] - order[b.outcome]) || (b.value - a.value));
   const list = el('div', 'card');
   list.innerHTML = `<div class="ctitle">Ledger (${rows.length})</div>` + rows.map((r) => {
-    const tone = r.outcome === 'won' ? 'go' : r.outcome === 'lost' ? 'nogo' : r.outcome === 'pending' ? 'fix' : '';
+    const tone = r.outcome === 'won' ? 'go' : r.outcome === 'lost' ? 'nogo' : r.outcome === 'pending' ? 'fix' : 'open';
     const pw = r.predicted_win ? `predicted ${r.predicted_win}%` : 'no prediction stamped';
-    return `<div class="ledrow"><span class="rdy ${tone || 'fix'}">${r.outcome}</span><span class="ledt">${escapeHtml(r.title)}</span><span class="ledmeta">${pw} · $${(r.value).toLocaleString()}K${r.owner ? ' · ' + escapeHtml(r.owner) : ''}</span></div>`;
+    return `<div class="ledrow"><span class="rdy ${tone}">${r.outcome}</span><span class="ledt">${escapeHtml(r.title)}</span><span class="ledmeta">${pw} · $${(r.value).toLocaleString()}K${r.owner ? ' · ' + escapeHtml(r.owner) : ''}</span></div>`;
   }).join('');
   v.append(list);
 }
@@ -1675,7 +1687,9 @@ async function renderCrew() {
   const v = $('#view-crew'); v.hidden = false; v.textContent = '';
   v.append(el('h2', null, 'Crew — who carries what'));
   v.append(el('p', 'sub', 'Each teammate’s load across the pipeline. Assign an owner in any pursuit’s cockpit (the Owner field). Balance by value at stake and deadline pressure, not headcount.'));
+  const loading = el('div', 'loading', 'reading the pipeline'); v.append(loading);
   const rows = await fetch('/api/strategize-data').then((r) => r.json()).catch(() => null);
+  loading.remove();
   const list = (rows && rows.rows) || [];
   if (!list.length) { v.append(el('p', 'empty', 'No pursuits yet.')); return; }
   const groups = {};
