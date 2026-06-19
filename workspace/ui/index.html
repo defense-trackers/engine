@@ -832,7 +832,7 @@
 <div id="toasts" role="status" aria-live="polite" aria-atomic="false"></div>
 <button id="totop" aria-label="Scroll to top" title="Back to top"><svg class="ic-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6"/></svg></button>
 <footer id="statusbar"></footer>
-<div id="help"><div class="pal helpbox">
+<div id="help" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts"><div class="pal helpbox">
   <div class="hhd">REALIZER · KEYBOARD</div>
   <div class="hrow"><span>Command palette</span><kbd>⌘K</kbd><kbd>/</kbd></div>
   <div class="hrow"><span>Switch views</span><kbd>1</kbd>–<kbd>9</kbd></div>
@@ -848,7 +848,7 @@
   <div class="hrow"><span>UI sound · spoken replies</span><em>SND · SPEAK in status bar</em></div>
 </div></div>
 <div id="winflash"></div>
-<div id="palette"><div class="pal"><input type="text" placeholder="Search views, actions, opportunities…  (Esc to close)" spellcheck="false"><div class="res"></div><div class="palfoot"><span>↑↓ navigate</span><span>↵ select</span><span>⌘K / / open</span></div></div></div>
+<div id="palette" role="dialog" aria-modal="true" aria-label="Command palette"><div class="pal"><input type="text" placeholder="Search views, actions, opportunities…  (Esc to close)" spellcheck="false" aria-label="Search views, actions, and opportunities"><div class="res"></div><div class="palfoot"><span>↑↓ navigate</span><span>↵ select</span><span>⌘K / / open</span></div></div></div>
 <div id="cring"></div><div id="cdot"></div>
 <script type="module" src="/app.js"></script>
 </body>
