@@ -684,6 +684,10 @@ function openAssist(o) {
   renderThread();
   $('#overlay').style.display = 'block';
   $('#assist').classList.add('open');
+  // land keyboard focus in the composer (after the slide-in), so you can type at once
+  if (ASSIST.enabled && !matchMedia('(pointer: coarse)').matches) {
+    setTimeout(() => { const i = $('#assist-input'); if (i && $('#assist').classList.contains('open')) i.focus(); }, 120);
+  }
 }
 
 
