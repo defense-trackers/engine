@@ -564,6 +564,7 @@ const ACTION_GROUPS = [
   ] },
   { key: 'intel', label: 'Intel', items: [
     { fn: 'competitiveIntel', icon: 'radar', label: 'Competitive field' },
+    { fn: 'awardGraph', icon: 'radar', label: 'Award graph' },
     { fn: 'topicDetail', icon: 'doc', label: 'Topic detail' },
     { a: 'deepresearch', label: 'Deep research' },
     { a: 'teaming', label: 'Find a prime / team' },
@@ -605,7 +606,7 @@ function saveConvo(id, h) { localStorage.setItem('assist:' + id, JSON.stringify(
 // (Assess · Intel · Draft · Win · Transition · Move) over a single button row that
 // swaps with the active tab. The active tab persists across opens.
 function buildActions(o) {
-  const fns = { competitiveIntel, topicDetail, ingestRFP, draftVolume, fullWorkup, exportDocx, winPlan, verifyCompliance, remediate, complianceMatrix, preflight, editVolume, proofLibrary };
+  const fns = { competitiveIntel, awardGraph, topicDetail, ingestRFP, draftVolume, fullWorkup, exportDocx, winPlan, verifyCompliance, remediate, complianceMatrix, preflight, editVolume, proofLibrary };
   const wrap = el('div', 'actions');
   const tabs = el('div', 'atabs');
   const body = el('div', 'abody');
@@ -1106,6 +1107,33 @@ async function topicDetail(o) {
 }
 
 // Competitive field — recent DoD SBIR/STTR awards in the opp's space (SBIR.gov).
+// Award graph — the firm↔topic map: ranked incumbents by $, a lane verdict
+// (open / contested / entrenched), and transition-capable teaming targets.
+async function awardGraph(o) {
+  const t = $('#thread');
+  const head = el('div', 'msg u'); head.textContent = '› Award graph'; t.append(head);
+  const m = el('div', 'msg a'); m.textContent = 'Mapping the competitive field from SBIR.gov…'; t.append(m); t.scrollTop = 1e9;
+  const money = (n) => n >= 1e6 ? '$' + (n / 1e6).toFixed(1) + 'M' : n >= 1e3 ? '$' + Math.round(n / 1e3) + 'K' : '$' + n;
+  try {
+    const g = await fetch('/api/awardgraph?id=' + encodeURIComponent(o.id)).then((x) => x.json());
+    if (!g.awards) {
+      m.textContent = g.ok ? `No DoD award history for “${g.keyword}” to map.` : 'SBIR.gov is rate-limiting — try again shortly (caches 7 days once fetched).';
+      return;
+    }
+    const laneTone = g.lane === 'entrenched' ? 'bad' : g.lane === 'contested' ? 'warn' : 'ok';
+    const maxT = Math.max(...g.firms.map((f) => f.total), 1);
+    const firmRows = g.firms.map((f) => `<div class="agrow"><span class="agf">${escapeHtml(f.firm || '—')}</span><span class="agbar"><i style="width:${Math.max(3, Math.round(f.total / maxT * 100))}%"></i></span><span class="agm">${money(f.total)} · ${f.count}× ${f.phase2_plus ? '· PhII+' : ''}</span></div>`).join('');
+    const teaming = (g.teaming || []).map((f) => escapeHtml(f.firm)).join(', ');
+    m.innerHTML = `<h4>Competitive map · “${escapeHtml(g.keyword)}”</h4>
+      <div class="agverdict ${laneTone}">${escapeHtml(g.verdict)}</div>
+      <div class="agmeta">${g.awards} awards · ${g.distinct} firms · top firm holds ${g.top_share}% of $</div>
+      <div class="aglist">${firmRows}</div>
+      ${teaming ? `<div class="agteam"><b>Transition-capable (PhII+) — team with or around:</b> ${teaming}</div>` : ''}
+      <span class="agtip">Claude has this — ask “how do I ghost these incumbents?” or “who should I sub to?”</span>`;
+    t.scrollTop = 1e9;
+  } catch (e) { m.className = 'msg err'; m.textContent = 'award graph failed: ' + e.message; }
+}
+
 async function competitiveIntel(o) {
   const t = $('#thread');
   const head = el('div', 'msg u'); head.textContent = '› Competitive field'; t.append(head);
