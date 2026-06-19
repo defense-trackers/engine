@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -43,7 +44,9 @@ func claudeOnce(system, prompt string) (string, error) {
 		defer os.Remove(f.Name())
 		f.WriteString(system)
 		f.Close()
-		cmd := exec.Command("claude", "-p",
+		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Second)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, "claude", "-p",
 			"--system-prompt-file", f.Name(),
 			"--model", assistModel(),
 			"--output-format", "text")
@@ -52,6 +55,9 @@ func claudeOnce(system, prompt string) (string, error) {
 		cmd.Stdout = &out
 		cmd.Stderr = &errb
 		if err := cmd.Run(); err != nil {
+			if ctx.Err() == context.DeadlineExceeded {
+				return "", fmt.Errorf("claude CLI timed out after 200s")
+			}
 			return "", fmt.Errorf("claude CLI: %v: %s", err, strings.TrimSpace(errb.String()))
 		}
 		return out.String(), nil

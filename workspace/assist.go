@@ -3,6 +3,7 @@ package workspace
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -202,7 +203,10 @@ func runClaudeCLI(emit func(any), system, prompt string) {
 	f.WriteString(system)
 	f.Close()
 
-	cmd := exec.Command("claude", "-p",
+	// Hard timeout so a hung CLI can't leave the cockpit "thinking" forever.
+	ctx, cancel := context.WithTimeout(context.Background(), 240*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "claude", "-p",
 		"--system-prompt-file", f.Name(),
 		"--model", assistModel(),
 		"--output-format", "stream-json",
