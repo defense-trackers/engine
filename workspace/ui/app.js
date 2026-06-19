@@ -1392,6 +1392,12 @@ function render() {
   requestAnimationFrame(staggerIn);
 }
 
+// mK — money in $K, rendered as $X.XM once it crosses a million for readability.
+function mK(k) {
+  k = Math.round(k || 0);
+  return k >= 1000 ? '$' + (k / 1000).toFixed(k % 1000 === 0 ? 0 : 1) + 'M' : '$' + k.toLocaleString() + 'K';
+}
+
 async function renderProfit() {
   const v = $('#view-profit'); v.hidden = false; v.textContent = '';
   v.append(el('h2', null, 'Pipeline → profit'));
@@ -1401,14 +1407,14 @@ async function renderProfit() {
   ld.remove();
   if (!d || !d.stages || !d.stages.length) { v.append(el('p', 'empty', 'No valued pursuits yet. Open a pursuit → set its estimated value.')); return; }
   const head = el('div', 'card');
-  head.innerHTML = `<div class="ctop"><div><div class="ctitle">Expected revenue — risk-adjusted to program of record</div><div class="meta">best-case ceiling $${(d.total_value).toLocaleString()}K across ${d.stages.reduce((a, s) => a + s.count, 0)} pursuits</div></div><div class="score">$${(d.expected_value).toLocaleString()}<small>K expected</small></div></div>`;
+  head.innerHTML = `<div class="ctop"><div><div class="ctitle">Expected revenue — risk-adjusted to program of record</div><div class="meta">best-case ceiling ${mK(d.total_value)} across ${d.stages.reduce((a, s) => a + s.count, 0)} pursuits</div></div><div class="score">${mK(d.expected_value)}<small>expected</small></div></div>`;
   v.append(head);
   const grid = el('div', 'grid'); v.append(grid);
   const maxW = Math.max(...d.stages.map((s) => s.weighted), 1);
   d.stages.forEach((s) => {
     const c = el('div', 'card');
     const pct = Math.max(3, Math.round((s.weighted / maxW) * 100));
-    c.innerHTML = `<div class="ctop"><div><div class="ctitle">${s.stage}</div><div class="meta">${s.count} pursuit${s.count === 1 ? '' : 's'} · $${s.value.toLocaleString()}K ceiling · ${(s.prob * 100).toFixed(1)}% reach PoR</div></div><div class="score">$${s.weighted.toLocaleString()}<small>K expected</small></div></div><div style="margin-top:8px;height:6px;border-radius:4px;background:linear-gradient(to right,var(--brand) ${pct}%,var(--panel2) ${pct}%)"></div>`;
+    c.innerHTML = `<div class="ctop"><div><div class="ctitle">${s.stage}</div><div class="meta">${s.count} pursuit${s.count === 1 ? '' : 's'} · ${mK(s.value)} ceiling · ${(s.prob * 100).toFixed(1)}% reach PoR</div></div><div class="score">${mK(s.weighted)}<small>expected</small></div></div><div style="margin-top:8px;height:6px;border-radius:4px;background:linear-gradient(to right,var(--brand) ${pct}%,var(--panel2) ${pct}%)"></div>`;
     grid.append(c);
   });
   await renderLedger(v);
@@ -1423,7 +1429,7 @@ async function renderLedger(v) {
   const wr = d.win_rate >= 0 ? d.win_rate + '%' : '—';
   const brier = d.brier >= 0 ? d.brier.toFixed(3) : '—';
   const head = el('div', 'card');
-  head.innerHTML = `<div class="ctop"><div><div class="ctitle">Outcomes</div><div class="meta">${d.decided} decided · ${d.won} won · ${d.lost} lost · $${(d.won_value).toLocaleString()}K won</div></div><div class="score">${wr}<small>win rate</small></div></div>`;
+  head.innerHTML = `<div class="ctop"><div><div class="ctitle">Outcomes</div><div class="meta">${d.decided} decided · ${d.won} won · ${d.lost} lost · ${mK(d.won_value)} won</div></div><div class="score">${wr}<small>win rate</small></div></div>`;
   v.append(head);
   // calibration: predicted band vs actual win rate
   const calRows = d.calibration.map((b) => {
@@ -1633,8 +1639,8 @@ async function renderToday() {
   );
   bento.append(
     hero,
-    mkStat('ev feat fa', '$' + (b.ev || 0).toLocaleString() + 'K', 'Expected (risk-adj. to PoR)'),
-    mkStat('feat fb', '$' + (b.total_value || 0).toLocaleString() + 'K', 'Best-case ceiling'),
+    mkStat('ev feat fa', mK(b.ev || 0), 'Expected (risk-adj. to PoR)'),
+    mkStat('feat fb', mK(b.total_value || 0), 'Best-case ceiling'),
     row,
   );
   v.append(bento);
@@ -1809,8 +1815,8 @@ async function renderCrew() {
     const near = rs.filter((r) => r.days_left >= 0).map((r) => r.days_left).sort((a, b) => a - b)[0];
     const card = el('div', 'crewcard');
     card.innerHTML = `<div class="crewhd"><b>${escapeHtml(name)}</b><span>${rs.length} pursuit${rs.length === 1 ? '' : 's'}</span></div>
-      <div class="crewstat"><span>value</span><b>$${val.toLocaleString()}K</b></div>
-      <div class="crewstat"><span>expected</span><b>$${ev.toLocaleString()}K</b></div>
+      <div class="crewstat"><span>value</span><b>${mK(val)}</b></div>
+      <div class="crewstat"><span>expected</span><b>${mK(ev)}</b></div>
       <div class="crewstat"><span>readiness</span><b>${go ? `<i class="rdy go">${go} GO</i> ` : ''}${fix ? `<i class="rdy fix">${fix} FIX</i> ` : ''}${no ? `<i class="rdy nogo">${no} NO-GO</i>` : ''}</b></div>
       <div class="crewstat"><span>nearest close</span><b class="${near >= 0 && near <= 7 ? 'pf-bad' : ''}">${near === undefined ? '—' : near === 0 ? 'today' : near + 'd'}</b></div>`;
     const ul = el('div', 'crewlist');
