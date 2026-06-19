@@ -1603,11 +1603,11 @@ function mdLite(md) {
 async function renderGoal(v) {
   const d = await fetch('/api/target').then((r) => r.json()).catch(() => null);
   if (!d) return;
-  const money = (k) => k >= 1000 ? '$' + (k / 1000).toFixed(k >= 10000 ? 0 : 1) + 'M' : '$' + k + 'K';
+  const money = mK; // canonical formatter (K/M/B) — keeps the target view consistent + billion-scale aware
   const wrap = el('div', 'goal');
   if (!d.target_k) {
     wrap.classList.add('unset');
-    wrap.innerHTML = `<div class="goal-set">${svg('target')}<div class="goal-pitch"><b>Set your revenue target</b><small>the number you’re chasing — every pursuit gets measured against it</small></div><input type="number" class="goal-in" placeholder="$K · e.g. 5000"><button class="goal-save">Set</button></div>`;
+    wrap.innerHTML = `<div class="goal-set">${svg('target')}<div class="goal-pitch"><b>Set your revenue target</b><small>the number you’re chasing — every pursuit gets measured against it</small></div><input type="number" class="goal-in" placeholder="$K · e.g. 5000" aria-label="Revenue target in thousands of dollars"><button class="goal-save">Set</button></div>`;
   } else {
     const pct = Math.min(100, d.pct);
     const realizedPct = d.projected ? Math.round(d.realized / Math.max(d.target_k, d.projected) * 100) : 0;
